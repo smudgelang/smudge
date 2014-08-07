@@ -1,0 +1,28 @@
+MUX
+{
+    OFF
+    [
+        "Case connected" -(USBD.PlugCase)-> CASE,
+        "Cradle connected" -(USBD.PlugCradle)-> CRADLE
+    ],
+    CASE
+    [
+        "Cradle connected"-(USBD.UnplugCradle, USBD.PlugCase)->CRADLE_THEN_CASE,
+        "Case disconnected" -(USBD.UnplugCase)-> OFF
+    ],
+    CRADLE
+    [
+        "Case connected" -(USBD.UnplugCradle, USBD.PlugCase)-> CASE_THEN_CRADLE,
+        "Cradle disconnected" -(USBD.UnplugCradle)-> OFF,
+    ],
+    CASE_THEN_CRADLE
+    [
+        "Case disconnected" -(USBD.UnplugCase, USBD.PlugCradle)-> CRADLE,
+        "Cradle disconnected" --> CASE
+    ],
+    CRADLE_THEN_CASE
+    [
+        "Case disconnected" --> CRADLE,
+        "Cradle disconnected" -(USBD.UnplugCradle, USBD.PlugCase)-> CASE
+    ]
+}

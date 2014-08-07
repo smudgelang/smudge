@@ -19,7 +19,7 @@
 state-machine = state-machine-name LWSP "{" empty transition-specifier empty "}"
 sep = "-" / "_"
 symbol = "!" / "#" / "$" / "%" / "&" / "'" / "(" / ")" / "*" / "+" / "," / "." / "/" / "{" / "|" / "}" / "~" / "[" / "\" / "]" / "^" / "`"
-eol = "\n"
+eol = CRLF
 lwsp = *(WSP / eol)
 empty = *comment / lwsp
 space = (WSP / eol / comment) empty

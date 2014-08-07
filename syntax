@@ -1,0 +1,45 @@
+;MUX {
+;CASE 
+;     -()-> OTHER_STATE
+;
+;     ...or...
+;
+;     @... // optional
+;     [
+;     "Case disconnected" --> OFF
+;     "Fobbity":fob -(
+;                 OTHER_MACHINE."Fobbity",
+;                 MUX."My favorite event",
+;                 @functionCall
+;                 )-> URR
+;     ]
+;     @... // optional
+ 
+
+state-machine = state-machine-name LWSP "{" empty transition-specifier empty "}"
+sep = "-" / "_"
+symbol = "!" / "#" / "$" / "%" / "&" / "'" / "(" / ")" / "*" / "+" / "," / "." / "/" / "{" / "|" / "}" / "~" / "[" / "\" / "]" / "^" / "`"
+eol = "\n"
+lwsp = *(WSP / eol)
+empty = *comment / lwsp
+space = (WSP / eol / comment) empty
+non-newline = ALPHA / WSP / DIGIT / sep / symbol
+comment = "/" "/" *non-newline eol
+quoted = DQUOTE 1*(ALPHA / WSP / DIGIT / sep / symbol) DQUOTE
+identifier = 1*(ALPHA / DIGIT / "-") / 2*(ALPHA / DIGIT / sep) / quoted
+any = "_"
+state-machine-name = identifier
+transition-specifier = to-state / state-list
+state = [function-call space] state-title empty "[" empty state-transition empty *("," empty state-transition empty) "]" empty [function-call]
+state-list = state *(empty "," empty state)
+function-call = "@" c-identifier
+nondigit = ALPHA / "_"
+c-identifier = nondigit *(nondigit / DIGIT)
+state-transition = (event-name / any) empty to-state
+to-state = arrow empty state-name
+state-name = identifier
+state-title = state-name / any
+arrow = "-" ["(" empty [side-effect-list] empty ")"] "-" ">"
+side-effect-list = side-effect [empty "," empty side-effect]
+side-effect = [state-machine-name ":"] event-name / function-call
+event-name = identifier

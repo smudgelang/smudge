@@ -47,7 +47,8 @@ state-title = state-name / any
 arrow = "-" [side-effect-container] "-" ">"
 side-effect-container = "(" empty [side-effect-list] empty ")"
 side-effect-list = side-effect [empty "," empty side-effect]
-side-effect = [state-machine-name "."] event-name / function-call
+side-effect = function-call / function-call empty ":" empty qualified-event / qualified-event
+qualified-event = [state-machine-name "."] event-name
 event-name = identifier
 
 ;ALPHA = %x41-5A / %x61-7A

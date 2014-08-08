@@ -18,13 +18,12 @@
 ;     @... // optional
 ;     ,
  
-
-state-machine = state-machine-name LWSP "{" empty transition-specifier empty "}"
+state-machine = state-machine-name empty "{" empty transition-specifier empty "}" empty
 sep = "-" / "_"
 symbol = "!" / "#" / "$" / "%" / "&" / "'" / "(" / ")" / "*" / "+" / "," / "." / "/" / "{" / "|" / "}" / "~" / "[" / "\" / "]" / "^" / "`"
 eol = LF
 lwsp = *(WSP / eol)
-empty = *comment / lwsp
+empty = comment / lwsp
 space = (WSP / eol / comment) empty
 non-newline = ALPHA / WSP / DIGIT / sep / symbol
 comment = "/" "/" *non-newline eol
@@ -33,7 +32,7 @@ identifier = 1*(ALPHA / DIGIT / "-") / 2*(ALPHA / DIGIT / sep) / quoted
 any = "_"
 state-machine-name = identifier
 transition-specifier = to-state / state-list
-state = enter-function state-title empty "[" empty event-handler empty *("," empty event-handler empty) "]" empty exit-function
+state = state-title empty enter-function empty "[" empty event-handler empty *("," empty event-handler empty) "]" empty exit-function
 enter-function = [function-call space]
 exit-function = [function-call]
 state-list = state *(empty "," empty state)
@@ -48,5 +47,14 @@ state-title = state-name / any
 arrow = "-" [side-effect-container] "-" ">"
 side-effect-container = "(" empty [side-effect-list] empty ")"
 side-effect-list = side-effect [empty "," empty side-effect]
-side-effect = [state-machine-name ":"] event-name / function-call
+side-effect = [state-machine-name "."] event-name / function-call
 event-name = identifier
+
+;ALPHA = %x41-5A / %x61-7A
+;DIGIT = %x30-39
+;DQUOTE = %x22
+;SP = %x20
+;HTAB = %x09
+;WSP = SP / HTAB
+;CR = %x0D
+;LF = %x0A

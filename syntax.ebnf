@@ -1,4 +1,5 @@
-state-machine = state-machine-name empty "{" empty transition-specifier empty "}" empty
+state-machine = state-machine-name empty state-machine-spec empty
+state-machine-spec = "{" empty transition-specifier empty "}"
 sep = "-" / "_"
 symbol = "!" / "#" / "$" / "%" / "&" / "'" / "(" / ")" / "*" / "+" / "," / "." / "/" / "{" / "|" / "}" / "~" / "[" / "\" / "]" / "^" / "`"
 eol = LF

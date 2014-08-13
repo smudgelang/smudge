@@ -1,3 +1,9 @@
+// Example charger selection logic from KCup.
+
+// KCup has 2 USB charge ports (cradle and case) and needs to decide
+// which to use when both are plugged in. This switches to the most
+// recently plugged in source because that's what UE wanted.
+
 MUX
 {
     OFF

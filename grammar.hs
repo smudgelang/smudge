@@ -7,13 +7,54 @@ state_machine :: Parser (String, [(String, [(String, Maybe String)])])
 state_machine =
     do sm <- state_machine_name
        empty
-       char '{'
+       sms <- state_machine_spec
        empty
-       sl <- state_list
+       return (sm, sms)
+
+state_machine_spec :: Parser [(String, [(String, Maybe String)])]
+state_machine_spec = (char '{' >> empty) *> transition_specifier <* (empty >> char '}')
+
+transition_specifier :: Parser [(String, [(String, Maybe String)])]
+transition_specifier = state_list
+
+state :: Parser (String, [(String, Maybe String)])
+state = 
+    do sn <- state_name 
        empty
-       char '}'
+       ehs <- event_handler_spec
        empty
-       return (sm, sl)
+       return (sn, ehs)
+
+event_handler_spec :: Parser [(String, Maybe String)]
+event_handler_spec = (char '[' >> empty) *> event_handler_list <* (empty >> char ']')
+
+event_handler_list :: Parser [(String, Maybe String)]
+event_handler_list = sepBy (event_handler <* empty) (char ',' >> empty)
+
+state_list :: Parser [(String, [(String, Maybe String)])]
+state_list = sepBy (state <* empty) (char ',' >> empty)
+
+event_handler :: Parser (String, Maybe String)
+event_handler =
+    do ev <- event_name
+       empty
+       try (string "-->" >> empty >> state_name >>= \st -> return (ev, Just st))
+        <|> (string "--" >> empty >> return (ev, Nothing))
+        <?> "state transition for event \"" ++ ev ++ "\""
+
+state_machine_name :: Parser String
+state_machine_name = identifier
+
+state_name :: Parser String
+state_name = identifier
+
+event_name :: Parser String
+event_name = identifier
+
+identifier :: Parser String
+identifier = many1 (alphaNum <|> (char '-'))
+             <|> (:) <$> id_char <*> (many1 id_char)
+             <|> ((char '"') >> many1 (id_char <|> space <|> symbol) <* (char '"'))
 
 sep :: Parser Char
 sep = oneOf "-_"
@@ -26,43 +67,3 @@ id_char = (alphaNum <|> sep)
 
 empty :: Parser ()
 empty = spaces
-
-identifier :: Parser String
-identifier = many1 (alphaNum <|> (char '-'))
-             <|> (:) <$> id_char <*> (many1 id_char)
-             <|> ((char '"') >> many1 (id_char <|> space <|> symbol) <* (char '"'))
-
-state_machine_name :: Parser String
-state_machine_name = identifier
-
-state :: Parser (String, [(String, Maybe String)])
-state = 
-    do sn <- state_name 
-       empty
-       char '['
-       empty
-       el <- event_handler_list
-       empty
-       char ']'
-       empty
-       return (sn, el)
-
-state_list :: Parser [(String, [(String, Maybe String)])]
-state_list = sepBy (state <* empty) (char ',' >> empty)
-
-event_handler_list :: Parser [(String, Maybe String)]
-event_handler_list = sepBy (event_handler <* empty) (char ',' >> empty)
-
-event_handler :: Parser (String, Maybe String)
-event_handler =
-    do ev <- event_name
-       empty
-       try (string "-->" >> empty >> state_name >>= \st -> return (ev, Just st))
-        <|> (string "--" >> empty >> return (ev, Nothing))
-        <?> "state transition for event \"" ++ ev ++ "\""
-
-state_name :: Parser String
-state_name = identifier
-
-event_name :: Parser String
-event_name = identifier

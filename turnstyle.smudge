@@ -1,0 +1,10 @@
+turnstyle {
+    locked [
+        coin --> unlocked
+    ],
+
+    unlocked [
+        coin --,
+        person --> locked
+    ]
+}

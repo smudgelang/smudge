@@ -4,7 +4,7 @@ import Text.ParserCombinators.Parsec
 import System.Environment
 import Grammar
 
-result :: Either ParseError [(String, Maybe String)] -> IO ()
+result :: Either ParseError (String, [(String, [(String, Maybe String)])]) -> IO ()
 result (Left err) = print err
 result (Right s)  = print s
 
@@ -12,4 +12,4 @@ main = do
     args <- getArgs
     let fileName = head args
     compilationUnit <- readFile fileName
-    result $ parse event_handler_list fileName compilationUnit
+    result $ parse state_machine fileName compilationUnit

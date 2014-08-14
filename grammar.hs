@@ -52,8 +52,8 @@ event_name :: Parser String
 event_name = identifier
 
 identifier :: Parser String
-identifier = many1 (alphaNum <|> (char '-'))
-             <|> (:) <$> id_char <*> (many1 id_char)
+identifier = try ((:) <$> id_char <*> (many1 id_char))
+             <|> many1 (alphaNum <|> (char '-'))
              <|> ((char '"') >> many1 (id_char <|> space <|> symbol) <* (char '"'))
 
 sep :: Parser Char

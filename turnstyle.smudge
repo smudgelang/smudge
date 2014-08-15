@@ -1,7 +1,7 @@
 turnstyle {
-    locked [
+    locked @lockedEnter [
         coin --> unlocked
-    ],
+    ]@lockedExit,
 
     unlocked [
         coin --,

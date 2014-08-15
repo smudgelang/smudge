@@ -3,24 +3,24 @@ module Grammar where
 import Text.ParserCombinators.Parsec
 import Control.Applicative hiding ((<|>), empty, many)
 
-state_machine :: Parser (String, [(String, Maybe String, [(String, Maybe String)], Maybe String)])
-state_machine = (,) <$> state_machine_name <* empty <*> state_machine_spec <* empty
+state_machine :: Parser (String, [(String, Maybe String, [(String, (Maybe [(Maybe String, Maybe (Maybe String, String))], Maybe String))], Maybe String)])
+state_machine = (,) <$> (empty *> state_machine_name <* empty) <*> state_machine_spec <* empty
 
-state_machine_spec :: Parser [(String, Maybe String, [(String, Maybe String)], Maybe String)]
+state_machine_spec :: Parser [(String, Maybe String, [(String, (Maybe [(Maybe String, Maybe (Maybe String, String))], Maybe String))], Maybe String)]
 state_machine_spec = (char '{' >> empty) *> transition_specifier <* (empty >> char '}')
 
 --TODO
-transition_specifier :: Parser [(String, Maybe String, [(String, Maybe String)], Maybe String)]
+transition_specifier :: Parser [(String, Maybe String, [(String, (Maybe [(Maybe String, Maybe (Maybe String, String))], Maybe String))], Maybe String)]
 transition_specifier = state_list
 
-state :: Parser (String, Maybe String, [(String, Maybe String)], Maybe String)
+state :: Parser (String, Maybe String, [(String, (Maybe [(Maybe String, Maybe (Maybe String, String))], Maybe String))], Maybe String)
 state = (,,,) <$> state_title <* empty <*> enter_function <* empty
               <*> event_handler_spec <* empty <*> exit_function
 
-event_handler_spec :: Parser [(String, Maybe String)]
+event_handler_spec :: Parser [(String, (Maybe [(Maybe String, Maybe (Maybe String, String))], Maybe String))]
 event_handler_spec = (char '[' >> empty) *> event_handler_list <* (empty >> char ']')
 
-event_handler_list :: Parser [(String, Maybe String)]
+event_handler_list :: Parser [(String, (Maybe [(Maybe String, Maybe (Maybe String, String))], Maybe String))]
 event_handler_list = sepBy (event_handler <* empty) (char ',' >> empty)
 
 enter_function :: Parser (Maybe String)
@@ -29,11 +29,14 @@ enter_function = optionMaybe function_call
 exit_function :: Parser (Maybe String)
 exit_function = optionMaybe function_call
 
-state_list :: Parser [(String, Maybe String, [(String, Maybe String)], Maybe String)]
+state_list :: Parser [(String, Maybe String, [(String, (Maybe [(Maybe String, Maybe (Maybe String, String))], Maybe String))], Maybe String)]
 state_list = sepBy (state <* empty) (char ',' >> empty)
 
 side_effect_container :: Parser [(Maybe String, Maybe (Maybe String, String))]
 side_effect_container = (char '(' >> empty) *> side_effect_list <* (empty >> char ')')
+
+to_state :: Parser (Maybe [(Maybe String, Maybe (Maybe String, String))], String)
+to_state = (,) <$> arrow <* empty <*> state_name
 
 dash :: Parser (Maybe [(Maybe String, Maybe (Maybe String, String))])
 dash = (char '-') *> optionMaybe side_effect_container <* (char '-')
@@ -42,12 +45,12 @@ arrow :: Parser (Maybe [(Maybe String, Maybe (Maybe String, String))])
 arrow = dash <* (char '>')
 
 --TODO
-event_handler :: Parser (String, Maybe String)
+event_handler :: Parser (String, (Maybe [(Maybe String, Maybe (Maybe String, String))], Maybe String))
 event_handler =
     do ev <- event_name
        empty
-       try (string "-->" >> empty >> state_name >>= \st -> return (ev, Just st))
-        <|> (string "--" >> empty >> return (ev, Nothing))
+       try (to_state >>= \(ses, st) -> return (ev, (ses, Just st)))
+        <|> (dash <* empty >>= \ses -> return (ev, (ses, Nothing)))
         <?> "state transition for event \"" ++ ev ++ "\""
 
 side_effect_list :: Parser [(Maybe String, Maybe (Maybe String, String))]

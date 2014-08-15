@@ -32,8 +32,14 @@ exit_function = optionMaybe function_call
 state_list :: Parser [(String, Maybe String, [(String, Maybe String)], Maybe String)]
 state_list = sepBy (state <* empty) (char ',' >> empty)
 
---TODO
---side_effect_container
+side_effect_container :: Parser [(Maybe String, Maybe (Maybe String, String))]
+side_effect_container = (char '(' >> empty) *> side_effect_list <* (empty >> char ')')
+
+dash :: Parser (Maybe [(Maybe String, Maybe (Maybe String, String))])
+dash = (char '-') *> optionMaybe side_effect_container <* (char '-')
+
+arrow :: Parser (Maybe [(Maybe String, Maybe (Maybe String, String))])
+arrow = dash <* (char '>')
 
 --TODO
 event_handler :: Parser (String, Maybe String)
@@ -44,11 +50,14 @@ event_handler =
         <|> (string "--" >> empty >> return (ev, Nothing))
         <?> "state transition for event \"" ++ ev ++ "\""
 
---TODO
---side_effect_list
+side_effect_list :: Parser [(Maybe String, Maybe (Maybe String, String))]
+side_effect_list = sepBy (side_effect <* empty) (char ',' >> empty)
 
---TODO
---side_effect
+side_effect :: Parser (Maybe String, Maybe (Maybe String, String))
+side_effect = try (typed_function_call >>= \f -> return (Just (fst f), Just (snd f)))
+              <|> try ((,) <$> (function_call >>= \f -> return (Just f)) <*> return Nothing)
+              <|> (,) <$> return Nothing <*> (qualified_event >>= \e -> return (Just e))
+              <?> "side effect"
 
 typed_function_call :: Parser (String, (Maybe String, String))
 typed_function_call = (,) <$> function_call <* (empty >> char ':' >> empty) <*> qualified_event

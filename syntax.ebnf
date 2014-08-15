@@ -1,12 +1,11 @@
 state-machine = state-machine-name empty state-machine-spec empty
-state-machine-spec = "{" empty transition-specifier empty "}"
-transition-specifier = to-state / state-list
-state = state-title empty enter-function empty event-handler-spec empty exit-function
+state-machine-spec = "{" empty state-list empty "}"
+state-list = state *(empty "," empty state)
+state = state-title empty (to-state / enter-function empty event-handler-spec empty exit-function)
 event-handler-spec = "[" empty event-handler-list empty "]"
 event-handler-list = event-handler *(empty "," empty event-handler)
 enter-function = [function-call]
 exit-function = [function-call]
-state-list = state *(empty "," empty state)
 side-effect-container = "(" empty [side-effect-list] empty ")"
 event-handler = (event-name / any) empty (to-state / (dash empty))
 to-state = arrow empty state-name

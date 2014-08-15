@@ -9,12 +9,13 @@ state_machine = (,) <$> state_machine_name <* empty <*> state_machine_spec <* em
 state_machine_spec :: Parser [(String, Maybe String, [(String, Maybe String)], Maybe String)]
 state_machine_spec = (char '{' >> empty) *> transition_specifier <* (empty >> char '}')
 
+--TODO
 transition_specifier :: Parser [(String, Maybe String, [(String, Maybe String)], Maybe String)]
 transition_specifier = state_list
 
 state :: Parser (String, Maybe String, [(String, Maybe String)], Maybe String)
-state = (,,,) <$> state_name <* empty <*> enter_function <* empty
-              <*> event_handler_spec <* empty <*> exit_function <* empty
+state = (,,,) <$> state_title <* empty <*> enter_function <* empty
+              <*> event_handler_spec <* empty <*> exit_function
 
 event_handler_spec :: Parser [(String, Maybe String)]
 event_handler_spec = (char '[' >> empty) *> event_handler_list <* (empty >> char ']')
@@ -31,6 +32,10 @@ exit_function = optionMaybe function_call
 state_list :: Parser [(String, Maybe String, [(String, Maybe String)], Maybe String)]
 state_list = sepBy (state <* empty) (char ',' >> empty)
 
+--TODO
+--side_effect_container
+
+--TODO
 event_handler :: Parser (String, Maybe String)
 event_handler =
     do ev <- event_name
@@ -38,6 +43,12 @@ event_handler =
        try (string "-->" >> empty >> state_name >>= \st -> return (ev, Just st))
         <|> (string "--" >> empty >> return (ev, Nothing))
         <?> "state transition for event \"" ++ ev ++ "\""
+
+--TODO
+--side_effect_list
+
+--TODO
+--side_effect
 
 typed_function_call :: Parser (String, (Maybe String, String))
 typed_function_call = (,) <$> function_call <* (empty >> char ':' >> empty) <*> qualified_event
@@ -49,6 +60,10 @@ qualified_event = try ((,) <$> optionMaybe (state_machine_name <* (char '.')) <*
 function_call :: Parser String
 function_call = char '@' *> c_identifier
 
+--TODO
+state_title :: Parser String
+state_title = state_name
+
 state_machine_name :: Parser String
 state_machine_name = identifier
 
@@ -57,6 +72,12 @@ state_name = identifier
 
 event_name :: Parser String
 event_name = identifier
+
+--TODO
+--any
+
+--TODO
+--comment
 
 identifier :: Parser String
 identifier = try ((:) <$> id_char <*> (many1 id_char))

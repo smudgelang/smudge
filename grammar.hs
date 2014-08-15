@@ -9,13 +9,14 @@ state_machine = (,) <$> (empty *> state_machine_name <* empty) <*> state_machine
 state_machine_spec :: Parser [(String, Maybe String, [(String, (Maybe [(Maybe String, Maybe (Maybe String, String))], Maybe String))], Maybe String)]
 state_machine_spec = (char '{' >> empty) *> state_list <* (empty >> char '}')
 
---TODO
 state_list :: Parser [(String, Maybe String, [(String, (Maybe [(Maybe String, Maybe (Maybe String, String))], Maybe String))], Maybe String)]
 state_list = sepBy (state <* empty) (char ',' >> empty)
 
 state :: Parser (String, Maybe String, [(String, (Maybe [(Maybe String, Maybe (Maybe String, String))], Maybe String))], Maybe String)
-state = (,,,) <$> state_title <* empty <*> enter_function <* empty
-              <*> event_handler_spec <* empty <*> exit_function
+state = try ((,,,) <$> state_title <* empty <*> return Nothing
+                   <*> (to_state >>= \(ses, st) -> return [("", (ses, Just st))]) <*> return Nothing)
+         <|> (,,,) <$> state_title <* empty <*> enter_function <* empty
+                   <*> event_handler_spec <* empty <*> exit_function
 
 event_handler_spec :: Parser [(String, (Maybe [(Maybe String, Maybe (Maybe String, String))], Maybe String))]
 event_handler_spec = (char '[' >> empty) *> event_handler_list <* (empty >> char ']')

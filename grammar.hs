@@ -62,8 +62,8 @@ side_effect_list = sepBy (side_effect <* empty) (char ',' >> empty)
 
 side_effect :: Parser (Maybe String, Maybe (Maybe String, Event))
 side_effect = try (typed_function_call >>= \f -> return (Just (fst f), Just (snd f)))
-              <|> try ((,) <$> (function_call >>= \f -> return (Just f)) <*> return Nothing)
-              <|> (,) <$> return Nothing <*> (qualified_event >>= \e -> return (Just e))
+              <|> try ((,) <$> Just <$> function_call <*> return Nothing)
+              <|> (,) <$> return Nothing <*> Just <$> qualified_event
               <?> "side effect"
 
 typed_function_call :: Parser (String, (Maybe String, Event))

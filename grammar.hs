@@ -54,7 +54,7 @@ event_name = identifier
 identifier :: Parser String
 identifier = try ((:) <$> id_char <*> (many1 id_char))
              <|> many1 (alphaNum <|> (char '-'))
-             <|> ((char '"') >> many1 (id_char <|> space <|> symbol) <* (char '"'))
+             <|> quoted
 
 sep :: Parser Char
 sep = oneOf "-_"
@@ -67,3 +67,6 @@ id_char = (alphaNum <|> sep)
 
 empty :: Parser ()
 empty = spaces
+
+quoted :: Parser String
+quoted = ((char '"') *> many1 (id_char <|> space <|> symbol) <* (char '"'))

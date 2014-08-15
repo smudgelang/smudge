@@ -121,7 +121,7 @@ id_char :: Parser Char
 id_char = (alphaNum <|> sep)
 
 empty :: Parser ()
-empty = try (comment *> empty) <|> try (spaces *> comment *> empty) <|> comment <|> spaces
+empty = try (spaces *> comment *> empty) <|> spaces
 
 nondigit :: Parser Char
 nondigit = letter <|> char '_'

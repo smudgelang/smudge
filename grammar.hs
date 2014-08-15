@@ -4,12 +4,7 @@ import Text.ParserCombinators.Parsec
 import Control.Applicative hiding ((<|>), empty, many)
 
 state_machine :: Parser (String, [(String, [(String, Maybe String)])])
-state_machine =
-    do sm <- state_machine_name
-       empty
-       sms <- state_machine_spec
-       empty
-       return (sm, sms)
+state_machine = (,) <$> state_machine_name <* empty <*> state_machine_spec <* empty
 
 state_machine_spec :: Parser [(String, [(String, Maybe String)])]
 state_machine_spec = (char '{' >> empty) *> transition_specifier <* (empty >> char '}')
@@ -18,12 +13,7 @@ transition_specifier :: Parser [(String, [(String, Maybe String)])]
 transition_specifier = state_list
 
 state :: Parser (String, [(String, Maybe String)])
-state = 
-    do sn <- state_name 
-       empty
-       ehs <- event_handler_spec
-       empty
-       return (sn, ehs)
+state = (,) <$> state_name <* empty <*> event_handler_spec <* empty
 
 event_handler_spec :: Parser [(String, Maybe String)]
 event_handler_spec = (char '[' >> empty) *> event_handler_list <* (empty >> char ']')

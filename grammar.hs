@@ -2,27 +2,28 @@ module Grammar where
 
 import Text.ParserCombinators.Parsec hiding (State)
 import Control.Applicative hiding ((<|>), empty, many)
+import Data.Maybe (maybeToList)
 
-data State = State String | StateAny
+data State = State String | StateAny | StateSame
     deriving (Show, Eq, Ord)
 
-data Event = Event String | EventAny | EventEnter
+data Event = Event String | EventAny | EventEnter | EventExit
     deriving (Show, Eq, Ord)
 
-state_machine :: Parser (String, [(State, Maybe String, [(Event, (Maybe [(Maybe String, Maybe (Maybe String, Event))], Maybe State))], Maybe String)])
+state_machine :: Parser (String, [(State, [(Event, (Maybe [(Maybe String, Maybe (Maybe String, Event))], Maybe State))])])
 state_machine = (,) <$> (empty *> state_machine_name <* empty) <*> state_machine_spec <* empty
 
-state_machine_spec :: Parser [(State, Maybe String, [(Event, (Maybe [(Maybe String, Maybe (Maybe String, Event))], Maybe State))], Maybe String)]
+state_machine_spec :: Parser [(State, [(Event, (Maybe [(Maybe String, Maybe (Maybe String, Event))], Maybe State))])]
 state_machine_spec = (char '{' >> empty) *> state_list <* (empty >> char '}')
 
-state_list :: Parser [(State, Maybe String, [(Event, (Maybe [(Maybe String, Maybe (Maybe String, Event))], Maybe State))], Maybe String)]
+state_list :: Parser [(State, [(Event, (Maybe [(Maybe String, Maybe (Maybe String, Event))], Maybe State))])]
 state_list = sepBy (state <* empty) (char ',' >> empty)
 
-state :: Parser (State, Maybe String, [(Event, (Maybe [(Maybe String, Maybe (Maybe String, Event))], Maybe State))], Maybe String)
-state = try ((,,,) <$> state_title <* empty <*> return Nothing
-                   <*> (to_state >>= \(ses, st) -> return [(EventEnter, (ses, Just st))]) <*> return Nothing)
-         <|> (,,,) <$> state_title <* empty <*> enter_function <* empty
-                   <*> event_handler_spec <* empty <*> exit_function
+state :: Parser (State, [(Event, (Maybe [(Maybe String, Maybe (Maybe String, Event))], Maybe State))])
+state = try ((,) <$> state_title <* empty
+                 <*> (to_state >>= \(ses, st) -> return [(EventEnter, (ses, Just st))]))
+         <|> (,) <$> state_title <* empty <*> ((++) <$> ((++) <$> (maybeToList <$> enter_function <* empty)
+                 <*> event_handler_spec <* empty) <*> (maybeToList <$> exit_function))
 
 event_handler_spec :: Parser [(Event, (Maybe [(Maybe String, Maybe (Maybe String, Event))], Maybe State))]
 event_handler_spec = (char '[' >> empty) *> event_handler_list <* (empty >> char ']')
@@ -30,11 +31,11 @@ event_handler_spec = (char '[' >> empty) *> event_handler_list <* (empty >> char
 event_handler_list :: Parser [(Event, (Maybe [(Maybe String, Maybe (Maybe String, Event))], Maybe State))]
 event_handler_list = sepBy (event_handler <* empty) (char ',' >> empty)
 
-enter_function :: Parser (Maybe String)
-enter_function = optionMaybe function_call
+enter_function :: Parser (Maybe (Event, (Maybe [(Maybe String, Maybe (Maybe String, Event))], Maybe State)))
+enter_function = optionMaybe (function_call >>= \f -> return (EventEnter, (Just [(Just f, Nothing)], Just StateSame)))
 
-exit_function :: Parser (Maybe String)
-exit_function = optionMaybe function_call
+exit_function :: Parser (Maybe (Event, (Maybe [(Maybe String, Maybe (Maybe String, Event))], Maybe State)))
+exit_function = optionMaybe (function_call >>= \f -> return (EventExit, (Just [(Just f, Nothing)], Just StateSame)))
 
 side_effect_container :: Parser [(Maybe String, Maybe (Maybe String, Event))]
 side_effect_container = (char '(' >> empty) *> side_effect_list <* (empty >> char ')')

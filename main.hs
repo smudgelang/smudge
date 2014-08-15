@@ -4,7 +4,7 @@ import Text.ParserCombinators.Parsec (parse, ParseError)
 import System.Environment
 import Grammar
 
-result :: Either ParseError (String, [(State, Maybe String, [(Event, (Maybe [(Maybe String, Maybe (Maybe String, Event))], Maybe State))], Maybe String)]) -> IO()
+result :: Either ParseError (String, [(State, [(Event, (Maybe [(Maybe String, Maybe (Maybe String, Event))], Maybe State))])]) -> IO()
 result (Left err) = print err
 result (Right s)  = print s
 

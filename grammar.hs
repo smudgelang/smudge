@@ -7,11 +7,11 @@ state_machine :: Parser (String, [(String, Maybe String, [(String, (Maybe [(Mayb
 state_machine = (,) <$> (empty *> state_machine_name <* empty) <*> state_machine_spec <* empty
 
 state_machine_spec :: Parser [(String, Maybe String, [(String, (Maybe [(Maybe String, Maybe (Maybe String, String))], Maybe String))], Maybe String)]
-state_machine_spec = (char '{' >> empty) *> transition_specifier <* (empty >> char '}')
+state_machine_spec = (char '{' >> empty) *> state_list <* (empty >> char '}')
 
 --TODO
-transition_specifier :: Parser [(String, Maybe String, [(String, (Maybe [(Maybe String, Maybe (Maybe String, String))], Maybe String))], Maybe String)]
-transition_specifier = state_list
+state_list :: Parser [(String, Maybe String, [(String, (Maybe [(Maybe String, Maybe (Maybe String, String))], Maybe String))], Maybe String)]
+state_list = sepBy (state <* empty) (char ',' >> empty)
 
 state :: Parser (String, Maybe String, [(String, (Maybe [(Maybe String, Maybe (Maybe String, String))], Maybe String))], Maybe String)
 state = (,,,) <$> state_title <* empty <*> enter_function <* empty
@@ -28,9 +28,6 @@ enter_function = optionMaybe function_call
 
 exit_function :: Parser (Maybe String)
 exit_function = optionMaybe function_call
-
-state_list :: Parser [(String, Maybe String, [(String, (Maybe [(Maybe String, Maybe (Maybe String, String))], Maybe String))], Maybe String)]
-state_list = sepBy (state <* empty) (char ',' >> empty)
 
 side_effect_container :: Parser [(Maybe String, Maybe (Maybe String, String))]
 side_effect_container = (char '(' >> empty) *> side_effect_list <* (empty >> char ')')

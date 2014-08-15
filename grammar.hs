@@ -100,8 +100,8 @@ state_any = char '_' *> return StateAny
 event_any :: Parser Event
 event_any = char '_' *> return EventAny
 
---TODO
---comment
+comment :: Parser ()
+comment = string "//" >> skipMany (noneOf "\r\n")
 
 identifier :: Parser String
 identifier = try ((:) <$> id_char <*> (many1 id_char))
@@ -121,7 +121,7 @@ id_char :: Parser Char
 id_char = (alphaNum <|> sep)
 
 empty :: Parser ()
-empty = spaces
+empty = try (comment *> empty) <|> try (spaces *> comment *> empty) <|> comment <|> spaces
 
 nondigit :: Parser Char
 nondigit = letter <|> char '_'

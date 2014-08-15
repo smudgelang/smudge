@@ -19,7 +19,7 @@ MUX
     CRADLE
     [
         "Case connected" -(USBD.UnplugCradle, USBD.PlugCase)-> CASE_THEN_CRADLE,
-        "Cradle disconnected" -(USBD.UnplugCradle)-> OFF,
+        "Cradle disconnected" -(USBD.UnplugCradle)-> OFF
     ],
     CASE_THEN_CRADLE
     [

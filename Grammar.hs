@@ -1,4 +1,10 @@
-module Grammar where
+module Grammar (
+    StateMachine(..),
+    State(..),
+    Event(..),
+    SideEffect(..),
+    state_machine
+) where
 
 import Text.ParserCombinators.Parsec hiding (State)
 import Control.Applicative hiding ((<|>), empty, many)

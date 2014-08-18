@@ -48,7 +48,7 @@ Executable smudge
   Main-is:           Main.hs
   
   -- Packages needed in order to build this package.
-  Build-depends:     base, parsec
+  Build-depends:     base, parsec, fgl, graphviz <= 2999.15.0.1
 
   -- Modules not exported by this package.
   Other-modules:     Grammar

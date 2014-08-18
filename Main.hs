@@ -12,7 +12,10 @@ smToGraph (sm, ss) = mkGraph [s | s <- zip [1..] (map fst ss)] es
                      where sn = Map.fromList [s | s <- zip (map fst ss) [1..]]
                            es = [ese | ese <- concat $ map (\ (s, es) -> 
                                                             map (\ (e, (ses, s')) ->
-                                                                 (sn Map.! s, sn Map.! s', (e, ses))) es) ss]
+                                                                 let s'' = case s' of
+                                                                                StateSame -> s
+                                                                                otherwise -> s'
+                                                                 in (sn Map.! s, sn Map.! s'', (e, ses))) es) ss]
 
 main = do
     args <- getArgs

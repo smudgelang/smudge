@@ -22,32 +22,32 @@ data Event = Event String | EventAny | EventEnter | EventExit
 data SideEffect = FuncVoid String | FuncEvent String (StateMachine, Event) | FuncDefault (StateMachine, Event)
     deriving (Show, Eq, Ord)
 
-state_machine :: Parser (StateMachine, [(State, [(Event, ([SideEffect], State))])])
+state_machine :: Parser (StateMachine, [(State, [(Event, [SideEffect], State)])])
 state_machine = (,) <$> (empty *> state_machine_name <* empty) <*> state_machine_spec <* empty
 
-state_machine_spec :: Parser [(State, [(Event, ([SideEffect], State))])]
+state_machine_spec :: Parser [(State, [(Event, [SideEffect], State)])]
 state_machine_spec = (char '{' >> empty) *> state_list <* (empty >> char '}')
 
-state_list :: Parser [(State, [(Event, ([SideEffect], State))])]
+state_list :: Parser [(State, [(Event, [SideEffect], State)])]
 state_list = sepBy (state <* empty) (char ',' >> empty)
 
-state :: Parser (State, [(Event, ([SideEffect], State))])
+state :: Parser (State, [(Event, [SideEffect], State)])
 state = try ((,) <$> state_title <* empty
-                 <*> ((:[]) <$> ((,) <$> return EventEnter <*> to_state)))
+                 <*> ((:[]) <$> ((\ (ses, s) -> (EventEnter, ses, s)) <$> to_state)))
          <|> (,) <$> state_title <* empty <*> ((++) <$> ((++) <$> (maybeToList <$> enter_function <* empty)
                  <*> event_handler_spec <* empty) <*> (maybeToList <$> exit_function))
 
-event_handler_spec :: Parser [(Event, ([SideEffect], State))]
+event_handler_spec :: Parser [(Event, [SideEffect], State)]
 event_handler_spec = (char '[' >> empty) *> event_handler_list <* (empty >> char ']')
 
-event_handler_list :: Parser [(Event, ([SideEffect], State))]
+event_handler_list :: Parser [(Event, [SideEffect], State)]
 event_handler_list = sepBy (event_handler <* empty) (char ',' >> empty)
 
-enter_function :: Parser (Maybe (Event, ([SideEffect], State)))
-enter_function = optionMaybe (function_call >>= \f -> return (EventEnter, ([FuncVoid f], StateSame)))
+enter_function :: Parser (Maybe (Event, [SideEffect], State))
+enter_function = optionMaybe (function_call >>= \f -> return (EventEnter, [FuncVoid f], StateSame))
 
-exit_function :: Parser (Maybe (Event, ([SideEffect], State)))
-exit_function = optionMaybe (function_call >>= \f -> return (EventExit, ([FuncVoid f], StateSame)))
+exit_function :: Parser (Maybe (Event, [SideEffect], State))
+exit_function = optionMaybe (function_call >>= \f -> return (EventExit, [FuncVoid f], StateSame))
 
 side_effect_container :: Parser [SideEffect]
 side_effect_container = (char '(' >> empty) *> side_effect_list <* (empty >> char ')')
@@ -61,12 +61,12 @@ dash = (char '-') *> option [] side_effect_container <* (char '-')
 arrow :: Parser [SideEffect]
 arrow = dash <* (char '>')
 
-event_handler :: Parser (Event, ([SideEffect], State))
+event_handler :: Parser (Event, [SideEffect], State)
 event_handler =
     do ev <- event_name <|> event_any
        empty
-       try ((,) <$> return ev <*> to_state)
-        <|> (dash <* empty >>= \ses -> return (ev, (ses, StateSame)))
+       try ((\ (ses, s) -> (ev, ses, s)) <$> to_state)
+        <|> (dash <* empty >>= \ses -> return (ev, ses, StateSame))
         <?> "state transition for event \"" ++ show ev ++ "\""
 
 side_effect_list :: Parser [SideEffect]

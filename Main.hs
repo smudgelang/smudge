@@ -7,11 +7,11 @@ import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree
 import qualified Data.Map as Map
 
-smToGraph :: (StateMachine, [(State, [(Event, ([SideEffect], State))])]) -> Gr State (Event, [SideEffect])
+smToGraph :: (StateMachine, [(State, [(Event, [SideEffect], State)])]) -> Gr State (Event, [SideEffect])
 smToGraph (sm, ss) = mkGraph [s | s <- zip [1..] (map fst ss)] es
                      where sn = Map.fromList [s | s <- zip (map fst ss) [1..]]
                            es = [ese | ese <- concat $ map (\ (s, es) -> 
-                                                            map (\ (e, (ses, s')) ->
+                                                            map (\ (e, ses, s') ->
                                                                  let s'' = case s' of
                                                                                 StateSame -> s
                                                                                 otherwise -> s'

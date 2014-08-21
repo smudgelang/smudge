@@ -51,7 +51,7 @@ Executable smudge
   Build-depends:     base, containers, filepath, fgl, parsec, text, graphviz <= 2999.15.0.1
 
   -- Modules not exported by this package.
-  Other-modules:     Grammar
+  Other-modules:     Grammar Backends.Backend Backends.GraphViz
   
   -- Extra tools (e.g. alex, hsc2hs, ...) needed to build the source.
   -- Build-tools:         

@@ -5,9 +5,9 @@ module Backends.Backend (
 
 import Grammar
 
-import Data.Graph.Inductive.PatriciaTree
-import System.Console.GetOpt
-import System.FilePath
+import Data.Graph.Inductive.PatriciaTree (Gr)
+import System.Console.GetOpt (OptDescr)
+import System.FilePath (FilePath)
 
 data EventAndSideEffects = EventAndSideEffects Event [SideEffect]
     deriving (Show, Eq, Ord)

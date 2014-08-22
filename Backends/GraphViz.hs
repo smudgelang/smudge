@@ -36,8 +36,11 @@ instance Labellable SideEffect where
 instance Labellable EventAndSideEffects where
     toLabelValue (EventAndSideEffects e ses) = mconcat $ intersperse (toLabelValue "\n") $ toLabelValue e : map toLabelValue ses
 
-labelNonClusteredParams = nonClusteredParams { fmtNode = \ (_, l) -> [toLabel l],
-                                               fmtEdge = \ (_, _, l) -> [toLabel l] }
+labelNonClusteredParams = nonClusteredParams { fmtNode = \ (_, l) -> [toLabel l]
+                                             , fmtEdge = \ (_, _, l) -> [toLabel l] }
+
+labelNonClusteredParamsNoSE = nonClusteredParams { fmtNode = \ (_, l) -> [toLabel l]
+                                                 , fmtEdge = \ (_, _, EventAndSideEffects e _) -> [toLabel e] }
 
 data GraphVizOption = Format GraphvizOutput | OutFile FilePath | SuppressSideEffects
     deriving (Show, Eq)
@@ -48,13 +51,16 @@ outputFormats = [minBound..maxBound]
 instance Backend GraphVizOption where
     options = ("dot",
                [Option [] ["fmt"] (ReqArg (Format . read) "FORMAT")
-                 ("GraphViz output format.  Options: " ++ (intercalate "," $ map show outputFormats)),
+                 ("GraphViz output format.  Options: " ++
+                  (intercalate "," $ map show outputFormats)),
                 Option [] ["o"] (ReqArg OutFile "FILE")
                  "The name of the target file if not derived from source file.",
                 Option [] ["no-se"] (NoArg SuppressSideEffects)
                  "Suppress side effects from output"])
-    generate os g inputName = addExtension (runGraphviz d) format (dropExtension inputName)
-        where d = graphToDot labelNonClusteredParams g
+    generate os g inputName = addExtension (runGraphviz (d os)) format (dropExtension inputName)
+        where d os 
+                | SuppressSideEffects `elem` os = graphToDot labelNonClusteredParamsNoSE g
+                | otherwise = graphToDot labelNonClusteredParams g
               format = formatHelper os
               formatHelper [] = DotOutput
               formatHelper ((Format f):_) = f

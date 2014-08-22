@@ -36,11 +36,12 @@ instance Labellable SideEffect where
 instance Labellable EventAndSideEffects where
     toLabelValue (EventAndSideEffects e ses) = mconcat $ intersperse (toLabelValue "\n") $ toLabelValue e : map toLabelValue ses
 
-labelNonClusteredParams = nonClusteredParams { fmtNode = \ (_, l) -> [toLabel l]
-                                             , fmtEdge = \ (_, _, l) -> [toLabel l] }
-
-labelNonClusteredParamsNoSE = nonClusteredParams { fmtNode = \ (_, l) -> [toLabel l]
-                                                 , fmtEdge = \ (_, _, EventAndSideEffects e _) -> [toLabel e] }
+labelNonClusteredParams sideEffects =
+                         nonClusteredParams { fmtNode = \ (_, l) -> [toLabel l]
+                                            , fmtEdge = if sideEffects then keep else drop }
+                                             where
+                                                keep = \ (_, _, l) -> [toLabel l]
+                                                drop = \ (_, _, EventAndSideEffects e _) -> [toLabel e]
 
 data GraphVizOption = Format GraphvizOutput | OutFile FilePath | SuppressSideEffects
     deriving (Show, Eq)
@@ -58,9 +59,8 @@ instance Backend GraphVizOption where
                 Option [] ["no-se"] (NoArg SuppressSideEffects)
                  "Suppress side effects from output"])
     generate os g inputName = addExtension (runGraphviz (d os)) format (dropExtension inputName)
-        where d os 
-                | SuppressSideEffects `elem` os = graphToDot labelNonClusteredParamsNoSE g
-                | otherwise = graphToDot labelNonClusteredParams g
+        where d os = graphToDot (labelNonClusteredParams suppressSE) g
+              suppressSE = not $ SuppressSideEffects `elem` os
               format = formatHelper os
               formatHelper [] = DotOutput
               formatHelper ((Format f):_) = f

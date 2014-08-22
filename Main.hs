@@ -1,11 +1,12 @@
 module Main where
 
-import Paths_smudge
+import PackageInfo (packageInfo, author, synopsis)
 import Backends.Backend
 import Backends.GraphViz
 import Grammar
 
 import Control.Applicative
+import Distribution.Package (packageVersion, packageName, PackageName(..))
 import Text.ParserCombinators.Parsec (parse, ParseError)
 import System.Console.GetOpt
 import System.Environment
@@ -40,8 +41,13 @@ subcommand name f os = map makeSub os
 data SystemOption = Version | Help
     deriving (Show, Eq)
 
+app_name :: String
+app_name = ((\ (PackageName s) -> s) $ packageName packageInfo)
+
 header :: String
-header = "Usage: [OPTIONS] file"
+header = "Usage: " ++ app_name ++ " [OPTIONS] file\n" ++
+         synopsis ++ "\n" ++
+         "Written by " ++ author ++ "\n"
 
 sysopts :: [OptDescr SystemOption]
 sysopts = [Option ['v'] ["version"] (NoArg Version) "Version information.",
@@ -58,7 +64,7 @@ printUsage :: IO ()
 printUsage = putStr $ usageInfo header all_opts
 
 printVersion :: IO ()
-printVersion = putStrLn ("Version: " ++ showVersion version)
+printVersion = putStrLn (app_name ++ " version: " ++ (showVersion $ packageVersion packageInfo))
 
 main = do
     args <- getArgs

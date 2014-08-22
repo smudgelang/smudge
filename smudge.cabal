@@ -33,7 +33,7 @@ Maintainer:          Nate_Bragg@bose.com
 
 Category:            Language
 
-Build-type:          Simple
+Build-type:          Custom
 
 -- Extra files to be distributed with the package, such as examples or
 -- a README.
@@ -48,7 +48,7 @@ Executable smudge
   Main-is:           Main.hs
   
   -- Packages needed in order to build this package.
-  Build-depends:     base, containers, filepath, fgl, parsec, text, graphviz <= 2999.15.0.1
+  Build-depends:     base, Cabal, containers, filepath, fgl, parsec, text, graphviz <= 2999.15.0.1
 
   -- Modules not exported by this package.
   Other-modules:     Grammar Backends.Backend Backends.GraphViz

@@ -40,8 +40,8 @@ labelNonClusteredParams sideEffects =
                          nonClusteredParams { fmtNode = \ (_, l) -> [toLabel l]
                                             , fmtEdge = if sideEffects then keep else drop }
                                              where
-                                                keep = \ (_, _, l) -> [toLabel l]
-                                                drop = \ (_, _, EventAndSideEffects e _) -> [toLabel e]
+                                                keep (_, _, l) = [toLabel l]
+                                                drop (_, _, EventAndSideEffects e _) = [toLabel e]
 
 data GraphVizOption = Format GraphvizOutput | OutFile FilePath | SuppressSideEffects
     deriving (Show, Eq)

@@ -73,7 +73,6 @@ main = do
                                                                         filter (\ o -> case o of
                                                                                  GraphVizOption a -> True
                                                                                  otherwise -> False) os
-                                                         generate gvos g fileName
-                                                         print $ labNodes g
-                                                         print $ labEdges g
+                                                         outputName <- generate gvos g fileName
+                                                         putStrLn $ "Wrote file \"" ++ outputName ++ "\""
         (_,              _,  _) -> printUsage

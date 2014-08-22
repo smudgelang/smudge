@@ -58,10 +58,15 @@ instance Backend GraphVizOption where
                  "The name of the target file if not derived from source file.",
                 Option [] ["no-se"] (NoArg SuppressSideEffects)
                  "Suppress side effects from output"])
-    generate os g inputName = addExtension (runGraphviz (d os)) format (dropExtension inputName)
-        where d os = graphToDot (labelNonClusteredParams suppressSE) g
+    generate os g inputName = (runner os) (runGraphviz d) (format os) (outputName os)
+        where d = graphToDot (labelNonClusteredParams suppressSE) g
               suppressSE = not $ SuppressSideEffects `elem` os
-              format = formatHelper os
-              formatHelper [] = DotOutput
-              formatHelper ((Format f):_) = f
-              formatHelper (_:os) = formatHelper os
+              getFirstOrDefault :: ([a] -> b) -> b -> [a] -> b
+              getFirstOrDefault _ d     [] = d
+              getFirstOrDefault f _ (x:xs) = f xs
+              format ((Format f):_) = f
+              format xs = getFirstOrDefault format DotOutput xs
+              outputName ((OutFile f):_) = f
+              outputName xs = getFirstOrDefault outputName (dropExtension inputName) xs
+              runner ((OutFile _):_) = id
+              runner xs = getFirstOrDefault runner addExtension xs

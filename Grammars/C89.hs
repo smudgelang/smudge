@@ -1,0 +1,478 @@
+-- A. APPENDICES
+-- 
+--    (These appendices are not a part of American National Standard for
+-- Information Systems --- Programming Language C, X3.???-1988.)
+-- 
+--    These appendices collect information that appears in the Standard,
+-- and are not necessarily complete.
+-- 
+-- 
+-- A.1 LANGUAGE SYNTAX SUMMARY
+-- 
+--    The notation is described in the introduction to $3 (Language).  
+-- 
+-- 
+-- A.1.1 Lexical grammar
+-- 
+-- A.1.1.1 Tokens
+-- 
+--                   keyword
+--                   identifier
+--                   constant
+--                   string-literal
+--                   operator
+--                   punctuator
+--                   header-name
+--                   identifier
+--                   pp-number
+--                   character-constant
+--                   string-literal
+--                   operator
+--                   punctuator
+--                   each non-white-space character that cannot be one of
+--                        the above
+-- 
+-- 
+-- A.1.1.2 Keywords
+-- 
+--          auto     double   int      struct
+--          break    else     long     switch
+--          case     enum     register typedef
+--          char     extern   return   union
+--          const    float    short    unsigned
+--          continue for      signed   void
+--          default  goto     sizeof   volatile
+--          do       if       static   while
+-- 
+-- 
+-- A.1.1.3 Identifiers
+-- 
+--                   nondigit
+--                   identifier nondigit
+--                   identifier digit
+-- 
+--                   _  a  b  c  d  e  f  g  h  i  j  k  l  m
+--                      n  o  p  q  r  s  t  u  v  w  x  y  z
+--                      A  B  C  D  E  F  G  H  I  J  K  L  M
+--                      N  O  P  Q  R  S  T  U  V  W  X  Y  Z
+-- 
+--                   0  1  2  3  4  5  6  7  8  9
+-- 
+-- 
+-- A.1.1.4 Constants
+-- 
+--                   floating-constant
+--                   integer-constant
+--                   enumeration-constant
+--                   character-constant
+-- 
+--                   fractional-constant exponent-part<opt> floating-suffix<opt>
+--                   digit-sequence exponent-part floating-suffix<opt>
+-- 
+--                   digit-sequence<opt> .  digit-sequence
+--                   digit-sequence .
+-- 
+--                   e  sign<opt> digit-sequence
+--                   E  sign<opt> digit-sequence
+-- 
+--                   +  -
+-- 
+--                   digit
+--                   digit-sequence digit
+-- 
+--                   f  l  F  L
+-- 
+--                   decimal-constant integer-suffix<opt>
+--                   octal-constant integer-suffix<opt>
+--                   hexadecimal-constant integer-suffix<opt>
+-- 
+--                   nonzero-digit
+--                   decimal-constant digit
+-- 
+--                   0 
+--                   octal-constant octal-digit
+-- 
+--                   0x  hexadecimal-digit
+--                   0X  hexadecimal-digit
+--                   hexadecimal-constant hexadecimal-digit
+-- 
+--                   1  2  3  4  5  6  7  8  9
+-- 
+--                   0  1  2  3  4  5  6  7
+-- 
+--                   0  1  2  3  4  5  6  7  8  9
+--                   a  b  c  d  e  f
+--                   A  B  C  D  E  F
+-- 
+--                   unsigned-suffix long-suffix<opt>
+--                   long-suffix unsigned-suffix<opt>
+-- 
+--                   u  U
+-- 
+--                   l  L
+-- 
+--                   identifier
+-- 
+--                   ' c-char-sequence' 
+--                   L' c-char-sequence' 
+-- 
+--                   c-char
+--                   c-char-sequence c-char
+-- 
+--                   any member of the source character set except
+--                     the single-quote ', backslash \, or new-line character
+--                     escape-sequence
+-- 
+--                   simple-escape-sequence
+--                   octal-escape-sequence
+--                   hexadecimal-escape-sequence
+-- 
+--                   \'  \"  \?  \\
+--                   \a  \b  \f  \n  \r  \t  \v
+-- 
+--                   \  octal-digit
+--                   \  octal-digit octal-digit
+--                   \  octal-digit octal-digit octal-digit
+-- 
+--                   \x  hexadecimal-digit
+--                   hexadecimal-escape-sequence hexadecimal-digit
+-- 
+-- 
+-- A.1.1.5 String literals
+-- 
+--                   " s-char-sequence<opt>"
+--                   L" s-char-sequence<opt>"
+-- 
+--                   s-char
+--                   s-char-sequence s-char
+-- 
+--                   any member of the source character set except
+--                     the double-quote ", backslash \, or new-line character
+--                     escape-sequence
+-- 
+-- 
+-- A.1.1.6 Operators
+-- 
+--                   [  ]  (  )  .  ->
+--                   ++  --  &  *  +  -  ~  !  sizeof
+--                   /  %  <<  >>  <  >  <=  >=  ==  !=  ^  |  &&  ||
+--                   ?  :
+--                   =  *=  /=  %=  +=  -=  <<=  >>=  &=  ^=  |=
+--                   ,  #  ##
+-- 
+-- 
+-- A.1.1.7 Punctuators
+-- 
+--                   [  ]  (  )  {  }  *  ,  :  =  ;  ...  #
+-- 
+-- 
+-- A.1.1.8 Header names
+-- 
+--                   < h-char-sequence>
+--                   " q-char-sequence"
+-- 
+--                   h-char
+--                   h-char-sequence h-char
+-- 
+--                   any member of the source character set except
+--                            the new-line character and >
+-- 
+--                   q-char
+--                   q-char-sequence q-char
+-- 
+--                   any member of the source character set except
+--                            the new-line character and "
+-- 
+-- 
+-- A.1.1.9 Preprocessing numbers
+-- 
+--                   digit
+--                   .  digit
+--                   pp-number  digit
+--                   pp-number  nondigit
+--                   pp-number e  sign
+--                   pp-number E  sign
+--                   pp-number .
+-- 
+-- 
+-- A.1.2 Phrase structure grammar
+-- 
+-- A.1.2.1 Expressions
+-- 
+--                   identifier
+--                   constant
+--                   string-literal
+--                   (  expression )
+-- 
+--                   primary-expression
+--                   postfix-expression [  expression ] 
+--                   postfix-expression (  argument-expression-list<opt> ) 
+--                   postfix-expression .   identifier
+--                   postfix-expression ->  identifier
+--                   postfix-expression ++ 
+--                   postfix-expression --
+-- 
+--                   assignment-expression
+--                   argument-expression-list ,  assignment-expression
+-- 
+--                   postfix-expression
+--                   ++  unary-expression
+--                   --  unary-expression
+--                   unary-operator cast-expression
+--                   sizeof  unary-expression
+--                   sizeof (  type-name )
+-- 
+--                   &  *  +  -  ~  !
+-- 
+--                   unary-expression
+--                   (  type-name )  cast-expression
+-- 
+--                   cast-expression
+--                   multiplicative-expression *  cast-expression
+--                   multiplicative-expression /  cast-expression
+--                   multiplicative-expression %  cast-expression
+-- 
+--                   multiplicative-expression
+--                   additive-expression +  multiplicative-expression
+--                   additive-expression -  multiplicative-expression
+-- 
+--                   additive-expression
+--                   shift-expression <<  additive-expression
+--                   shift-expression >>  additive-expression
+-- 
+--                   shift-expression
+--                   relational-expression <   shift-expression
+--                   relational-expression >   shift-expression
+--                   relational-expression <=  shift-expression
+--                   relational-expression >=  shift-expression
+-- 
+--                   relational-expression
+--                   equality-expression ==  relational-expression
+--                   equality-expression !=  relational-expression
+-- 
+--                   equality-expression
+--                   AND-expression &  equality-expression
+-- 
+--                   AND-expression
+--                   exclusive-OR-expression ^  AND-expression
+-- 
+--                   exclusive-OR-expression
+--                   inclusive-OR-expression |  exclusive-OR-expression
+-- 
+--                   inclusive-OR-expression
+--                   logical-AND-expression &&  inclusive-OR-expression
+-- 
+--                   logical-AND-expression
+--                   logical-OR-expression ||  logical-AND-expression
+-- 
+--                   logical-OR-expression
+--                   logical-OR-expression ?  expression :  conditional-expression
+-- 
+--                   conditional-expression
+--                   unary-expression assignment-operator assignment-expression
+-- 
+--                   =  *=  /=  %=  +=  -=  <<=  >>=  &=  ^=  |=
+-- 
+--                   assignment-expression
+--                   expression ,  assignment-expression
+-- 
+--                   conditional-expression
+-- 
+-- 
+-- A.1.2.2 Declarations
+-- 
+--                   declaration-specifiers init-declarator-list<opt> ;
+-- 
+--                   storage-class-specifier declaration-specifiers<opt>
+--                   type-specifier declaration-specifiers<opt>
+--                   type-qualifier declaration-specifiers<opt>
+-- 
+--                   init-declarator
+--                   init-declarator-list ,  init-declarator 
+-- 
+--                   declarator
+--                   declarator =  initializer
+-- 
+--                   typedef
+--                   extern
+--                   static
+--                   auto
+--                   register
+-- 
+--                   void
+--                   char
+--                   short
+--                   int
+--                   long
+--                   float
+--                   double
+--                   signed
+--                   unsigned
+--                    struct-or-union-specifier
+--                   enum-specifier
+--                   typedef-name
+-- 
+--                   struct-or-union identifier<opt> {  struct-declaration-list } 
+--                   struct-or-union identifier
+-- 
+--                   struct
+--                   union
+-- 
+--                   struct-declaration
+--                   struct-declaration-list struct-declaration
+-- 
+--                   specifier-qualifier-list struct-declarator-list ;
+-- 
+--                   type-specifier specifier-qualifier-list<opt>
+--                   type-qualifier specifier-qualifier-list<opt>
+-- 
+--                   struct-declarator
+--                   struct-declarator-list ,  struct-declarator
+-- 
+--                   declarator
+--                   declarator<opt> :  constant-expression
+-- 
+--                   enum  identifier<opt> {  enumerator-list }
+--                   enum  identifier
+-- 
+--                   enumerator
+--                   enumerator-list ,  enumerator
+-- 
+--                   enumeration-constant
+--                   enumeration-constant =  constant-expression
+-- 
+--                   const
+--                   volatile
+-- 
+--                   pointer<opt> direct-declarator
+-- 
+--                   identifier
+--                   (  declarator ) 
+--                   direct-declarator [  constant-expression<opt> ] 
+-- 
+--                   direct-declarator (  parameter-type-list ) 
+--                   direct-declarator (  identifier-list<opt> )
+-- 
+--                   *  type-qualifier-list<opt>
+--                   *  type-qualifier-list<opt> pointer
+-- 
+--                   type-qualifier
+--                   type-qualifier-list type-qualifier
+-- 
+--                   parameter-list
+--                   parameter-list , ...
+-- 
+--                   parameter-declaration
+--                   parameter-list ,  parameter-declaration
+-- 
+--                   declaration-specifiers declarator
+--                   declaration-specifiers abstract-declarator<opt>
+-- 
+--                   identifier
+--                   identifier-list ,  identifier
+-- 
+--                   specifier-qualifier-list abstract-declarator<opt>
+-- 
+--                   pointer
+--                   pointer<opt> direct-abstract-declarator
+-- 
+--                   (  abstract-declarator ) 
+--                   direct-abstract-declarator<opt> [  constant-expression<opt> ] 
+--                   direct-abstract-declarator<opt> (  parameter-type-list<opt> )
+-- 
+--                   identifier
+-- 
+--                   assignment-expression
+--                   {  initializer-list } 
+--                   {  initializer-list , }
+-- 
+--                   initializer
+--                   initializer-list ,  initializer
+-- 
+-- 
+-- A.1.2.3 Statements
+-- 
+--                   labeled-statement
+--                   compound-statement
+--                   expression-statement
+--                   selection-statement
+--                   iteration-statement
+--                   jump-statement
+-- 
+--                   identifier :  statement
+--                   case  constant-expression :  statement
+--                   default :  statement
+-- 
+--                   {  declaration-list<opt> statement-list<opt> }
+-- 
+--                   declaration
+--                   declaration-list declaration
+-- 
+--                   statement
+--                   statement-list statement
+-- 
+--                   expression<opt> ;
+-- 
+--                   if (  expression )  statement
+--                   if (  expression )  statement else  statement
+--                   switch (  expression )  statement
+-- 
+--                   while (  expression )  statement
+--                   do  statement while (  expression ) ;
+--                   for ( expression<opt> ; expression<opt> ;
+--                          expression<opt> ) statement
+-- 
+--                   goto  identifier ;
+--                   continue ;
+--                   break ;
+--                   return  expression<opt> ;
+-- 
+-- 
+-- A.1.2.4 External definitions
+-- 
+--                   external-declaration
+--                   translation-unit external-declaration
+-- 
+--                   function-definition
+--                   declaration
+-- 
+--                   declaration-specifiers<opt> declarator
+--                             declaration-list<opt> compound-statement
+-- 
+-- 
+-- A.1.3 Preprocessing directives
+-- 
+--                   group<opt>
+-- 
+--                   group-part
+--                   group group-part
+-- 
+--                   pp-tokens<opt> new-line
+--                   if-section
+--                   control-line
+-- 
+--                   if-group elif-groups<opt> else-group<opt> endif-line
+-- 
+--                   # if      constant-expression new-line group<opt>
+--                   # ifdef   identifier new-line group<opt>
+--                   # ifndef  identifier new-line group<opt>
+-- 
+--                   elif-group
+--                   elif-groups elif-group
+-- 
+--                   # elif    constant-expression new-line group<opt>
+-- 
+--                   # else    new-line group<opt>
+-- 
+--                   # endif   new-line
+-- 
+--           control-line:
+-- 
+--                   the left-parenthesis character without preceding white space
+-- 
+--                   pp-tokens<opt>
+-- 
+--                   preprocessing-token
+--                   pp-tokens preprocessing-token
+-- 
+--                   the new-line character

@@ -17,15 +17,20 @@ import Data.Version (showVersion)
 import qualified Data.Map as Map
 
 smToGraph :: (StateMachine, [(State, [(Event, [SideEffect], State)])]) -> Gr State EventAndSideEffects
-smToGraph (sm, ss) = mkGraph [s | s <- zip [1..] (map fst ss)] es
-                     where sn = Map.fromList [s | s <- zip (map fst ss) [1..]]
-                           mkEdge s s'' e ses = (sn Map.! s, sn Map.! s'', EventAndSideEffects e ses)
-                           es = [ese | ese <- concat $ map (\ (s, es) -> 
-                                                            map (\ (e, ses, s') ->
-                                                                 let s'' = case s' of
-                                                                                StateSame -> s
-                                                                                otherwise -> s'
-                                                                 in mkEdge s s'' e ses) es) ss]
+smToGraph (sm, ss) =
+    mkGraph [s | s <- zip [1..] (map fst ss)] es
+    where
+        sn = Map.fromList [s | s <- zip (map fst ss) [1..]]
+        mkEdge s s'' e ses = (sn Map.! s, sn Map.! s'',
+                              EventAndSideEffects e ses)
+        es = [ese | ese <- concat $ map f ss]
+            where
+                f (s, es) = map g es
+                    where
+                        g (e, ses, s') =
+                            let s'' = case s' of StateSame -> s
+                                                 otherwise -> s'
+                            in mkEdge s s'' e ses
 
 subcommand :: String -> (a -> b) -> [OptDescr a] -> [OptDescr b]
 subcommand name f os = map makeSub os
@@ -64,21 +69,28 @@ printUsage :: IO ()
 printUsage = putStr $ usageInfo header all_opts
 
 printVersion :: IO ()
-printVersion = putStrLn (app_name ++ " version: " ++ (showVersion $ packageVersion packageInfo))
+printVersion = putStrLn (app_name ++ " version: " ++
+                         (showVersion $ packageVersion packageInfo))
 
 main = do
     args <- getArgs
     case getOpt Permute all_opts args of
-        (os,             _, [])  | elem (SystemOption Help) os -> printUsage
-                                 | elem (SystemOption Version) os -> printVersion
-        (os, (fileName:as),  _) -> do compilationUnit <- readFile fileName
-                                      case parse state_machine fileName compilationUnit of
-                                          Left err -> print err
-                                          Right sm -> do let g = smToGraph sm
-                                                         let gvos = map (\ (GraphVizOption a) -> a) $
-                                                                        filter (\ o -> case o of
-                                                                                 GraphVizOption a -> True
-                                                                                 otherwise -> False) os
-                                                         outputName <- generate gvos g fileName
-                                                         putStrLn $ "Wrote file \"" ++ outputName ++ "\""
+        (os,             _, [])
+            | elem (SystemOption Help) os -> printUsage
+            | elem (SystemOption Version) os -> printVersion
+
+        (os, (fileName:as),  _) -> do
+            compilationUnit <- readFile fileName
+            case parse state_machine fileName compilationUnit of
+                Left err -> print err
+                Right sm -> do
+                    let g = smToGraph sm
+                    let filt o =
+                            case o of
+                            GraphVizOption a -> True
+                            otherwise -> False
+                    let gvos = map (\ (GraphVizOption a) -> a) $ filter filt os
+                    outputName <- generate gvos g fileName
+                    putStrLn $ "Wrote file \"" ++ outputName ++ "\""
+
         (_,              _,  _) -> printUsage

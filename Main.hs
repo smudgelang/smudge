@@ -1,19 +1,18 @@
 module Main where
 
 import PackageInfo (packageInfo, author, synopsis)
-import Backends.Backend
-import Backends.GraphViz
+import Backends.Backend (options, generate)
+import Backends.GraphViz (GraphVizOption(..))
 import Grammars.Smudge (StateMachine, State(..), Event, SideEffect, EventAndSideEffects(..))
 import Parsers.Smudge (state_machine)
 
-import Control.Applicative
+import Control.Applicative ((<$>), (<*>))
 import Distribution.Package (packageVersion, packageName, PackageName(..))
 import Text.ParserCombinators.Parsec (parse, ParseError)
-import System.Console.GetOpt
-import System.Environment
-import System.FilePath
-import Data.Graph.Inductive.Graph
-import Data.Graph.Inductive.PatriciaTree
+import System.Console.GetOpt (usageInfo, getOpt, OptDescr(..), ArgDescr(..), ArgOrder(..))
+import System.Environment (getArgs)
+import Data.Graph.Inductive.Graph (mkGraph)
+import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Version (showVersion)
 import qualified Data.Map as Map
 

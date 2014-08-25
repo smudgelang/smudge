@@ -1,7 +1,7 @@
 module Backends.GraphViz where
 
-import Backends.Backend
-import Grammar
+import Backends.Backend (Backend(..))
+import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..), EventAndSideEffects(..))
 
 import Data.GraphViz
 import Data.GraphViz.Attributes.Complete (Label(..))

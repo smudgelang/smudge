@@ -3,7 +3,8 @@ module Main where
 import PackageInfo (packageInfo, author, synopsis)
 import Backends.Backend
 import Backends.GraphViz
-import Grammar
+import Grammars.Smudge (StateMachine, State(..), Event, SideEffect, EventAndSideEffects(..))
+import Parsers.Smudge (state_machine)
 
 import Control.Applicative
 import Distribution.Package (packageVersion, packageName, PackageName(..))

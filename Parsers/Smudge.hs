@@ -1,26 +1,12 @@
-module Grammar (
-    StateMachine(..),
-    State(..),
-    Event(..),
-    SideEffect(..),
-    state_machine
+module Parsers.Smudge (
+    state_machine,
 ) where
+
+import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..))
 
 import Text.ParserCombinators.Parsec hiding (State)
 import Control.Applicative hiding ((<|>), empty, many)
 import Data.Maybe (maybeToList)
-
-data StateMachine = StateMachine String | StateMachineSame
-    deriving (Show, Eq, Ord)
-
-data State = State String | StateAny | StateSame
-    deriving (Show, Eq, Ord)
-
-data Event = Event String | EventAny | EventEnter | EventExit
-    deriving (Show, Eq, Ord)
-
-data SideEffect = FuncVoid String | FuncEvent String (StateMachine, Event) | FuncDefault (StateMachine, Event)
-    deriving (Show, Eq, Ord)
 
 state_machine :: Parser (StateMachine, [(State, [(Event, [SideEffect], State)])])
 state_machine = (,) <$> (empty *> state_machine_name <* empty) <*> state_machine_spec <* empty

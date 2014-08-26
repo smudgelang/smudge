@@ -1,4 +1,106 @@
-module C89 where
+module Grammars.C89 (
+    Identifier,
+    mangleIdentifier,
+
+    Constant,
+
+    StringLiteral,
+
+    LEFTSQUARE(..),
+    RIGHTSQUARE(..),
+    LEFTPAREN(..),
+    RIGHTPAREN(..),
+    LEFTCURLY(..),
+    RIGHTCURLY(..),
+    COMMA(..),
+    ELLIPSIS(..),
+    COLON(..),
+    STAR(..),
+    ELSE(..),
+    EQUAL(..),
+    SEMICOLON(..),
+    BITWISE_AND(..),
+    BITWISE_OR(..),
+    BITWISE_XOR(..),
+    LOGICAL_AND(..),
+    LOGICAL_OR(..),
+    QUESTION(..),
+    DOWHILE(..),
+
+    PrimaryExpression(..),
+    PostfixExpression(..),
+    MemberOp(..),
+    ArgumentExpressionList(..),
+    UnaryExpression(..),
+    UnaryCrement(..),
+    UnaryOperator(..),
+    CastExpression(..),
+    MultiplicativeExpression(..),
+    MultiplicativeOp(..),
+    AdditiveExpression(..),
+    AdditiveOp(..),
+    ShiftExpression(..),
+    ShiftOp(..),
+    RelationalExpression(..),
+    ComparisonOp(..),
+    EqualityExpression(..),
+    EqualityOp(..),
+    ANDExpression(..),
+    ExclusiveORExpression(..),
+    InclusiveORExpression(..),
+    LogicalANDExpression(..),
+    LogicalORExpression(..),
+    ConditionalExpression(..),
+    AssignmentExpression(..),
+    AssignmentOperator(..),
+    Expression(..),
+    ConstantExpression(..),
+
+    Declaration(..),
+    DeclarationSpecifiers(..),
+    InitDeclaratorList(..),
+    InitDeclarator(..),
+    StorageClassSpecifier(..),
+    TypeSpecifier(..),
+    StructDeclarationList(..),
+    StructDeclaration(..),
+    SpecifierQualifierList(..),
+    StructDeclaratorList(..),
+    StructDeclarator(..),
+    EnumeratorList(..),
+    Enumerator(..),
+    TypeQualifier(..),
+    Declarator(..),
+    DirectDeclarator(..),
+    Pointer(..),
+    TypeQualifierList(..),
+    ParameterTypeList(..),
+    ParameterList(..),
+    ParameterDeclaration(..),
+    IdentifierList(..),
+    TypeName(..),
+    AbstractDeclarator(..),
+    DirectAbstractDeclarator(..),
+    EnumerationConstant(..),
+    Initializer(..),
+    InitializerList(..),
+
+    Statement(..),
+    LabeledStatement(..),
+    CompoundStatement(..),
+    DeclarationList(..),
+    StatementList(..),
+    ExpressionStatement(..),
+    SelectionStatement(..),
+    IterationStatement(..),
+    JumpStatement(..),
+
+    TranslationUnit(..),
+    ExternalDeclaration(..),
+    FunctionDefinition(..),
+) where
+
+import Data.Char (isDigit, isAsciiLower, isAsciiUpper, ord)
 
 -------------------
 -- Helpful Types --
@@ -19,6 +121,21 @@ data Quad a b c d = Quad a b c d
 -- A.1.1.3 Identifiers
 
 type Identifier = String
+
+isAsciiAlphaNum :: Char -> Bool
+isAsciiAlphaNum c = isDigit c || isAsciiLower c || isAsciiUpper c
+
+toAsciiCode :: Char -> String
+toAsciiCode = show . ord
+
+mangleChar :: Char -> String
+mangleChar c | isAsciiAlphaNum c = [c]
+mangleChar c                     = '_' : (toAsciiCode c) ++ "_"
+
+mangleIdentifier :: String -> Identifier
+mangleIdentifier []     = "__"
+mangleIdentifier [c]    = mangleChar c
+mangleIdentifier (c:cs) = (mangleChar c) ++ (mangleIdentifier cs)
 
 -- A.1.1.4 Constants
 

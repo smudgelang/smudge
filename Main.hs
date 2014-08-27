@@ -3,7 +3,7 @@ module Main where
 import PackageInfo (packageInfo, author, synopsis)
 import Backends.Backend (options, generate)
 import Backends.GraphViz (GraphVizOption(..))
-import Grammars.Smudge (StateMachine, State(..), Event, SideEffect, EventAndSideEffects(..))
+import Grammars.Smudge (StateMachine, State(..), Event, SideEffect, Happening(..))
 import Parsers.Smudge (state_machine)
 
 import Control.Applicative ((<$>), (<*>))
@@ -17,30 +17,28 @@ import Data.Version (showVersion)
 import qualified Data.Map as Map
 
 smToGraph :: (StateMachine, [(State, [(Event, [SideEffect], State)])]) ->
-                 Gr State EventAndSideEffects
+                 Gr State Happening
 smToGraph (sm, ss) =
     -- Graph.mkGraph :: [(Node, a)] -> [(Node, Node, b)] -> gr a b
     mkGraph [s | s <- zip [1..] (map fst ss)] es
     where
         sn :: Map.Map State Node
         sn = Map.fromList [s | s <- zip (map fst ss) [1..]]
-        mkEdge :: State -> State -> EventAndSideEffects ->
-                    (Node, Node, EventAndSideEffects)
+        mkEdge :: State -> State -> Happening ->
+                    (Node, Node, Happening)
         mkEdge s s'' eses = (sn Map.! s, sn Map.! s'', eses)
         es = [ese | ese <- concat $ map f ss]
             where
                 f :: (State, [(Event, [SideEffect], State)]) ->
-                         [(Node, Node, EventAndSideEffects)]
+                         [(Node, Node, Happening)]
                 f (s, es) = map g es
                     where
                         g :: (Event, [SideEffect], State) ->
-                                 (Node, Node, EventAndSideEffects)
+                                 (Node, Node, Happening)
                         g (e, ses, s') =
                             let (e', s'') = case s' of
-                                    StateSame ->
-                                        (NoTransitionEventAndSideEffects e ses, s)
-                                    otherwise ->
-                                        (EventAndSideEffects e ses, s')
+                                    StateSame -> (Bustle e ses, s)
+                                    otherwise -> (Hustle e ses, s')
                             in mkEdge s s'' e'
 
 subcommand :: String -> (a -> b) -> [OptDescr a] -> [OptDescr b]

@@ -1,7 +1,7 @@
 module Backends.GraphViz where
 
 import Backends.Backend (Backend(..))
-import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..), EventAndSideEffects(..))
+import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..), Happening(..))
 
 import Data.GraphViz
 import Data.GraphViz.Attributes.Complete (Label(..))
@@ -35,9 +35,9 @@ instance Labellable SideEffect where
     toLabelValue (FuncEvent f (s, e)) = toLabelValue e
     toLabelValue (FuncDefault (s, e)) = mconcat $ toLabelValue s : [toLabelValue e]
 
-instance Labellable EventAndSideEffects where
-    toLabelValue (EventAndSideEffects e ses) = mconcat $ intersperse (toLabelValue "\n") $ toLabelValue e : map toLabelValue ses
-    toLabelValue (NoTransitionEventAndSideEffects e ses) = mconcat $ intersperse (toLabelValue "\n") $ toLabelValue e : map toLabelValue ses
+instance Labellable Happening where
+    toLabelValue (Hustle e ses) = mconcat $ intersperse (toLabelValue "\n") $ toLabelValue e : map toLabelValue ses
+    toLabelValue (Bustle e ses) = mconcat $ intersperse (toLabelValue "\n") $ toLabelValue e : map toLabelValue ses
 
 labelNonClusteredParams sideEffects =
                          nonClusteredParams { globalAttributes =
@@ -46,9 +46,9 @@ labelNonClusteredParams sideEffects =
                           , fmtEdge = if sideEffects then keep else drop }
                           where
                                 keep (_, _, l) = [toLabel l, arrow l]
-                                drop (start, end, ese@(EventAndSideEffects e _)) = [toLabel e, arrow ese]
-                                arrow (EventAndSideEffects _ _) = edgeEnds Forward
-                                arrow (NoTransitionEventAndSideEffects _ _) = edgeEnds NoDir
+                                drop (start, end, ese@(Hustle e _)) = [toLabel e, arrow ese]
+                                arrow (Hustle _ _) = edgeEnds Forward
+                                arrow (Bustle _ _) = edgeEnds NoDir
 
 data GraphVizOption = Format GraphvizOutput | OutFile FilePath | SuppressSideEffects
     deriving (Show, Eq)
@@ -67,13 +67,8 @@ instance Backend GraphVizOption where
                  "Suppress side effects from output"])
 
     generate os g inputName = (runner os) (runGraphviz d) (format os) (outputName os)
-        where d = (graphToDot (labelNonClusteredParams suppressSE) ({-fixSame-} g)) {graphID = Just (toGraphID " ")}
+        where d = (graphToDot (labelNonClusteredParams suppressSE) g) {graphID = Just (toGraphID " ")}
               suppressSE = not $ SuppressSideEffects `elem` os
-{-              fixSame :: gr State EventAndSideEffects -> gr State EventAndSideEffects
-              fixSame = id {-gmap (\ (to, node, lbl, from) ->
-                                case  of
-                                    StateSame -> (to, node, lbl, from)
-                                    otherwise -> (start, node, lbl, end))-}-}
 
               getFirstOrDefault :: ([a] -> b) -> b -> [a] -> b
               getFirstOrDefault _ d     [] = d

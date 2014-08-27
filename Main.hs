@@ -11,25 +11,34 @@ import Distribution.Package (packageVersion, packageName, PackageName(..))
 import Text.ParserCombinators.Parsec (parse, ParseError)
 import System.Console.GetOpt (usageInfo, getOpt, OptDescr(..), ArgDescr(..), ArgOrder(..))
 import System.Environment (getArgs)
-import Data.Graph.Inductive.Graph (mkGraph)
+import Data.Graph.Inductive.Graph (mkGraph, Node)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Version (showVersion)
 import qualified Data.Map as Map
 
-smToGraph :: (StateMachine, [(State, [(Event, [SideEffect], State)])]) -> Gr State EventAndSideEffects
+smToGraph :: (StateMachine, [(State, [(Event, [SideEffect], State)])]) ->
+                 Gr State EventAndSideEffects
 smToGraph (sm, ss) =
+    -- Graph.mkGraph :: [(Node, a)] -> [(Node, Node, b)] -> gr a b
     mkGraph [s | s <- zip [1..] (map fst ss)] es
     where
+        sn :: Map.Map State Node
         sn = Map.fromList [s | s <- zip (map fst ss) [1..]]
+        mkEdge :: State -> State -> Event -> [SideEffect] -> (Node, Node, EventAndSideEffects)
         mkEdge s s'' e ses = (sn Map.! s, sn Map.! s'',
                               EventAndSideEffects e ses)
         es = [ese | ese <- concat $ map f ss]
             where
+                f :: (State, [(Event, [SideEffect], State)]) ->
+                         [(Node, Node, EventAndSideEffects)]
                 f (s, es) = map g es
                     where
+                        g :: (Event, [SideEffect], State) ->
+                                 (Node, Node, EventAndSideEffects)
                         g (e, ses, s') =
-                            let s'' = case s' of StateSame -> s
-                                                 otherwise -> s'
+                            let s'' = case s' of
+                                    StateSame -> s
+                                    otherwise -> s'
                             in mkEdge s s'' e ses
 
 subcommand :: String -> (a -> b) -> [OptDescr a] -> [OptDescr b]

@@ -22,4 +22,5 @@ data SideEffect = FuncVoid String | FuncEvent String (StateMachine, Event) | Fun
 used when there's a state transition (i.e. -(...)->) and Bustles are
 used when there isn't (-(...)-). These names are better than
 EventAndSideEffects and NoTransitionEventAndSide Effects.  -}
-data Happening = Hustle Event [SideEffect] | Bustle Event [SideEffect] deriving (Show, Eq, Ord)
+data Happening = Hustle Event [SideEffect] | Bustle Event [SideEffect]
+    deriving (Show, Eq, Ord)

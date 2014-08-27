@@ -18,5 +18,5 @@ data Event = Event String | EventAny | EventEnter | EventExit
 data SideEffect = FuncVoid String | FuncEvent String (StateMachine, Event) | FuncDefault (StateMachine, Event)
     deriving (Show, Eq, Ord)
 
-data EventAndSideEffects = EventAndSideEffects Event [SideEffect]
+data EventAndSideEffects = EventAndSideEffects Event [SideEffect] | NoTransitionEventAndSideEffects Event [SideEffect]
     deriving (Show, Eq, Ord)

@@ -24,9 +24,9 @@ smToGraph (sm, ss) =
     where
         sn :: Map.Map State Node
         sn = Map.fromList [s | s <- zip (map fst ss) [1..]]
-        mkEdge :: State -> State -> Event -> [SideEffect] -> (Node, Node, EventAndSideEffects)
-        mkEdge s s'' e ses = (sn Map.! s, sn Map.! s'',
-                              EventAndSideEffects e ses)
+        mkEdge :: State -> State -> EventAndSideEffects ->
+                    (Node, Node, EventAndSideEffects)
+        mkEdge s s'' eses = (sn Map.! s, sn Map.! s'', eses)
         es = [ese | ese <- concat $ map f ss]
             where
                 f :: (State, [(Event, [SideEffect], State)]) ->
@@ -36,10 +36,12 @@ smToGraph (sm, ss) =
                         g :: (Event, [SideEffect], State) ->
                                  (Node, Node, EventAndSideEffects)
                         g (e, ses, s') =
-                            let s'' = case s' of
-                                    StateSame -> s
-                                    otherwise -> s'
-                            in mkEdge s s'' e ses
+                            let (e', s'') = case s' of
+                                    StateSame ->
+                                        (NoTransitionEventAndSideEffects e ses, s)
+                                    otherwise ->
+                                        (EventAndSideEffects e ses, s')
+                            in mkEdge s s'' e'
 
 subcommand :: String -> (a -> b) -> [OptDescr a] -> [OptDescr b]
 subcommand name f os = map makeSub os

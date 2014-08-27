@@ -5,6 +5,8 @@ import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..), 
 
 import Data.GraphViz
 import Data.GraphViz.Attributes.Complete (Label(..))
+
+import Data.Graph.Inductive.Graph (gmap)
 import Data.List (intercalate, intersperse)
 import Data.Monoid
 import Data.Text.Lazy.Internal (Text(..))
@@ -35,6 +37,7 @@ instance Labellable SideEffect where
 
 instance Labellable EventAndSideEffects where
     toLabelValue (EventAndSideEffects e ses) = mconcat $ intersperse (toLabelValue "\n") $ toLabelValue e : map toLabelValue ses
+    toLabelValue (NoTransitionEventAndSideEffects e ses) = mconcat $ intersperse (toLabelValue "\n") $ toLabelValue e : map toLabelValue ses
 
 labelNonClusteredParams sideEffects =
                          nonClusteredParams { globalAttributes =
@@ -42,8 +45,10 @@ labelNonClusteredParams sideEffects =
                           , fmtNode = \ (_, l) -> [toLabel l]
                           , fmtEdge = if sideEffects then keep else drop }
                           where
-                                keep (_, _, l) = [toLabel l]
-                                drop (_, _, EventAndSideEffects e _) = [toLabel e]
+                                keep (_, _, l) = [toLabel l, arrow l]
+                                drop (start, end, ese@(EventAndSideEffects e _)) = [toLabel e, arrow ese]
+                                arrow (EventAndSideEffects _ _) = edgeEnds Forward
+                                arrow (NoTransitionEventAndSideEffects _ _) = edgeEnds NoDir
 
 data GraphVizOption = Format GraphvizOutput | OutFile FilePath | SuppressSideEffects
     deriving (Show, Eq)
@@ -60,9 +65,16 @@ instance Backend GraphVizOption where
                  "The name of the target file if not derived from source file.",
                 Option [] ["no-se"] (NoArg SuppressSideEffects)
                  "Suppress side effects from output"])
+
     generate os g inputName = (runner os) (runGraphviz d) (format os) (outputName os)
-        where d = (graphToDot (labelNonClusteredParams suppressSE) g) {graphID = Just (toGraphID " ")}
+        where d = (graphToDot (labelNonClusteredParams suppressSE) ({-fixSame-} g)) {graphID = Just (toGraphID " ")}
               suppressSE = not $ SuppressSideEffects `elem` os
+{-              fixSame :: gr State EventAndSideEffects -> gr State EventAndSideEffects
+              fixSame = id {-gmap (\ (to, node, lbl, from) ->
+                                case  of
+                                    StateSame -> (to, node, lbl, from)
+                                    otherwise -> (start, node, lbl, end))-}-}
+
               getFirstOrDefault :: ([a] -> b) -> b -> [a] -> b
               getFirstOrDefault _ d     [] = d
               getFirstOrDefault f _ (x:xs) = f xs

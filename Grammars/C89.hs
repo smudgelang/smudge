@@ -1,4 +1,6 @@
 module Grammars.C89 (
+    fromList,
+
     Identifier,
     mangleIdentifier,
 
@@ -30,7 +32,7 @@ module Grammars.C89 (
     PrimaryExpression(..),
     PostfixExpression(..),
     MemberOp(..),
-    ArgumentExpressionList(..),
+    ArgumentExpressionList,
     UnaryExpression(..),
     UnaryCrement(..),
     UnaryOperator(..),
@@ -58,38 +60,38 @@ module Grammars.C89 (
 
     Declaration(..),
     DeclarationSpecifiers(..),
-    InitDeclaratorList(..),
+    InitDeclaratorList,
     InitDeclarator(..),
     StorageClassSpecifier(..),
     TypeSpecifier(..),
-    StructDeclarationList(..),
+    StructDeclarationList,
     StructDeclaration(..),
-    SpecifierQualifierList(..),
-    StructDeclaratorList(..),
+    SpecifierQualifierList,
+    StructDeclaratorList,
     StructDeclarator(..),
-    EnumeratorList(..),
+    EnumeratorList,
     Enumerator(..),
     TypeQualifier(..),
     Declarator(..),
     DirectDeclarator(..),
     Pointer(..),
-    TypeQualifierList(..),
+    TypeQualifierList,
     ParameterTypeList(..),
-    ParameterList(..),
+    ParameterList,
     ParameterDeclaration(..),
-    IdentifierList(..),
+    IdentifierList,
     TypeName(..),
     AbstractDeclarator(..),
     DirectAbstractDeclarator(..),
     EnumerationConstant(..),
     Initializer(..),
-    InitializerList(..),
+    InitializerList,
 
     Statement(..),
     LabeledStatement(..),
     CompoundStatement(..),
-    DeclarationList(..),
-    StatementList(..),
+    DeclarationList,
+    StatementList,
     ExpressionStatement(..),
     SelectionStatement(..),
     IterationStatement(..),
@@ -103,6 +105,20 @@ module Grammars.C89 (
 import Data.Char (isDigit, isAsciiLower, isAsciiUpper, ord)
 
 -------------------
+-- Helpful Class --
+-------------------
+
+class Listish l where
+    (<:) :: x -> l x -> l x
+    fromList :: [x] -> l x
+    singleton :: x -> l x
+
+    infixr 5 <:
+
+    fromList []     = error "Listish values cannot be empty."
+    fromList (x:xs) = foldr (<:) (singleton x) xs
+
+-------------------
 -- Helpful Types --
 -------------------
 
@@ -111,6 +127,16 @@ data These a b = This a | That b | These a b
 data Pair a b = Pair a b
 data Trio a b c = Trio a b c
 data Quad a b c d = Quad a b c d
+
+data SimpleList x = SimpleList x (Maybe (SimpleList x))
+instance Listish SimpleList where
+    x <: sl = SimpleList x (Just sl)
+    singleton = flip SimpleList Nothing
+
+data CommaList x = CommaList x (Maybe (Pair COMMA (CommaList x)))
+instance Listish CommaList where
+    x <: sl = CommaList x (Just (Pair COMMA sl))
+    singleton = flip CommaList Nothing
 
 -------------------
 -- The C Grammar --
@@ -184,7 +210,7 @@ data PostfixExpression = PPostfixExpression PrimaryExpression
 
 data MemberOp = DOT | ARROW
 
-data ArgumentExpressionList = ArgumentExpressionList (Maybe (Pair ArgumentExpressionList COMMA)) AssignmentExpression
+type ArgumentExpressionList = CommaList AssignmentExpression
 
 data UnaryExpression = PUnaryExpression PostfixExpression
                      | UUnaryExpression UnaryCrement UnaryExpression
@@ -246,7 +272,7 @@ data Declaration = Declaration DeclarationSpecifiers (Maybe InitDeclaratorList) 
 
 data DeclarationSpecifiers = DeclarationSpecifiers (Choose StorageClassSpecifier TypeSpecifier TypeQualifier) (Maybe DeclarationSpecifiers)
 
-data InitDeclaratorList = InitDeclaratorList (Maybe (Pair InitDeclaratorList COMMA)) InitDeclarator 
+type InitDeclaratorList = CommaList InitDeclarator 
 
 data InitDeclarator = InitDeclarator Declarator (Maybe (Pair EQUAL Initializer))
 
@@ -258,17 +284,17 @@ data TypeSpecifier = VOID | CHAR | SHORT | INT | LONG | FLOAT | DOUBLE | SIGNED 
                    | ENUM (Either Identifier (Quad (Maybe Identifier) LEFTCURLY EnumeratorList RIGHTCURLY))
                    | TypeSpecifier TypeName
 
-data StructDeclarationList = StructDeclarationList (Maybe StructDeclaratorList) StructDeclaration
+type StructDeclarationList = SimpleList StructDeclaration
 
 data StructDeclaration = StructDeclaration SpecifierQualifierList StructDeclaratorList SEMICOLON
 
-data SpecifierQualifierList = SpecifierQualifierList (Either TypeSpecifier TypeQualifier) (Maybe SpecifierQualifierList)
+type SpecifierQualifierList = SimpleList (Either TypeSpecifier TypeQualifier)
 
-data StructDeclaratorList = StructDeclaratorList (Maybe (Pair StructDeclaratorList COMMA)) StructDeclarator
+type StructDeclaratorList = CommaList StructDeclarator
 
 data StructDeclarator = StructDeclarator (These Declarator (Pair COLON ConstantExpression))
 
-data EnumeratorList = EnumeratorList (Maybe (Pair EnumeratorList COMMA)) Enumerator
+type EnumeratorList = CommaList Enumerator
 
 data Enumerator = Enumerator EnumerationConstant (Maybe (Pair EQUAL ConstantExpression))
 
@@ -283,15 +309,15 @@ data DirectDeclarator = IDirectDeclarator Identifier
 
 data Pointer = Pointer STAR (Maybe TypeQualifierList) (Maybe Pointer)
 
-data TypeQualifierList = TypeQualifierList (Maybe TypeQualifierList) TypeQualifier
+type TypeQualifierList = SimpleList TypeQualifier
 
 data ParameterTypeList = ParameterTypeList ParameterList (Maybe (Pair COMMA ELLIPSIS))
 
-data ParameterList = ParameterList (Maybe (Pair ParameterList COMMA)) ParameterDeclaration
+type ParameterList = CommaList ParameterDeclaration
 
 data ParameterDeclaration = ParameterDeclaration DeclarationSpecifiers (Maybe (Either Declarator AbstractDeclarator))
 
-data IdentifierList = IdentifierList (Maybe (Pair IdentifierList COMMA)) Identifier
+type IdentifierList = CommaList Identifier
 
 data TypeName = TypeName SpecifierQualifierList (Maybe AbstractDeclarator)
 
@@ -301,12 +327,12 @@ data DirectAbstractDeclarator = ADirectAbstractDeclarator LEFTPAREN AbstractDecl
                               | CDirectAbstractDeclarator (Maybe DirectAbstractDeclarator) LEFTSQUARE (Maybe ConstantExpression) RIGHTSQUARE
                               | PDirectAbstractDeclarator (Maybe DirectAbstractDeclarator) LEFTPAREN (Maybe ParameterTypeList) RIGHTPAREN
 
-data EnumerationConstant = EnumerationConstant Identifier
+type EnumerationConstant = Identifier
 
 data Initializer = AInitializer AssignmentExpression
                  | LInitializer LEFTCURLY InitializerList (Maybe COMMA) RIGHTCURLY
 
-data InitializerList = InitializerList (Maybe (Pair InitializerList COMMA)) Initializer
+type InitializerList = CommaList Initializer
 
 
 -- A.1.2.3 Statements
@@ -324,9 +350,9 @@ data LabeledStatement = Label Identifier COLON Statement
 
 data CompoundStatement = CompoundStatement LEFTCURLY (Maybe DeclarationList) (Maybe StatementList) RIGHTCURLY
 
-data DeclarationList = DeclarationList (Maybe DeclarationList) Declaration
+type DeclarationList = SimpleList Declaration
 
-data StatementList = StatementList (Maybe StatementList) Statement
+type StatementList = SimpleList Statement
 
 data ExpressionStatement = ExpressionStatement (Maybe Expression) SEMICOLON
 

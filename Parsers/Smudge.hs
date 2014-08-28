@@ -1,5 +1,6 @@
 module Parsers.Smudge (
     state_machine,
+    smudgle,
 ) where
 
 import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..))
@@ -7,6 +8,9 @@ import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..))
 import Text.ParserCombinators.Parsec hiding (State)
 import Control.Applicative hiding ((<|>), empty, many)
 import Data.Maybe (maybeToList)
+
+smudgle :: Parser [(StateMachine, [(State, [(Event, [SideEffect], State)])])]
+smudgle = many1 state_machine
 
 state_machine :: Parser (StateMachine, [(State, [(Event, [SideEffect], State)])])
 state_machine = (,) <$> (empty *> state_machine_name <* empty) <*> state_machine_spec <* empty

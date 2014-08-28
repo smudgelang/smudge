@@ -39,16 +39,22 @@ instance Labellable Happening where
     toLabelValue (Hustle e ses) = mconcat $ intersperse (toLabelValue "\n") $ toLabelValue e : map toLabelValue ses
     toLabelValue (Bustle e ses) = mconcat $ intersperse (toLabelValue "\n") $ toLabelValue e : map toLabelValue ses
 
-labelNonClusteredParams sideEffects =
-                         nonClusteredParams { globalAttributes =
-                              [GraphAttrs [toLabel ""]] -- Placeholder
-                          , fmtNode = \ (_, l) -> [toLabel l]
-                          , fmtEdge = if sideEffects then keep else drop }
-                          where
-                                keep (_, _, l) = [toLabel l, arrow l]
-                                drop (start, end, ese@(Hustle e _)) = [toLabel e, arrow ese]
-                                arrow (Hustle _ _) = edgeEnds Forward
-                                arrow (Bustle _ _) = edgeEnds NoDir
+--smudgeParams :: Bool -> GraphvizParams Node 
+smudgeParams sideEffects =
+    defaultParams
+        { globalAttributes =
+                [GraphAttrs [toLabel ""]] -- Placeholder
+        , clusterBy = cluster
+        , isDotCluster = const False
+        , clusterID = const $ toGraphID " "
+        , fmtNode = \ (_, l) -> [toLabel l]
+        , fmtEdge = if sideEffects then keep else drop }
+        where
+            cluster (n, nl) = C "cluster" (N (n, nl))
+            keep (_, _, l) = [toLabel l, arrow l]
+            drop (start, end, ese@(Hustle e _)) = [toLabel e, arrow ese]
+            arrow (Hustle _ _) = edgeEnds Forward
+            arrow (Bustle _ _) = edgeEnds NoDir
 
 data GraphVizOption = Format GraphvizOutput | OutFile FilePath | SuppressSideEffects
     deriving (Show, Eq)
@@ -66,10 +72,11 @@ instance Backend GraphVizOption where
                 Option [] ["no-se"] (NoArg SuppressSideEffects)
                  "Suppress side effects from output"])
 
-    generate os g inputName = (runner os) (runGraphviz d) (format os) (outputName os)
-        where d = (graphToDot (labelNonClusteredParams suppressSE) g) {graphID = Just (toGraphID " ")}
+    generate os gs inputName = (runner os) (runGraphviz d) (format os) (outputName os)
+        where d = (graphToDot (smudgeParams suppressSE) (gfold gs)) {graphID = Just (toGraphID " ")}
               suppressSE = not $ SuppressSideEffects `elem` os
 
+              gfold gs = gs !! 0
               getFirstOrDefault :: ([a] -> b) -> b -> [a] -> b
               getFirstOrDefault _ d     [] = d
               getFirstOrDefault f _ (x:xs) = f xs

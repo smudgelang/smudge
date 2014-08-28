@@ -1,3 +1,4 @@
+module = state-machine empty *(state-machine empty)
 state-machine = state-machine-name empty state-machine-spec empty
 state-machine-spec = "{" empty state-list empty "}"
 state-list = state *(empty "," empty state)

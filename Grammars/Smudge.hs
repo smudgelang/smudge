@@ -1,10 +1,13 @@
 module Grammars.Smudge (
+    Module(..),
     StateMachine(..),
     State(..),
     Event(..),
     SideEffect(..),
     Happening(..),
 ) where
+
+data Module = Module String [StateMachine]
 
 data StateMachine = StateMachine String | StateMachineSame
     deriving (Show, Eq, Ord)

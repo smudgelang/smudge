@@ -4,7 +4,7 @@ import PackageInfo (packageInfo, author, synopsis)
 import Backends.Backend (options, generate)
 import Backends.GraphViz (GraphVizOption(..))
 import Grammars.Smudge (StateMachine, State(..), Event, SideEffect, Happening(..))
-import Parsers.Smudge (state_machine)
+import Parsers.Smudge (state_machine, smudgle)
 
 import Control.Applicative ((<$>), (<*>))
 import Distribution.Package (packageVersion, packageName, PackageName(..))
@@ -90,16 +90,18 @@ main = do
 
         (os, (fileName:as),  _) -> do
             compilationUnit <- readFile fileName
-            case parse state_machine fileName compilationUnit of
+            case parse smudgle fileName compilationUnit of
                 Left err -> print err
-                Right sm -> do
-                    let g = smToGraph sm
+                Right sms -> m sms
+            where m sms = do
+                    let gs = map smToGraph sms
                     let filt o =
                             case o of
-                            GraphVizOption a -> True
-                            otherwise -> False
+                                GraphVizOption a -> True
+                                otherwise -> False
                     let gvos = map (\ (GraphVizOption a) -> a) $ filter filt os
-                    outputName <- generate gvos g fileName
+                    outputName <- generate gvos gs fileName
                     putStrLn $ "Wrote file \"" ++ outputName ++ "\""
 
         (_,              _,  _) -> printUsage
+

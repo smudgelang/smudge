@@ -10,4 +10,4 @@ import System.FilePath (FilePath)
 
 class Backend a where
     options :: (String, [OptDescr a])
-    generate :: [a] -> Gr State Happening -> FilePath -> IO FilePath
+    generate :: [a] -> [Gr State Happening] -> FilePath -> IO FilePath

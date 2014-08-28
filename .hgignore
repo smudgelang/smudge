@@ -5,3 +5,6 @@ tags
 *.dot
 *.png
 *.svg
+*.orig
+*.rej
+graphviz-2999.17.0.1

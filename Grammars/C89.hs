@@ -17,7 +17,6 @@ module Grammars.C89 (
     COMMA(..),
     ELLIPSIS(..),
     COLON(..),
-    STAR(..),
     ELSE(..),
     EQUAL(..),
     SEMICOLON(..),
@@ -97,7 +96,7 @@ module Grammars.C89 (
     IterationStatement(..),
     JumpStatement(..),
 
-    TranslationUnit(..),
+    TranslationUnit,
     ExternalDeclaration(..),
     FunctionDefinition(..),
 ) where
@@ -184,7 +183,6 @@ data RIGHTCURLY = RIGHTCURLY
 data COMMA = COMMA
 data ELLIPSIS = ELLIPSIS
 data COLON = COLON
-data STAR = STAR
 data ELSE = ELSE
 data EQUAL = EQUAL
 data SEMICOLON = SEMICOLON
@@ -261,9 +259,9 @@ data AssignmentExpression = AssignmentExpression (Either ConditionalExpression (
 data AssignmentOperator = ASSIGN | TIMES_EQUAL | DIV_EQUAL | MOD_EQUAL | PLUS_EQUAL | MINUS_EQUAL
                         | LSHIFT_EQUAL | RSHIFT_EQUAL | AND_EQUAL | XOR_EQUAL | OR_EQUAL
 
-data Expression = Expression (Maybe (Pair Expression COMMA)) AssignmentExpression
+type Expression = CommaList AssignmentExpression
 
-data ConstantExpression = ConstantExpression ConditionalExpression
+type ConstantExpression = ConditionalExpression
 
 
 -- A.1.2.2 Declarations
@@ -307,7 +305,7 @@ data DirectDeclarator = IDirectDeclarator Identifier
                       | CDirectDeclarator DirectDeclarator LEFTSQUARE (Maybe ConstantExpression) RIGHTSQUARE
                       | PDirectDeclarator DirectDeclarator LEFTPAREN (Maybe (Either ParameterTypeList IdentifierList)) RIGHTPAREN
 
-data Pointer = Pointer STAR (Maybe TypeQualifierList) (Maybe Pointer)
+data Pointer = POINTER (Maybe TypeQualifierList) (Maybe Pointer)
 
 type TypeQualifierList = SimpleList TypeQualifier
 
@@ -371,7 +369,7 @@ data JumpStatement = GOTO Identifier SEMICOLON
 
 -- A.1.2.4 External definitions
 
-data TranslationUnit = TranslationUnit (Maybe TranslationUnit) ExternalDeclaration
+type TranslationUnit = SimpleList ExternalDeclaration
 
 data ExternalDeclaration = ExternalDeclaration (Either FunctionDefinition Declaration)
 

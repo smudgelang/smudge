@@ -58,7 +58,7 @@ module Grammars.C89 (
     ConstantExpression(..),
 
     Declaration(..),
-    DeclarationSpecifiers(..),
+    DeclarationSpecifiers,
     InitDeclaratorList,
     InitDeclarator(..),
     StorageClassSpecifier(..),
@@ -268,7 +268,7 @@ type ConstantExpression = ConditionalExpression
 
 data Declaration = Declaration DeclarationSpecifiers (Maybe InitDeclaratorList) SEMICOLON
 
-data DeclarationSpecifiers = DeclarationSpecifiers (Choose StorageClassSpecifier TypeSpecifier TypeQualifier) (Maybe DeclarationSpecifiers)
+type DeclarationSpecifiers = SimpleList (Choose StorageClassSpecifier TypeSpecifier TypeQualifier)
 
 type InitDeclaratorList = CommaList InitDeclarator 
 

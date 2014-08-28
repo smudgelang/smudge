@@ -53,6 +53,7 @@ smudgeParams sideEffects =
             cluster (n, nl) = C "cluster" (N (n, nl))
             keep (_, _, l) = [toLabel l, arrow l]
             drop (start, end, ese@(Hustle e _)) = [toLabel e, arrow ese]
+            drop (start, end, ese@(Bustle e _)) = [toLabel e, arrow ese]
             arrow (Hustle _ _) = edgeEnds Forward
             arrow (Bustle _ _) = edgeEnds NoDir
 

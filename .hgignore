@@ -2,9 +2,12 @@ syntax:glob
 dist
 TAGS
 tags
+*.c
 *.dot
 *.png
 *.svg
+*.swo
+*.swp
 *.orig
 *.rej
 graphviz-2999.17.0.1

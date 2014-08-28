@@ -1,6 +1,14 @@
 module Grammars.C89 (
     fromList,
 
+    Choose(..),
+    These(..),
+    Pair(..),
+    Trio(..),
+    Quad(..),
+    SimpleList(..),
+    CommaList(..),
+
     Identifier,
     mangleIdentifier,
 

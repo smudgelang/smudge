@@ -3,6 +3,7 @@ module Main where
 import PackageInfo (packageInfo, author, synopsis)
 import Backends.Backend (options, generate)
 import Backends.GraphViz (GraphVizOption(..))
+import Backends.CStatic (CStaticOption(..))
 import Grammars.Smudge (StateMachine, State(..), Event, SideEffect, Happening(..))
 import Parsers.Smudge (state_machine, smudgle)
 
@@ -67,11 +68,12 @@ sysopts :: [OptDescr SystemOption]
 sysopts = [Option ['v'] ["version"] (NoArg Version) "Version information.",
            Option ['h'] ["help"] (NoArg Help) "Print this message."]
 
-data Options = SystemOption SystemOption | GraphVizOption GraphVizOption
+data Options = SystemOption SystemOption | GraphVizOption GraphVizOption | CStaticOption CStaticOption
     deriving (Show, Eq)
 
 all_opts :: [OptDescr Options]
 all_opts = concat [subcommand "" SystemOption sysopts,
+                   (subcommand <$> fst <*> return CStaticOption <*> snd) options,
                    (subcommand <$> fst <*> return GraphVizOption <*> snd) options]
 
 printUsage :: IO ()
@@ -101,6 +103,13 @@ main = do
                                 otherwise -> False
                     let gvos = map (\ (GraphVizOption a) -> a) $ filter filt os
                     outputName <- generate gvos gs fileName
+                    putStrLn $ "Wrote file \"" ++ outputName ++ "\""
+                    let filt' o =
+                            case o of
+                                CStaticOption a -> True
+                                otherwise -> False
+                    let csos = map (\ (CStaticOption a) -> a) $ filter filt os
+                    outputName <- generate csos gs fileName
                     putStrLn $ "Wrote file \"" ++ outputName ++ "\""
 
         (_,              _,  _) -> printUsage

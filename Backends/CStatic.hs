@@ -36,9 +36,8 @@ instance Backend CStaticOption where
                [Option [] ["o"] (ReqArg OutFile "FILE")
                  "The name of the target file if not derived from source file."])
     generate os gs inputName = writeTranslationUnit tu (outputName os)
-        where gs' = map snd gs
-              tu = fromList $ graphToCode gs'
-              graphToCode gs' = [(ExternalDeclaration (Right $ stateEnum (StateMachine "state machine name") (states g))) | g <- gs']
+        where tu = fromList $ graphToCode gs
+              graphToCode gs = [(ExternalDeclaration (Right $ stateEnum sm (states g))) | (sm, g) <- gs]
               states g = [name | (_, name) <- labNodes g]
               writeTranslationUnit u fp = (writeFile fp (renderPretty u)) >> (return fp)
               getFirstOrDefault :: ([a] -> b) -> b -> [a] -> b

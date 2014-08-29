@@ -99,7 +99,7 @@ main = do
                 Left err -> print err
                 Right sms -> m sms
             where m sms = do
-                    let gs = map smToGraph sms
+                    let gs = zip (map fst sms) (map smToGraph sms)
                     let filt o =
                             case o of
                                 GraphVizOption a -> True
@@ -116,4 +116,3 @@ main = do
                     putStrLn $ "Wrote file \"" ++ outputName ++ "\""
 
         (_,              _,  _) -> printUsage
-

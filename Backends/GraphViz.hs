@@ -62,9 +62,12 @@ smudgeParams sideEffects clusterBox =
         , isDotCluster = const clusterBox
         , clusterID = toGraphID
         , fmtNode = \ (_, l) -> [toLabel l]
-        , fmtEdge = if sideEffects then keep else drop }
+        , fmtEdge = if sideEffects then keep else drop
+        , fmtCluster = clusterAttrs
+        }
         where
             cluster (n, nl@(sm, _)) = C (smToString sm) (N (n, nl))
+            clusterAttrs c = [GraphAttrs [toLabel c]]
             smToString (StateMachine s) = s
             keep (_, _, l) = [toLabel l, arrow l]
             drop (start, end, ese@(Hustle e _)) = [toLabel e, arrow ese]

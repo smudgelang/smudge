@@ -337,7 +337,7 @@ instance Prettyable LogicalORExpression where
     pretty (LogicalORExpression me e) = pretty me <+> pretty e
 
 instance Prettyable ConditionalExpression where
-    pretty (ConditionalExpression le (Just (Quad q e c ce))) = pretty le <+> pretty q <+> pretty e <+> pretty c <+> pretty ce
+    pretty (ConditionalExpression le (Just (Quad q e c ce))) = hsep [pretty le, pretty q, pretty e, pretty c, pretty ce]
     pretty (ConditionalExpression le Nothing) = pretty le
 
 instance Prettyable AssignmentExpression where
@@ -369,7 +369,7 @@ instance Prettyable Declaration where
     pretty (Declaration dss midl s) = pretty dss <+> pretty midl <> pretty s
 
 instance Prettyable DeclarationSpecifiers where
-    pretty (SimpleList x ds) = pretty x <+> pretty ds
+    pretty (SimpleList x ds) = nest (-1) (pretty x) <+> pretty ds
 
 instance Prettyable InitDeclaratorList where
     pretty (CommaList x cl) = pretty x <> pretty cl
@@ -378,22 +378,22 @@ instance Prettyable InitDeclarator where
     pretty (InitDeclarator d mi) = pretty d <+> pretty mi
 
 instance Prettyable StorageClassSpecifier where
-    pretty TYPEDEF = text "typedef"
-    pretty EXTERN = text "extern"
-    pretty STATIC = text "static"
-    pretty AUTO = text "auto"
-    pretty REGISTER = text "register"
+    pretty TYPEDEF = zeroWidthText "typedef"
+    pretty EXTERN = zeroWidthText "extern"
+    pretty STATIC = zeroWidthText "static"
+    pretty AUTO = zeroWidthText "auto"
+    pretty REGISTER = zeroWidthText "register"
 
 instance Prettyable TypeSpecifier where
-    pretty VOID = text "void"
-    pretty CHAR = text "char"
-    pretty SHORT = text "short"
-    pretty INT = text "int"
-    pretty LONG = text "long"
-    pretty FLOAT = text "float"
-    pretty DOUBLE = text "double"
-    pretty SIGNED = text "single"
-    pretty UNSIGNED = text "unsigned"
+    pretty VOID = zeroWidthText "void"
+    pretty CHAR = zeroWidthText "char"
+    pretty SHORT = zeroWidthText "short"
+    pretty INT = zeroWidthText "int"
+    pretty LONG = zeroWidthText "long"
+    pretty FLOAT = zeroWidthText "float"
+    pretty DOUBLE = zeroWidthText "double"
+    pretty SIGNED = zeroWidthText "single"
+    pretty UNSIGNED = zeroWidthText "unsigned"
     pretty (STRUCT (Left id)) = text "struct" <+> pretty id
     pretty (STRUCT (Right (Quad mi l sdl r))) = text "struct" <+> pretty mi <+> pretty l $+$ pretty sdl $+$ pretty r
     pretty (UNION (Left id)) = text "union" <+> pretty id
@@ -426,8 +426,8 @@ instance Prettyable Enumerator where
     pretty (Enumerator ec me) = pretty ec <+> pretty me
 
 instance Prettyable TypeQualifier where
-    pretty CONST = text "const"
-    pretty VOLATILE = text "volatile"
+    pretty CONST = zeroWidthText "const"
+    pretty VOLATILE = zeroWidthText "volatile"
 
 instance Prettyable Declarator where
     pretty (Declarator mp dd) = pretty mp <> pretty dd

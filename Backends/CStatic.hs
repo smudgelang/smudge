@@ -12,8 +12,6 @@ import System.FilePath (FilePath, dropExtension, (<.>))
 data CStaticOption = OutFile FilePath
     deriving (Show, Eq)
 
---Blah :: Gr State Happening -> TypeSpecifier
-
 stateEnum :: StateMachine -> [State] -> TypeSpecifier
 stateEnum (StateMachine smName) ss =
     case ss of
@@ -30,9 +28,10 @@ instance Backend CStaticOption where
     options = ("c",
                [Option [] ["o"] (ReqArg OutFile "FILE")
                  "The name of the target file if not derived from source file."])
-    generate os g inputName = writeTranslationUnit tu (outputName os)
-        where tu = fromList [ExternalDeclaration (Right $ Declaration (fromList [B $ stateEnum (StateMachine "state machine name") states]) Nothing SEMICOLON)]
-              states = map (\ (_, name) -> name) $ labNodes (g !! 0)
+    generate os gs inputName = writeTranslationUnit tu (outputName os)
+        where tu = fromList $ graphToCode gs
+              graphToCode gs = [(ExternalDeclaration (Right $ Declaration (fromList [B $ stateEnum (StateMachine "state machine name") (states g)]) Nothing SEMICOLON)) | g <- gs]
+              states g = [name | (_, name) <- labNodes g]
               writeTranslationUnit u fp = (writeFile fp (renderPretty u)) >> (return fp)
               getFirstOrDefault :: ([a] -> b) -> b -> [a] -> b
               getFirstOrDefault _ d     [] = d

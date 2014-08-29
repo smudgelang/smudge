@@ -111,7 +111,7 @@ main = do
                             case o of
                                 CStaticOption a -> True
                                 otherwise -> False
-                    let csos = map (\ (CStaticOption a) -> a) $ filter filt os
+                    let csos = map (\ (CStaticOption a) -> a) $ filter filt' os
                     outputName <- generate csos gs fileName
                     putStrLn $ "Wrote file \"" ++ outputName ++ "\""
 

@@ -14,15 +14,16 @@ data CStaticOption = OutFile FilePath
 
 stateEnum :: StateMachine -> [State] -> TypeSpecifier
 stateEnum (StateMachine smName) ss =
-    case ss of
-        [] ->
-             ENUM (Left smMangledName)
-        otherwise ->
-             ENUM (Right (Quad (Just smMangledName)
-             LEFTCURLY
-             (fromList $ map ((flip Enumerator Nothing) . mangleIdentifier . ((smName ++) . show)) (ss))
-             RIGHTCURLY))
-    where smMangledName = mangleIdentifier (smName ++ "State")
+    makeEnum (mangleIdentifier smName ++ "_State")
+             [mangleIdentifier (smName ++ show s) | s <- ss]
+
+makeEnum :: Identifier -> [Identifier] -> TypeSpecifier
+makeEnum smName [] = ENUM (Left $ smName)
+makeEnum smName ss = 
+    ENUM (Right (Quad (Just $ smName)
+    LEFTCURLY
+    (fromList [Enumerator s Nothing | s <- ss])
+    RIGHTCURLY))
 
 instance Backend CStaticOption where
     options = ("c",

@@ -1,0 +1,15 @@
+// Example of a smudgule with more than one state machine in it.
+
+SMA
+{
+    A [ _ --> B ],
+    B [ _ --> A ]
+}
+
+SMB
+{
+    A [ _ --> B ],
+    B [ _ --> C ],
+    C [ _ --> D ],
+    D [ _ --> A ]
+}

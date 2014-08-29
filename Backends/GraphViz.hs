@@ -54,20 +54,18 @@ instance Labellable Happening where
     toLabelValue (Hustle e ses) = mconcat $ intersperse (toLabelValue "\n") $ toLabelValue e : map toLabelValue ses
     toLabelValue (Bustle e ses) = mconcat $ intersperse (toLabelValue "\n") $ toLabelValue e : map toLabelValue ses
 
---smudgeParams :: Bool -> GraphvizParams Node 
-smudgeParams sideEffects =
+smudgeParams sideEffects clusterBox =
     defaultParams
         { globalAttributes =
                 [GraphAttrs [toLabel ""]] -- Placeholder
         , clusterBy = cluster
-        , isDotCluster = const False
+        , isDotCluster = const clusterBox
         , clusterID = toGraphID
         , fmtNode = \ (_, l) -> [toLabel l]
         , fmtEdge = if sideEffects then keep else drop }
         where
             cluster (n, nl@(sm, _)) = C (smToString sm) (N (n, nl))
             smToString (StateMachine s) = s
-            smToString StateMachineSame = "same"
             keep (_, _, l) = [toLabel l, arrow l]
             drop (start, end, ese@(Hustle e _)) = [toLabel e, arrow ese]
             drop (start, end, ese@(Bustle e _)) = [toLabel e, arrow ese]
@@ -150,7 +148,7 @@ instance Backend GraphVizOption where
                  "Suppress side effects from output"])
 
     generate os gs inputName = (runner os) (runGraphviz d) (format os) (outputName os)
-        where d = (graphToDot (smudgeParams suppressSE) (gfold gs)) {graphID = Just (toGraphID " ")}
+        where d = (graphToDot (smudgeParams suppressSE (length gs > 1)) (gfold gs)) {graphID = Just (toGraphID " ")}
               suppressSE = not $ SuppressSideEffects `elem` os
 
               getFirstOrDefault :: ([a] -> b) -> b -> [a] -> b

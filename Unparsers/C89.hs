@@ -526,7 +526,7 @@ instance Prettyable JumpStatement where
 -- A.1.2.4 External definitions
 
 instance Prettyable TranslationUnit where
-    pretty (SimpleList x tu) = pretty x $+$ pretty tu
+    pretty (SimpleList x tu) = pretty x $+$ text "" $+$ pretty tu
 
 instance Prettyable ExternalDeclaration where
     pretty (ExternalDeclaration efdord) = pretty efdord

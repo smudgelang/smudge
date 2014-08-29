@@ -106,36 +106,6 @@ gfold = foldl gf G.empty
                         done :: QualifiedContext
                         done = (rins, rn, ql, routs)
                     in done G.& acc
-{-            
-        
-
-gfold :: [(StateMachine, UnqualifiedGraph)] -> QualifiedGraph
-gfold = foldl gf G.empty
-    where
-    -- G.ufold :: (Context State Happening -> QualifiedGraph -> QualifiedGraph) -> QualifiedGraph -> UnqualifiedGraph -> QualifiedGraph
-        foldin :: StateMachine -> G.Context State Happening -> QualifiedGraph -> QualifiedGraph
-        foldin sm ctxt g = (qualifyAndRename ctxt (rename g sm)) G.& g
-            where
-                nameMap :: M.Map G.Node G.Node
-                nameMap = rename g s
-                rename :: QualifiedGraph -> UnqualifiedGraph -> M.Map G.Node G.Node
-                rename used old =
-                    let
-                        oldNodes = [fst G.nodeRange old..snd G.nodeRange old]
-                    in
-                        M.fromList $ zip oldNodes $
-                            G.newNodes (length oldNodes) used
-                renameAdj :: M.Map G.Node G.Node -> (Happening, G.Node) -> (Happening, G.Node)
-                renameAdj m (h, n) = (h, m M.! n)
-                qualifyAndRename :: G.Context State Happening ->
-                                     QualifiedGraph ->
-                                     G.Context QualifiedState Happening
-                qualifyAndRename (ins, n, l, outs) names =
-                    let nm = rename g sm
-                    (map (renameAdj names) ins, names !! n, (sm, l), map (renameAdj names) outs)
-        gf :: QualifiedGraph -> (StateMachine, UnqualifiedGraph) -> QualifiedGraph
-        gf acc (sm, g) = G.ufold (foldin sm) acc g
--}
 
 instance Backend GraphVizOption where
     options = ("dot",

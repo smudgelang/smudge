@@ -123,7 +123,8 @@ class Listish l where
     infixr 5 <:
 
     fromList []     = error "Listish values cannot be empty."
-    fromList (x:xs) = foldr (<:) (singleton x) xs
+    fromList [x]    = singleton x
+    fromList (x:xs) = x <: fromList xs
 
 -------------------
 -- Helpful Types --

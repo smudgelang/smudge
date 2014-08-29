@@ -91,7 +91,10 @@ main = do
             | elem (SystemOption Version) os -> printVersion
 
         (os, (fileName:as),  _) -> do
-            compilationUnit <- readFile fileName
+            compilationUnit <-
+                if fileName == "-"
+                    then getContents
+                    else readFile fileName
             case parse smudgle fileName compilationUnit of
                 Left err -> print err
                 Right sms -> m sms

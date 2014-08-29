@@ -13,6 +13,7 @@ module Grammars.C89 (
     mangleIdentifier,
 
     Constant,
+    EnumerationConstant(..),
 
     StringLiteral,
 
@@ -90,7 +91,7 @@ module Grammars.C89 (
     TypeName(..),
     AbstractDeclarator(..),
     DirectAbstractDeclarator(..),
-    EnumerationConstant(..),
+    TypedefName(..),
     Initializer(..),
     InitializerList,
 
@@ -174,6 +175,8 @@ mangleIdentifier (c:cs) = (mangleChar c) ++ (mangleIdentifier cs)
 -- A.1.1.4 Constants
 
 type Constant = String
+
+type EnumerationConstant = Identifier
 
 -- A.1.1.5 String literals
 
@@ -289,7 +292,7 @@ data TypeSpecifier = VOID | CHAR | SHORT | INT | LONG | FLOAT | DOUBLE | SIGNED 
                    | STRUCT (Either Identifier (Quad (Maybe Identifier) LEFTCURLY StructDeclarationList RIGHTCURLY))
                    | UNION (Either Identifier (Quad (Maybe Identifier) LEFTCURLY StructDeclarationList RIGHTCURLY))
                    | ENUM (Either Identifier (Quad (Maybe Identifier) LEFTCURLY EnumeratorList RIGHTCURLY))
-                   | TypeSpecifier TypeName
+                   | TypeSpecifier TypedefName
 
 type StructDeclarationList = SimpleList StructDeclaration
 
@@ -334,7 +337,7 @@ data DirectAbstractDeclarator = ADirectAbstractDeclarator LEFTPAREN AbstractDecl
                               | CDirectAbstractDeclarator (Maybe DirectAbstractDeclarator) LEFTSQUARE (Maybe ConstantExpression) RIGHTSQUARE
                               | PDirectAbstractDeclarator (Maybe DirectAbstractDeclarator) LEFTPAREN (Maybe ParameterTypeList) RIGHTPAREN
 
-type EnumerationConstant = Identifier
+type TypedefName = Identifier
 
 data Initializer = AInitializer AssignmentExpression
                  | LInitializer LEFTCURLY InitializerList (Maybe COMMA) RIGHTCURLY

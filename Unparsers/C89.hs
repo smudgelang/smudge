@@ -19,6 +19,7 @@ import Grammars.C89 (
     mangleIdentifier,
 
     Constant,
+    EnumerationConstant(..),
 
     StringLiteral,
 
@@ -96,7 +97,7 @@ import Grammars.C89 (
     TypeName(..),
     AbstractDeclarator(..),
     DirectAbstractDeclarator(..),
-    EnumerationConstant(..),
+    TypedefName(..),
     Initializer(..),
     InitializerList,
 
@@ -172,6 +173,8 @@ instance Prettyable String where
 
 --instance Prettyable Constant where
 --    pretty = text
+--
+--type EnumerationConstant = Identifier
 --
 ---- A.1.1.5 String literals
 --
@@ -468,7 +471,7 @@ instance Prettyable DirectAbstractDeclarator where
     pretty (CDirectAbstractDeclarator mdad l me r) = pretty mdad <> pretty l <> pretty me <> pretty r
     pretty (PDirectAbstractDeclarator mdad l mp r) = pretty mdad <> pretty l <> pretty mp <> pretty r
 
---type EnumerationConstant = Identifier
+--type TypedefName = Identifier
 
 instance Prettyable Initializer where
     pretty (AInitializer e) = pretty e

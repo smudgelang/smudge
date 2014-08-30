@@ -1,0 +1,48 @@
+"State Machine (the first)"
+{
+    _
+    [
+        "Goto A" --> A
+    ],
+    A
+    [
+        _ -(SM3."External")-> B
+    ],
+    B @enterB
+    [
+        "Whee" --> C,
+        Stay -(@stayStill)-,
+        Reenter --> B
+    ] @exitB,
+    C
+    [
+        Beedoo --> A,
+        GoB -(@gob)-> B
+    ]
+}
+
+"State Machine 2!"
+{
+    A [_ --> B],
+    B [_ --> A]
+}
+
+SM3
+{
+    _ ["External" --> START],
+    START @startTimer
+    [
+        Tick --> READY,
+        Reset -(@cancelTimer)-> START
+    ],
+    READY
+    [
+        Go --> RUN,
+        Reset --> START
+    ],
+    RUN @startRun
+    [
+        Reset --> START,
+        Handle -(@handleEvent)-
+    ] @stopRun
+}

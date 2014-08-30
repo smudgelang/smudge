@@ -123,6 +123,11 @@ renderPretty = render . pretty
 
 indent = 4 :: Int
 
+($++$) :: Doc -> Doc -> Doc
+a $++$ b | isEmpty b = a
+a $++$ b | isEmpty a = b
+a $++$ b             = a $+$ text "" $+$ b
+
 -------------------
 -- Helpful Class --
 -------------------
@@ -497,7 +502,10 @@ instance Prettyable LabeledStatement where
     pretty (DEFAULT c s) = text "default" <> pretty c $+$ pretty s
 
 instance Prettyable CompoundStatement where
-    pretty (CompoundStatement l mdl msl r) = pretty l $+$ pretty mdl $+$ pretty msl $+$ pretty r
+    pretty (CompoundStatement l mdl msl r) = pretty l $+$
+                                                 nest indent (pretty mdl) $++$
+                                                 nest indent (pretty msl) $+$
+                                             pretty r
 
 instance Prettyable DeclarationList where
     pretty (SimpleList x dl) = pretty x $+$ pretty dl

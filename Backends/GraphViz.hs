@@ -38,6 +38,7 @@ instance Labellable State where
     toLabelValue s         = toLabelValue $ show s
 
 instance Labellable QualifiedState where
+    toLabelValue (_, StateAny) = toLabelValue "Any"
     toLabelValue (_, State s) = toLabelValue s
     toLabelValue s            = toLabelValue $ show s
 

@@ -9,16 +9,14 @@ MUX
     OFF
     [
         "Case connected" -(@selectCase, USBD.Plug)-> CASE,
-        "Cradle connected" -(@selectCradle, USBD.Plug)-> CRADLE,
-        "stupid example" --> OFF
+        "Cradle connected" -(@selectCradle, USBD.Plug)-> CRADLE
     ],
     CASE
     [
         "Cradle connected" -(USBD.Unplug,
                              @selectCradle,
                              USBD.Plug)->CRADLE_THEN_CASE,
-        "Case disconnected" -(USBD.Unplug)-> OFF,
-        "stupider example" --
+        "Case disconnected" -(USBD.Unplug)-> OFF
     ],
     CRADLE
     [

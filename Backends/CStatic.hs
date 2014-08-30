@@ -12,6 +12,29 @@ import System.FilePath (FilePath, dropExtension, (<.>))
 data CStaticOption = OutFile FilePath
     deriving (Show, Eq)
 
+stateNameFunction :: StateMachine -> [State] -> FunctionDefinition
+stateNameFunction (StateMachine smName) ss =
+    Function
+    (Just $ fromList [A STATIC, C CONST, B CHAR])
+    (Declarator (Just $ POINTER Nothing Nothing)
+                $ PDirectDeclarator
+                  (IDirectDeclarator $ smMangledName ++ "_name")
+                  LEFTPAREN
+                  (Just $ Left $ ParameterTypeList
+                                 (fromList [ParameterDeclaration (fromList [B $ TypeSpecifier smMangledName])
+                                            (Just $ Left $ Declarator Nothing $ IDirectDeclarator "s")])
+                                 Nothing)
+                  RIGHTPAREN)
+    Nothing
+    (CompoundStatement
+    LEFTCURLY
+        (Just $ fromList [Declaration (fromList [C CONST, B CHAR]) Nothing SEMICOLON,
+                          Declaration (fromList [C CONST, B INT]) Nothing SEMICOLON])
+        (Just $ fromList [JStatement $ RETURN Nothing SEMICOLON])
+    RIGHTCURLY)
+    where
+        smMangledName = mangleIdentifier smName ++ "_State"
+
 stateEnum :: StateMachine -> [State] -> Declaration
 stateEnum (StateMachine smName) ss =
     Declaration
@@ -37,7 +60,9 @@ instance Backend CStaticOption where
                  "The name of the target file if not derived from source file."])
     generate os gs inputName = writeTranslationUnit tu (outputName os)
         where tu = fromList $ graphToCode gs
-              graphToCode gs = [(ExternalDeclaration (Right $ stateEnum sm (states g))) | (sm, g) <- gs]
+              graphToCode gs = concat [[(ExternalDeclaration (Right $ stateEnum sm (states g))),
+                                        (ExternalDeclaration (Left $ stateNameFunction sm (states g)))]
+                                       | (sm, g) <- gs]
               states g = [name | (_, name) <- labNodes g]
               writeTranslationUnit u fp = (writeFile fp (renderPretty u)) >> (return fp)
               getFirstOrDefault :: ([a] -> b) -> b -> [a] -> b

@@ -7,7 +7,7 @@ OPTIONS ?= --dot-no-se
 
 all: $(OBJS)
 
-%.svg: %.smudge
+%.svg: %.smudge $(SMUDGE)
 	$(SMUDGE) $(OPTIONS) --dot-fmt=Svg $<
 
 clean:

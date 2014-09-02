@@ -58,7 +58,7 @@ instance Labellable Happening where
 smudgeParams sideEffects clusterBox title=
     defaultParams
         { globalAttributes =
-                [GraphAttrs [toLabel title]] -- Placeholder
+                [GraphAttrs [toLabel title]]
         , clusterBy = cluster
         , isDotCluster = const clusterBox
         , clusterID = toGraphID

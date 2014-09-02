@@ -105,12 +105,39 @@ import Grammars.C89 (
     FunctionDefinition(..),
     )
 
-import Text.PrettyPrint
+import Text.PrettyPrint (
+    Doc,
+    zeroWidthText,
+    isEmpty,
+    render,
+    empty,
+    nest,
+    (<>),
+    ($+$)
+    )
 
 renderPretty :: TranslationUnit -> String
 renderPretty = render . pretty
 
 indent = 4 :: Int
+
+-------------------
+-- PP Overrides  --
+-------------------
+
+char :: Char -> Doc
+char = zeroWidthText . (:[])
+
+text :: String -> Doc
+text = zeroWidthText
+
+(<+>) :: Doc -> Doc -> Doc
+a <+> b | isEmpty b = a
+a <+> b | isEmpty a = b
+a <+> b             = a <> zeroWidthText " " <> b
+
+hsep :: [Doc] -> Doc
+hsep = foldl (<+>) empty
 
 ($++$) :: Doc -> Doc -> Doc
 a $++$ b | isEmpty b = a
@@ -180,40 +207,40 @@ instance Prettyable String where
 -- Some necessary terminals; missing terminals are constructors below.
 
 instance Prettyable LEFTSQUARE where
-    pretty _ = lbrack
+    pretty _ = char '['
 
 instance Prettyable RIGHTSQUARE where
-    pretty _ = rbrack
+    pretty _ = char ']'
 
 instance Prettyable LEFTPAREN where
-    pretty _ = lparen
+    pretty _ = char '('
 
 instance Prettyable RIGHTPAREN where
-    pretty _ = rparen
+    pretty _ = char ')'
 
 instance Prettyable LEFTCURLY where
-    pretty _ = lbrace
+    pretty _ = char '{'
 
 instance Prettyable RIGHTCURLY where
-    pretty _ = rbrace
+    pretty _ = char '}'
 
 instance Prettyable COMMA where
-    pretty _ = comma
+    pretty _ = char ','
 
 instance Prettyable ELLIPSIS where
     pretty _ = text "..."
 
 instance Prettyable COLON where
-    pretty _ = colon
+    pretty _ = char ':'
 
 instance Prettyable ELSE where
     pretty _ = text "else"
 
 instance Prettyable EQUAL where
-    pretty _ = equals
+    pretty _ = char '='
 
 instance Prettyable SEMICOLON where
-    pretty _ = semi
+    pretty _ = char ';'
 
 instance Prettyable DOWHILE where
     pretty _ = text "while"
@@ -337,7 +364,7 @@ instance Prettyable Declaration where
     pretty (Declaration dss midl s) = pretty dss <+> pretty midl <> pretty s
 
 instance Prettyable DeclarationSpecifiers where
-    pretty (SimpleList x ds) = nest (-1) (pretty x) <+> pretty ds
+    pretty (SimpleList x ds) = pretty x <+> pretty ds
 
 instance Prettyable InitDeclaratorList where
     pretty (CommaList x cl) = pretty x <> pretty cl

@@ -4,6 +4,7 @@ module Grammars.Smudge (
     State(..),
     Event(..),
     SideEffect(..),
+    WholeState(..),
     Happening(..),
 ) where
 
@@ -20,6 +21,8 @@ data Event = Event String | EventAny | EventEnter | EventExit
 
 data SideEffect = FuncVoid String | FuncEvent String (StateMachine, Event) | FuncDefault (StateMachine, Event)
     deriving (Show, Eq, Ord)
+
+type WholeState = (State, Maybe [SideEffect], [(Event, [SideEffect], State)], Maybe [SideEffect])
 
 {- Happenings are events and their lists of side effects. Hustles are
 used when there's a state transition (i.e. -(...)->) and Bustles are

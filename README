@@ -1,0 +1,10 @@
+Smudge is a state machine and uml definition and generation
+engine. You can use it to describe your state machines and generate
+code and documentation for them. Example state machines can be found
+in the examples directory. In particular, first.smudge has extensive
+comments to describe what it's doing.
+
+-- Revision History --
+
+v0.1: First release for early testing. Generates basic dot output for
+      a single state machine. Configurable via command line options.

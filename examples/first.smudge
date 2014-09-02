@@ -1,0 +1,49 @@
+// This is a comment. It goes to the end of the line.
+SM_NAME // This is the name of a state machine.
+{
+    FIRST_STATE // This is the name of a state in the SM_NAME state machine.
+    @enterFirst // This optional function is called on entering FIRST_STATE.
+    [ // Begin the list of event handlers.
+
+        // When event comes to FIRST_STATE, transition to SECOND_STATE.
+        event --> SECOND_STATE,
+
+        // When altEvent comes in, don't change states, but call sideEffect.
+        altEvent -(@sideEffect)-,
+
+        // Reenter causes a transition out of and back into this
+        // state. That means enterFirst and exitFirst will be called.
+        reenter --> FIRST_STATE
+    ] // End the list of event handlers.
+    @exitFirst, // Optional function to call on leaving FIRST_STATE.
+
+    SECOND_STATE
+    [
+
+        // Any event (_ means any) will result in calling sideEffect
+        // and transitioning to FIRST_STATE.
+        _ -(@sideEffect)-> FIRST_STATE
+    ]
+} // End the SM_NAME definition. Multiple state machines can be
+  // defined in a single file.
+
+// @functionName is the syntax for side effect functions. It will be
+// up to you to implement these functions in your program. Smudge will
+// generate a header for you to include with the declaration of
+// functionName. If your side effect function generates an event, you
+// can specify it as "@functionName:event" and it will need to return
+// an instance of the event to send.
+
+// The --> and -- operators both take an optional list of side effects:
+// -(sideEffect1, sideEffect2, ...)-> Valid side effects include
+// messages to send and @functions to call.
+
+// The "any" event is _ and will cause a state to react to all events
+// in the same way. There is also an "any" state (also called _) that
+// will cause its events to all be handled in the same way. There can
+// only be one instance of the "any" event in a state (and it must be
+// alone in the list of event handlers if it's there) and there can be at
+// most one instance of the "any" state.
+
+// Note that lists of things are separated by commas. States, event
+// handlers, and side effects.

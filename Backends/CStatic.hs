@@ -22,18 +22,58 @@ stateNameFunction (StateMachine smName) ss =
                   LEFTPAREN
                   (Just $ Left $ ParameterTypeList
                                  (fromList [ParameterDeclaration (fromList [B $ TypeSpecifier smMangledName])
-                                            (Just $ Left $ Declarator Nothing $ IDirectDeclarator "s")])
+                                            (Just $ Left $ Declarator Nothing $ IDirectDeclarator state_var)])
                                  Nothing)
                   RIGHTPAREN)
     Nothing
     (CompoundStatement
     LEFTCURLY
-        (Just $ fromList [Declaration (fromList [C CONST, B CHAR]) Nothing SEMICOLON,
-                          Declaration (fromList [C CONST, B INT]) Nothing SEMICOLON])
-        (Just $ fromList [JStatement $ RETURN Nothing SEMICOLON])
+        (Just $ fromList [Declaration (fromList [C CONST, B CHAR]) 
+                                      (Just $ fromList [InitDeclarator (Declarator (Just $ POINTER Nothing Nothing) $
+                                                                        CDirectDeclarator (IDirectDeclarator names_var) LEFTSQUARE Nothing RIGHTSQUARE)
+                                                        (Just $ Pair EQUAL (LInitializer LEFTCURLY
+                                                                                         (fromList [AInitializer ((#:) (show $ show s) (:#)) | s <- ss])
+                                                                                         Nothing
+                                                                                         RIGHTCURLY))])
+                                      SEMICOLON,
+                          Declaration (fromList [C CONST, B INT])
+                                      (Just $ fromList [InitDeclarator (Declarator Nothing (IDirectDeclarator count_var))
+                                                        (Just $ Pair EQUAL (AInitializer
+                                                                            ((#:)
+                                                                                (((#:) (SIZEOF $ Right $ Trio
+                                                                                        LEFTPAREN
+                                                                                        (TypeName (fromList [Left $ TypeSpecifier names_var]) Nothing)
+                                                                                        RIGHTPAREN) (:#))
+                                                                                 `DIV`
+                                                                                 ((#:) (SIZEOF $ Right $ Trio
+                                                                                        LEFTPAREN
+                                                                                        (TypeName (fromList [Right CONST, Left CHAR])
+                                                                                                  (Just $ AbstractDeclarator $ This $ POINTER Nothing Nothing))
+                                                                                        RIGHTPAREN) (:#)))
+                                                                            (:#)) ))])
+                                      SEMICOLON])
+        (Just $ fromList [JStatement $ RETURN
+                          (Just $ fromList [(#:) (
+                                  ((#:)
+                                     (((#:) state_var (:#))
+                                        `LESS_THAN`
+                                     ((#:) count_var (:#)))
+                                  (:#))
+                                  `QUESTION`
+                                  (Trio (fromList [(#:) (EPostfixExpression ((#:) names_var (:#))
+                                                                            LEFTSQUARE
+                                                                            (fromList [(#:) state_var (:#)])
+                                                                            RIGHTSQUARE)
+                                                  (:#)])
+                                        COLON
+                                        ((#:) "\"INVALID_STATE\"" (:#)))
+                                  ) (:#)]) SEMICOLON])
     RIGHTCURLY)
     where
         smMangledName = mangleIdentifier smName ++ "_State"
+        count_var = "state_count"
+        state_var = "s"
+        names_var = "state_name"
 
 stateEnum :: StateMachine -> [State] -> Declaration
 stateEnum (StateMachine smName) ss =

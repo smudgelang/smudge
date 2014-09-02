@@ -467,10 +467,11 @@ instance Prettyable DirectAbstractDeclarator where
 
 instance Prettyable Initializer where
     pretty (AInitializer e) = pretty e
-    pretty (LInitializer l il c r) = pretty l <> pretty il <> (pretty c <+> pretty r)
+    pretty (LInitializer l il c r) = pretty l $+$ nest indent (pretty il <> pretty c) $+$ pretty r
 
 instance Prettyable InitializerList where
-    pretty (CommaList x cl) = pretty x <> pretty cl
+    pretty (CommaList x (Just (Pair c cl))) = pretty x <> pretty c $+$ pretty cl
+    pretty (CommaList x cl)                 = pretty x <> pretty cl
 
 
 -- A.1.2.3 Statements

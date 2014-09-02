@@ -1,4 +1,12 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE OverlappingInstances #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+
 module Grammars.C89 (
+    (#:),
+    EndBrace(..),
     fromList,
 
     Choose(..),
@@ -29,32 +37,20 @@ module Grammars.C89 (
     ELSE(..),
     EQUAL(..),
     SEMICOLON(..),
-    BITWISE_AND(..),
-    BITWISE_OR(..),
-    BITWISE_XOR(..),
-    LOGICAL_AND(..),
-    LOGICAL_OR(..),
-    QUESTION(..),
     DOWHILE(..),
 
     PrimaryExpression(..),
     PostfixExpression(..),
-    MemberOp(..),
     ArgumentExpressionList,
     UnaryExpression(..),
     UnaryCrement(..),
     UnaryOperator(..),
     CastExpression(..),
     MultiplicativeExpression(..),
-    MultiplicativeOp(..),
     AdditiveExpression(..),
-    AdditiveOp(..),
     ShiftExpression(..),
-    ShiftOp(..),
     RelationalExpression(..),
-    ComparisonOp(..),
     EqualityExpression(..),
-    EqualityOp(..),
     ANDExpression(..),
     ExclusiveORExpression(..),
     InclusiveORExpression(..),
@@ -62,7 +58,6 @@ module Grammars.C89 (
     LogicalORExpression(..),
     ConditionalExpression(..),
     AssignmentExpression(..),
-    AssignmentOperator(..),
     Expression(..),
     ConstantExpression(..),
 
@@ -116,6 +111,11 @@ import Data.Char (isDigit, isAsciiLower, isAsciiUpper, ord)
 -- Helpful Class --
 -------------------
 
+class Expr a b where
+    (#:) :: b -> EndBrace -> a
+    def :: b -> a
+    (#:) a b = def a
+
 class Listish l where
     (<:) :: x -> l x -> l x
     fromList :: [x] -> l x
@@ -131,6 +131,7 @@ class Listish l where
 -- Helpful Types --
 -------------------
 
+data EndBrace = (:#)
 data Choose a b c = A a | B b | C c
 data These a b = This a | That b | These a b
 data Pair a b = Pair a b
@@ -198,12 +199,6 @@ data COLON = COLON
 data ELSE = ELSE
 data EQUAL = EQUAL
 data SEMICOLON = SEMICOLON
-data BITWISE_AND = BITWISE_AND
-data BITWISE_OR = BITWISE_OR
-data BITWISE_XOR = BITWISE_XOR
-data LOGICAL_AND = LOGICAL_AND
-data LOGICAL_OR = LOGICAL_OR
-data QUESTION = QUESTION
 data DOWHILE = DOWHILE
 
 -- A.1.2.1 Expressions
@@ -211,14 +206,19 @@ data PrimaryExpression = IPrimaryExpression Identifier
                        | CPrimaryExpression Constant
                        | SPrimaryExpression StringLiteral
                        | EPrimaryExpression LEFTPAREN Expression RIGHTPAREN
+instance Expr PrimaryExpression Identifier where
+    def = IPrimaryExpression
 
 data PostfixExpression = PPostfixExpression PrimaryExpression
                        | EPostfixExpression PostfixExpression LEFTSQUARE Expression RIGHTSQUARE
                        | APostfixExpression PostfixExpression LEFTPAREN (Maybe ArgumentExpressionList) RIGHTPAREN
-                       | MPostfixExpression PostfixExpression MemberOp Identifier
+                       | PostfixExpression `DOT` Identifier
+                       | PostfixExpression `ARROW` Identifier
                        | UPostfixExpression PostfixExpression UnaryCrement
-
-data MemberOp = DOT | ARROW
+instance Expr PostfixExpression PrimaryExpression where
+    def = PPostfixExpression
+instance (Expr PrimaryExpression x) => Expr PostfixExpression x where
+    def = PPostfixExpression . def
 
 type ArgumentExpressionList = CommaList AssignmentExpression
 
@@ -226,6 +226,10 @@ data UnaryExpression = PUnaryExpression PostfixExpression
                      | UUnaryExpression UnaryCrement UnaryExpression
                      | CUnaryExpression UnaryOperator CastExpression
                      | SIZEOF (Either UnaryExpression (Trio LEFTPAREN TypeName RIGHTPAREN))
+instance Expr UnaryExpression PostfixExpression where
+    def = PUnaryExpression
+instance (Expr PostfixExpression x) => Expr UnaryExpression x where
+    def = PUnaryExpression . def
 
 data UnaryCrement =  INCREMENT | DECREMENT
 
@@ -233,43 +237,113 @@ data UnaryOperator = ADDRESS_OF | VALUE_OF | POS | NEG | INVERT | LOGICAL_NOT
 
 data CastExpression = UCastExpression UnaryExpression
                     | TCastExpression LEFTPAREN TypeName RIGHTPAREN CastExpression
+instance Expr CastExpression UnaryExpression where
+    def = UCastExpression
+instance (Expr UnaryExpression x) => Expr CastExpression x where
+    def = UCastExpression . def
 
-data MultiplicativeExpression = MultiplicativeExpression (Maybe (Pair MultiplicativeExpression MultiplicativeOp)) CastExpression
+data MultiplicativeExpression = MultiplicativeExpression CastExpression
+                              | MultiplicativeExpression `TIMES` CastExpression
+                              | MultiplicativeExpression `DIV` CastExpression
+                              | MultiplicativeExpression `MOD` CastExpression
+instance Expr MultiplicativeExpression CastExpression where
+    def = MultiplicativeExpression
+instance (Expr CastExpression x) => Expr MultiplicativeExpression x where
+    def = MultiplicativeExpression . def
 
-data MultiplicativeOp = TIMES | DIV | MOD
+data AdditiveExpression = AdditiveExpression MultiplicativeExpression
+                        | AdditiveExpression `PLUS` MultiplicativeExpression
+                        | AdditiveExpression `MINUS` MultiplicativeExpression
+instance Expr AdditiveExpression MultiplicativeExpression where
+    def = AdditiveExpression
+instance (Expr MultiplicativeExpression x) => Expr AdditiveExpression x where
+    def = AdditiveExpression . def
 
-data AdditiveExpression = AdditiveExpression (Maybe (Pair AdditiveExpression AdditiveOp)) MultiplicativeExpression
+data ShiftExpression = ShiftExpression AdditiveExpression
+                     | ShiftExpression `LSHIFT` AdditiveExpression
+                     | ShiftExpression `RSHIFT` AdditiveExpression
+instance Expr ShiftExpression AdditiveExpression where
+    def = ShiftExpression
+instance (Expr AdditiveExpression x) => Expr ShiftExpression x where
+    def = ShiftExpression . def
 
-data AdditiveOp = PLUS | MINUS
+data RelationalExpression = RelationalExpression ShiftExpression
+                          | RelationalExpression `LESS_THAN` ShiftExpression
+                          | RelationalExpression `GREATER_THAN` ShiftExpression
+                          | RelationalExpression `LESS_EQUAL` ShiftExpression
+                          | RelationalExpression `GREATER_EQUAL` ShiftExpression
+instance Expr RelationalExpression ShiftExpression where
+    def = RelationalExpression
+instance (Expr ShiftExpression x) => Expr RelationalExpression x where
+    def = RelationalExpression . def
 
-data ShiftExpression = ShiftExpression (Maybe (Pair ShiftExpression ShiftOp)) AdditiveExpression
+data EqualityExpression = EqualityExpression RelationalExpression
+                        | EqualityExpression `EQUALEQUAL` RelationalExpression
+                        | EqualityExpression `NOTEQUAL` RelationalExpression
+instance Expr EqualityExpression RelationalExpression where
+    def = EqualityExpression
+instance (Expr RelationalExpression x) => Expr EqualityExpression x where
+    def = EqualityExpression . def
 
-data ShiftOp = LSHIFT | RSHIFT
 
-data RelationalExpression = RelationalExpression (Maybe (Pair RelationalExpression ComparisonOp)) ShiftExpression
+data ANDExpression = ANDExpression EqualityExpression
+                   | ANDExpression `BITWISE_AND` EqualityExpression
+instance Expr ANDExpression EqualityExpression where
+    def = ANDExpression
+instance (Expr EqualityExpression x) => Expr ANDExpression x where
+    def = ANDExpression . def
 
-data ComparisonOp = LESS_THAN | GREATER_THAN | LESS_EQUAL | GREATER_EQUAL
+data ExclusiveORExpression = ExclusiveORExpression ANDExpression
+                           | ExclusiveORExpression `BITWISE_XOR` ANDExpression
+instance Expr ExclusiveORExpression ANDExpression where
+    def = ExclusiveORExpression
+instance (Expr ANDExpression x) => Expr ExclusiveORExpression x where
+    def = ExclusiveORExpression . def
 
-data EqualityExpression = EqualityExpression (Maybe (Pair EqualityExpression EqualityOp)) RelationalExpression
+data InclusiveORExpression = InclusiveORExpression ExclusiveORExpression
+                           | InclusiveORExpression `BITWISE_OR` ExclusiveORExpression
+instance Expr InclusiveORExpression ExclusiveORExpression where
+    def = InclusiveORExpression
+instance (Expr ExclusiveORExpression x) => Expr InclusiveORExpression x where
+    def = InclusiveORExpression . def
 
-data EqualityOp = EQUALEQUAL | NOTEQUAL
+data LogicalANDExpression = LogicalANDExpression InclusiveORExpression
+                          | LogicalANDExpression `LOGICAL_AND` InclusiveORExpression
+instance Expr LogicalANDExpression InclusiveORExpression where
+    def = LogicalANDExpression
+instance (Expr InclusiveORExpression x) => Expr LogicalANDExpression x where
+    def = LogicalANDExpression . def
 
-data ANDExpression = ANDExpression (Maybe (Pair ANDExpression BITWISE_AND)) EqualityExpression
+data LogicalORExpression = LogicalORExpression LogicalANDExpression
+                         | LogicalORExpression `LOGICAL_OR` LogicalANDExpression
+instance Expr LogicalORExpression LogicalANDExpression where
+    def = LogicalORExpression
+instance (Expr LogicalANDExpression x) => Expr LogicalORExpression x where
+    def = LogicalORExpression . def
 
-data ExclusiveORExpression = ExclusiveORExpression (Maybe (Pair ExclusiveORExpression BITWISE_XOR)) ANDExpression
+data ConditionalExpression = ConditionalExpression LogicalORExpression
+                           | LogicalORExpression `QUESTION` (Trio Expression COLON ConditionalExpression)
+instance Expr ConditionalExpression LogicalORExpression where
+    def = ConditionalExpression
+instance (Expr LogicalORExpression x) => Expr ConditionalExpression x where
+    def = ConditionalExpression . def
 
-data InclusiveORExpression = InclusiveORExpression (Maybe (Pair InclusiveORExpression BITWISE_OR)) ExclusiveORExpression
-
-data LogicalANDExpression = LogicalANDExpression (Maybe (Pair LogicalANDExpression LOGICAL_AND)) InclusiveORExpression
-
-data LogicalORExpression = LogicalORExpression (Maybe (Pair LogicalORExpression LOGICAL_OR)) LogicalANDExpression
-
-data ConditionalExpression = ConditionalExpression LogicalORExpression (Maybe (Quad QUESTION Expression COLON ConditionalExpression))
-
-data AssignmentExpression = AssignmentExpression (Either ConditionalExpression (Trio UnaryExpression AssignmentOperator AssignmentExpression))
-
-data AssignmentOperator = ASSIGN | TIMES_EQUAL | DIV_EQUAL | MOD_EQUAL | PLUS_EQUAL | MINUS_EQUAL
-                        | LSHIFT_EQUAL | RSHIFT_EQUAL | AND_EQUAL | XOR_EQUAL | OR_EQUAL
+data AssignmentExpression = AssignmentExpression ConditionalExpression
+                          | UnaryExpression `ASSIGN` AssignmentExpression
+                          | UnaryExpression `TIMES_EQUAL` AssignmentExpression
+                          | UnaryExpression `DIV_EQUAL` AssignmentExpression
+                          | UnaryExpression `MOD_EQUAL` AssignmentExpression
+                          | UnaryExpression `PLUS_EQUAL` AssignmentExpression
+                          | UnaryExpression `MINUS_EQUAL` AssignmentExpression
+                          | UnaryExpression `LSHIFT_EQUAL` AssignmentExpression
+                          | UnaryExpression `RSHIFT_EQUAL` AssignmentExpression
+                          | UnaryExpression `AND_EQUAL` AssignmentExpression
+                          | UnaryExpression `XOR_EQUAL` AssignmentExpression
+                          | UnaryExpression `OR_EQUAL` AssignmentExpression
+instance Expr AssignmentExpression ConditionalExpression where
+    def = AssignmentExpression
+instance (Expr ConditionalExpression x) => Expr AssignmentExpression x where
+    def = AssignmentExpression . def
 
 type Expression = CommaList AssignmentExpression
 
@@ -282,7 +356,7 @@ data Declaration = Declaration DeclarationSpecifiers (Maybe InitDeclaratorList) 
 
 type DeclarationSpecifiers = SimpleList (Choose StorageClassSpecifier TypeSpecifier TypeQualifier)
 
-type InitDeclaratorList = CommaList InitDeclarator 
+type InitDeclaratorList = CommaList InitDeclarator
 
 data InitDeclarator = InitDeclarator Declarator (Maybe (Pair EQUAL Initializer))
 

@@ -5,6 +5,8 @@ module Unparsers.C89 (
 ) where
 
 import Grammars.C89 (
+    (#:),
+    EndBrace(..),
     fromList,
 
     Choose(..),
@@ -35,32 +37,20 @@ import Grammars.C89 (
     ELSE(..),
     EQUAL(..),
     SEMICOLON(..),
-    BITWISE_AND(..),
-    BITWISE_OR(..),
-    BITWISE_XOR(..),
-    LOGICAL_AND(..),
-    LOGICAL_OR(..),
-    QUESTION(..),
     DOWHILE(..),
 
     PrimaryExpression(..),
     PostfixExpression(..),
-    MemberOp(..),
     ArgumentExpressionList,
     UnaryExpression(..),
     UnaryCrement(..),
     UnaryOperator(..),
     CastExpression(..),
     MultiplicativeExpression(..),
-    MultiplicativeOp(..),
     AdditiveExpression(..),
-    AdditiveOp(..),
     ShiftExpression(..),
-    ShiftOp(..),
     RelationalExpression(..),
-    ComparisonOp(..),
     EqualityExpression(..),
-    EqualityOp(..),
     ANDExpression(..),
     ExclusiveORExpression(..),
     InclusiveORExpression(..),
@@ -68,7 +58,6 @@ import Grammars.C89 (
     LogicalORExpression(..),
     ConditionalExpression(..),
     AssignmentExpression(..),
-    AssignmentOperator(..),
     Expression(..),
     ConstantExpression(..),
 
@@ -226,24 +215,6 @@ instance Prettyable EQUAL where
 instance Prettyable SEMICOLON where
     pretty _ = semi
 
-instance Prettyable BITWISE_AND where
-    pretty _ = char '&'
-
-instance Prettyable BITWISE_OR where
-    pretty _ = char '|'
-
-instance Prettyable BITWISE_XOR where
-    pretty _ = char '^'
-
-instance Prettyable LOGICAL_AND where
-    pretty _ = text "&&"
-
-instance Prettyable LOGICAL_OR where
-    pretty _ = text "||"
-
-instance Prettyable QUESTION where
-    pretty _ = char '?'
-
 instance Prettyable DOWHILE where
     pretty _ = text "while"
 
@@ -258,12 +229,9 @@ instance Prettyable PostfixExpression where
     pretty (PPostfixExpression pe) = pretty pe
     pretty (EPostfixExpression pe l e r) = pretty pe <> pretty l <> pretty e <> pretty r
     pretty (APostfixExpression pe l mael r) = pretty pe <> pretty l <> pretty mael <> pretty r
-    pretty (MPostfixExpression pe mo id) = pretty pe <> pretty mo <> pretty id
+    pretty (pe `DOT` id) = pretty pe <> char '.' <> pretty id
+    pretty (pe `ARROW` id) = pretty pe <> text "->" <> pretty id
     pretty (UPostfixExpression pe uc) = pretty pe <> pretty uc
-
-instance Prettyable MemberOp where
-    pretty DOT = char '.'
-    pretty ARROW = text "->"
 
 --instance Prettyable ArgumentExpressionList where
 --    pretty (CommaList x cl) = pretty x <> pretty cl
@@ -292,78 +260,70 @@ instance Prettyable CastExpression where
     pretty (TCastExpression l tn r ce) = pretty l <> pretty tn <> pretty r <> pretty ce
 
 instance Prettyable MultiplicativeExpression where
-    pretty (MultiplicativeExpression me e) = pretty me <+> pretty e
-
-instance Prettyable MultiplicativeOp where
-    pretty TIMES = char '*'
-    pretty DIV = char '/'
-    pretty MOD = char '%'
+    pretty (MultiplicativeExpression e) = pretty e
+    pretty (me `TIMES` e) = pretty me <+> char '*' <+> pretty e
+    pretty (me `DIV` e) = pretty me <+> char '/' <+> pretty e
+    pretty (me `MOD` e) = pretty me <+> char '%' <+> pretty e
 
 instance Prettyable AdditiveExpression where
-    pretty (AdditiveExpression me e) = pretty me <+> pretty e
-
-instance Prettyable AdditiveOp where
-    pretty PLUS = char '+'
-    pretty MINUS = char '-'
+    pretty (AdditiveExpression e) = pretty e
+    pretty (ae `PLUS` e) = pretty ae <+> char '+' <+> pretty e
+    pretty (ae `MINUS` e) = pretty ae <+> char '-' <+> pretty e
 
 instance Prettyable ShiftExpression where
-    pretty (ShiftExpression me e) = pretty me <+> pretty e
-
-instance Prettyable ShiftOp where
-    pretty LSHIFT = text "<<"
-    pretty RSHIFT = text ">>"
+    pretty (ShiftExpression e) = pretty e
+    pretty (se `LSHIFT` e) = pretty se <+> text "<<" <+> pretty e
+    pretty (se `RSHIFT` e) = pretty se <+> text ">>" <+> pretty e
 
 instance Prettyable RelationalExpression where
-    pretty (RelationalExpression me e) = pretty me <+> pretty e
-
-instance Prettyable ComparisonOp where
-    pretty LESS_THAN = char '<'
-    pretty GREATER_THAN = char '>'
-    pretty LESS_EQUAL = text "<="
-    pretty GREATER_EQUAL = text ">="
+    pretty (RelationalExpression e) = pretty e
+    pretty (re `LESS_THAN` e) = pretty re <+> char '<' <+> pretty e
+    pretty (re `GREATER_THAN` e) = pretty re <+> char '>' <+> pretty e
+    pretty (re `LESS_EQUAL` e) = pretty re <+> text "<=" <+> pretty e
+    pretty (re `GREATER_EQUAL` e) = pretty re <+> text ">=" <+> pretty e
 
 instance Prettyable EqualityExpression where
-    pretty (EqualityExpression me e) = pretty me <+> pretty e
-
-instance Prettyable EqualityOp where
-    pretty EQUALEQUAL = text "=="
-    pretty NOTEQUAL = text "!="
+    pretty (EqualityExpression e) = pretty e
+    pretty (ee `EQUALEQUAL` e) = pretty ee <+> text "==" <+> pretty e
+    pretty (ee `NOTEQUAL` e) = pretty ee <+> text "!=" <+> pretty e
 
 instance Prettyable ANDExpression where
-    pretty (ANDExpression me e) = pretty me <+> pretty e
+    pretty (ANDExpression e) = pretty e
+    pretty (ae `BITWISE_AND` e) = pretty ae <+> char '&' <+> pretty e
 
 instance Prettyable ExclusiveORExpression where
-    pretty (ExclusiveORExpression me e) = pretty me <+> pretty e
+    pretty (ExclusiveORExpression e) = pretty e
+    pretty (oe `BITWISE_XOR` e) = pretty oe <+> char '^' <+> pretty e
 
 instance Prettyable InclusiveORExpression where
-    pretty (InclusiveORExpression me e) = pretty me <+> pretty e
+    pretty (InclusiveORExpression e) = pretty e
+    pretty (oe `BITWISE_OR` e) = pretty oe <+> char '|' <+> pretty e
 
 instance Prettyable LogicalANDExpression where
-    pretty (LogicalANDExpression me e) = pretty me <+> pretty e
+    pretty (LogicalANDExpression e) = pretty e
+    pretty (ae `LOGICAL_AND` e) = pretty ae <+> text "&&" <+> pretty e
 
 instance Prettyable LogicalORExpression where
-    pretty (LogicalORExpression me e) = pretty me <+> pretty e
+    pretty (LogicalORExpression e) = pretty e
+    pretty (oe `LOGICAL_OR` e) = pretty oe <+> text "||" <+> pretty e
 
 instance Prettyable ConditionalExpression where
-    pretty (ConditionalExpression le (Just (Quad q e c ce))) = hsep [pretty le, pretty q, pretty e, pretty c, pretty ce]
-    pretty (ConditionalExpression le Nothing) = pretty le
+    pretty (ConditionalExpression le) = pretty le
+    pretty (le `QUESTION` (Trio e c ce)) = hsep [pretty le, char '?', pretty e, pretty c, pretty ce]
 
 instance Prettyable AssignmentExpression where
-    pretty (AssignmentExpression (Left ce)) = pretty ce
-    pretty (AssignmentExpression (Right (Trio ue ao e))) = pretty ue <+> pretty ao <+> pretty e
-
-instance Prettyable AssignmentOperator where
-    pretty ASSIGN = char '='
-    pretty TIMES_EQUAL = text "*="
-    pretty DIV_EQUAL = text "/="
-    pretty MOD_EQUAL = text "%="
-    pretty PLUS_EQUAL = text "+="
-    pretty MINUS_EQUAL = text "-="
-    pretty LSHIFT_EQUAL = text "<<="
-    pretty RSHIFT_EQUAL = text ">>="
-    pretty AND_EQUAL = text "&="
-    pretty XOR_EQUAL = text "^="
-    pretty OR_EQUAL = text "|="
+    pretty (AssignmentExpression ce) = pretty ce
+    pretty (ue `ASSIGN` e) = pretty ue <+> char '=' <+> pretty e
+    pretty (ue `TIMES_EQUAL` e) = pretty ue <+> text "*=" <+> pretty e
+    pretty (ue `DIV_EQUAL` e) = pretty ue <+> text "/=" <+> pretty e
+    pretty (ue `MOD_EQUAL` e) = pretty ue <+> text "%=" <+> pretty e
+    pretty (ue `PLUS_EQUAL` e) = pretty ue <+> text "+=" <+> pretty e
+    pretty (ue `MINUS_EQUAL` e) = pretty ue <+> text "-=" <+> pretty e
+    pretty (ue `LSHIFT_EQUAL` e) = pretty ue <+> text "<<=" <+> pretty e
+    pretty (ue `RSHIFT_EQUAL` e) = pretty ue <+> text ">>=" <+> pretty e
+    pretty (ue `AND_EQUAL` e) = pretty ue <+> text "&=" <+> pretty e
+    pretty (ue `XOR_EQUAL` e) = pretty ue <+> text "^=" <+> pretty e
+    pretty (ue `OR_EQUAL` e) = pretty ue <+> text "|=" <+> pretty e
 
 instance Prettyable Expression where
     pretty (CommaList x cl) = pretty x <> pretty cl

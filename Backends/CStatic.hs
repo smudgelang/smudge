@@ -170,6 +170,26 @@ stateNameFunction (StateMachine smName) ss =
         array_index_e = (#:) (EPostfixExpression names_var_e LEFTSQUARE (fromList [(#:) state_var_e (:#)]) RIGHTSQUARE) (:#)
         safe_array_index_e = (#:) (bounds_check_e `QUESTION` (Trio (fromList [array_index_e]) COLON default_state)) (:#)
 
+handleStateEventDeclaration :: StateMachine -> State -> Event -> Declaration
+handleStateEventDeclaration (StateMachine smName) (State s) (Event evName) =
+    Declaration
+    (fromList [A STATIC, B VOID])
+    (Just $ fromList [InitDeclarator (Declarator Nothing (PDirectDeclarator
+          (IDirectDeclarator f_name)
+          LEFTPAREN
+          (Just $ Left $ ParameterTypeList
+                         (fromList [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
+                                    (Just $ Right $ AbstractDeclarator $ This $ POINTER Nothing Nothing)])
+                         Nothing)
+          RIGHTPAREN)) Nothing])
+    SEMICOLON
+    where
+        smMangledName = mangleIdentifier smName
+        sMangledName = mangleIdentifier s
+        evMangledName = mangleIdentifier evName
+        f_name = smMangledName ++ "_" ++ sMangledName ++ "_" ++ evMangledName
+        event_type = smMangledName ++ "_" ++ evMangledName ++ "_t"
+
 stateEnum :: StateMachine -> [State] -> Declaration
 stateEnum (StateMachine smName) ss =
     Declaration
@@ -195,9 +215,11 @@ instance Backend CStaticOption where
                  "The name of the target file if not derived from source file."])
     generate os gs inputName = writeTranslationUnit tu (outputName os)
         where tu = fromList $ concat tus
-              tus = [[ExternalDeclaration $ Right $ stateEnum sm $ states g,
-                      ExternalDeclaration $ Left $ stateNameFunction sm $ states g,
-                      ExternalDeclaration $ Left $ unhandledEventFunction sm]
+              tus = [[ExternalDeclaration $ Right $ stateEnum sm $ states g]
+                     ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration sm s e
+                         | (n, s) <- labNodes g, e@(Event _) <- map (\ (_, _, h) -> eventOf h) $ out g n]
+                     ++ [ExternalDeclaration $ Left $ stateNameFunction sm $ states g,
+                         ExternalDeclaration $ Left $ unhandledEventFunction sm]
                      ++ [ExternalDeclaration $ Left $ handleEventFunction sm e ss
                          | (e, ss) <- toList $ events g]
                      ++ [ExternalDeclaration $ Left $ handleStateEventFunction sm s e

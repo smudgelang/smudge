@@ -486,8 +486,8 @@ instance Prettyable Statement where
 
 instance Prettyable LabeledStatement where
     pretty (Label i c s) = pretty i <> pretty c $+$ pretty s
-    pretty (CASE ce c s) = text "case" <+> pretty ce <> pretty c $+$ pretty s
-    pretty (DEFAULT c s) = text "default" <> pretty c $+$ pretty s
+    pretty (CASE ce c s) = nest (-indent) (text "case") <+> pretty ce <> pretty c $+$ pretty s
+    pretty (DEFAULT c s) = nest (-indent) (text "default") <> pretty c $+$ pretty s
 
 instance Prettyable CompoundStatement where
     pretty (CompoundStatement l mdl msl r) = pretty l $+$
@@ -499,6 +499,7 @@ instance Prettyable DeclarationList where
     pretty (SimpleList x dl) = pretty x $+$ pretty dl
 
 instance Prettyable StatementList where
+    pretty (SimpleList x (Just (SimpleList l@(LStatement _) sl))) = pretty x $++$ pretty l $+$ pretty sl
     pretty (SimpleList x sl) = pretty x $+$ pretty sl
 
 instance Prettyable ExpressionStatement where

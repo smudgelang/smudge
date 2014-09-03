@@ -12,6 +12,42 @@ import System.FilePath (FilePath, dropExtension, (<.>))
 data CStaticOption = OutFile FilePath
     deriving (Show, Eq)
 
+apply :: PostfixExpression -> [AssignmentExpression] -> PostfixExpression
+apply f [] = APostfixExpression f LEFTPAREN Nothing RIGHTPAREN
+apply f ps = APostfixExpression f LEFTPAREN (Just $ fromList ps) RIGHTPAREN
+
+unhandledEventFunction :: StateMachine -> FunctionDefinition
+unhandledEventFunction (StateMachine smName) =
+    Function
+    (Just $ fromList [A STATIC, B VOID])
+    (Declarator Nothing
+        $ PDirectDeclarator
+          (IDirectDeclarator f_name)
+          LEFTPAREN
+          (Just $ Left $ ParameterTypeList
+                         (fromList [ParameterDeclaration (fromList [C CONST, B CHAR])
+                                    (Just $ Left $ Declarator (Just $ POINTER Nothing Nothing) $ IDirectDeclarator event_var)])
+                         Nothing)
+          RIGHTPAREN)
+    Nothing
+    (CompoundStatement
+    LEFTCURLY
+        Nothing
+        (Just $ fromList [EStatement $ ExpressionStatement
+                          (Just $ fromList [call_assert_f]) SEMICOLON])
+    RIGHTCURLY)
+    where
+        f_name = "UNHANDLED_EVENT"
+        event_var = "e"
+        smMangledName = mangleIdentifier smName
+        event_ex = (#:) event_var (:#)
+        assert_f = (#:) "printf_assert" (:#)
+        assert_s = (#:) (show (smMangledName ++ "[%s]: Unhandled event \"%s\"\n")) (:#)
+        sname_f  = (#:) (smMangledName ++ "_State_name") (:#)
+        state_var = (#:) "state" (:#)
+        call_sname_f = (#:) (apply sname_f [state_var]) (:#)
+        call_assert_f = (#:) (apply assert_f [assert_s, call_sname_f, event_ex]) (:#)
+
 stateNameFunction :: StateMachine -> [State] -> FunctionDefinition
 stateNameFunction (StateMachine smName) ss =
     Function
@@ -101,7 +137,8 @@ instance Backend CStaticOption where
     generate os gs inputName = writeTranslationUnit tu (outputName os)
         where tu = fromList $ graphToCode gs
               graphToCode gs = concat [[(ExternalDeclaration (Right $ stateEnum sm (states g))),
-                                        (ExternalDeclaration (Left $ stateNameFunction sm (states g)))]
+                                        (ExternalDeclaration (Left $ stateNameFunction sm (states g))),
+                                        (ExternalDeclaration (Left $ unhandledEventFunction sm))]
                                        | (sm, g) <- gs]
               states g = [name | (_, name) <- labNodes g]
               writeTranslationUnit u fp = (writeFile fp (renderPretty u)) >> (return fp)

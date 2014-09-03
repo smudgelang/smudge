@@ -17,6 +17,33 @@ apply :: PostfixExpression -> [AssignmentExpression] -> PostfixExpression
 apply f [] = APostfixExpression f LEFTPAREN Nothing RIGHTPAREN
 apply f ps = APostfixExpression f LEFTPAREN (Just $ fromList ps) RIGHTPAREN
 
+handleStateEventFunction :: StateMachine -> State -> Event -> FunctionDefinition
+handleStateEventFunction (StateMachine smName) (State s) (Event evName) =
+    Function
+    (Just $ fromList [A STATIC, B VOID])
+    (Declarator Nothing
+        $ PDirectDeclarator
+          (IDirectDeclarator f_name)
+          LEFTPAREN
+          (Just $ Left $ ParameterTypeList
+                         (fromList [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
+                                    (Just $ Left $ Declarator (Just $ POINTER Nothing Nothing) $ IDirectDeclarator event_var)])
+                         Nothing)
+          RIGHTPAREN)
+    Nothing
+    (CompoundStatement
+    LEFTCURLY
+        Nothing
+        Nothing
+    RIGHTCURLY)
+    where
+        smMangledName = mangleIdentifier smName
+        sMangledName = mangleIdentifier s
+        evMangledName = mangleIdentifier evName
+        f_name = smMangledName ++ "_" ++ sMangledName ++ "_" ++ evMangledName
+        event_type = smMangledName ++ "_" ++ evMangledName ++ "_t"
+        event_var = "e"
+
 handleEventFunction :: StateMachine -> Event -> [State] -> FunctionDefinition
 handleEventFunction (StateMachine smName) (Event evName) ss =
     Function
@@ -173,12 +200,16 @@ instance Backend CStaticOption where
                       ExternalDeclaration $ Left $ unhandledEventFunction sm]
                      ++ [ExternalDeclaration $ Left $ handleEventFunction sm e ss
                          | (e, ss) <- toList $ events g]
+                     ++ [ExternalDeclaration $ Left $ handleStateEventFunction sm s e
+                         | (n, s) <- labNodes g, e@(Event _) <- map (\ (_, _, h) -> eventOf h) $ out g n]
                      | (sm, g) <- gs]
               states g = [s | (_, s) <- labNodes g]
-              events g = foldl insert_event empty [(e', s) | (n, s) <- labNodes g, (_, _, e') <- out g n]
+              events g = foldl insert_event empty [(h, s) | (n, s) <- labNodes g, (_, _, h) <- out g n]
               insert_event m ((Hustle e@(Event _) _), s@(State _)) = insertWith (flip (++)) e [s] m
               insert_event m ((Bustle e@(Event _) _), s@(State _)) = insertWith (flip (++)) e [s] m
               insert_event m                                     _ = m
+              eventOf (Hustle e _) = e
+              eventOf (Bustle e _) = e
               writeTranslationUnit u fp = (writeFile fp (renderPretty u)) >> (return fp)
               getFirstOrDefault :: ([a] -> b) -> b -> [a] -> b
               getFirstOrDefault _ d     [] = d

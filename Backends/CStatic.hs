@@ -33,8 +33,7 @@ unhandledEventFunction (StateMachine smName) =
     (CompoundStatement
     LEFTCURLY
         Nothing
-        (Just $ fromList [EStatement $ ExpressionStatement
-                          (Just $ fromList [call_assert_f]) SEMICOLON])
+        (Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [call_assert_f]) SEMICOLON])
     RIGHTCURLY)
     where
         f_name = "UNHANDLED_EVENT"
@@ -74,42 +73,26 @@ stateNameFunction (StateMachine smName) ss =
                                       SEMICOLON,
                           Declaration (fromList [C CONST, B INT])
                                       (Just $ fromList [InitDeclarator (Declarator Nothing (IDirectDeclarator count_var))
-                                                        (Just $ Pair EQUAL (AInitializer
-                                                                            ((#:)
-                                                                                (((#:) (SIZEOF $ Right $ Trio
-                                                                                        LEFTPAREN
-                                                                                        (TypeName (fromList [Left $ TypeSpecifier names_var]) Nothing)
-                                                                                        RIGHTPAREN) (:#))
-                                                                                 `DIV`
-                                                                                 ((#:) (SIZEOF $ Right $ Trio
-                                                                                        LEFTPAREN
-                                                                                        (TypeName (fromList [Right CONST, Left CHAR])
-                                                                                                  (Just $ AbstractDeclarator $ This $ POINTER Nothing Nothing))
-                                                                                        RIGHTPAREN) (:#)))
-                                                                            (:#)) ))])
+                                                        (Just $ Pair EQUAL (AInitializer names_count_e ))])
                                       SEMICOLON])
-        (Just $ fromList [JStatement $ RETURN
-                          (Just $ fromList [(#:) (
-                                  ((#:)
-                                     (((#:) state_var (:#))
-                                        `LESS_THAN`
-                                     ((#:) count_var (:#)))
-                                  (:#))
-                                  `QUESTION`
-                                  (Trio (fromList [(#:) (EPostfixExpression ((#:) names_var (:#))
-                                                                            LEFTSQUARE
-                                                                            (fromList [(#:) state_var (:#)])
-                                                                            RIGHTSQUARE)
-                                                  (:#)])
-                                        COLON
-                                        ((#:) "\"INVALID_STATE\"" (:#)))
-                                  ) (:#)]) SEMICOLON])
+        (Just $ fromList [JStatement $ RETURN (Just $ fromList [safe_array_index_e]) SEMICOLON])
     RIGHTCURLY)
     where
         smMangledName = mangleIdentifier smName ++ "_State"
         count_var = "state_count"
         state_var = "s"
         names_var = "state_name"
+        names_size_e = (#:) (SIZEOF $ Right $ Trio LEFTPAREN (TypeName (fromList [Left $ TypeSpecifier names_var]) Nothing) RIGHTPAREN) (:#)
+        ptr_size_e = (#:) (SIZEOF $ Right $ Trio LEFTPAREN (TypeName (fromList [Right CONST, Left CHAR])
+                                                                     (Just $ AbstractDeclarator $ This $ POINTER Nothing Nothing)) RIGHTPAREN) (:#)
+        names_count_e = (#:) (names_size_e `DIV` ptr_size_e) (:#)
+        count_var_e = (#:) count_var (:#)
+        state_var_e = (#:) state_var (:#)
+        names_var_e = (#:) names_var (:#)
+        default_state = (#:) (show "INVALID_STATE") (:#)
+        bounds_check_e = (#:) (state_var_e `LESS_THAN` count_var_e) (:#)
+        array_index_e = (#:) (EPostfixExpression names_var_e LEFTSQUARE (fromList [(#:) state_var_e (:#)]) RIGHTSQUARE) (:#)
+        safe_array_index_e = (#:) (bounds_check_e `QUESTION` (Trio (fromList [array_index_e]) COLON default_state)) (:#)
 
 stateEnum :: StateMachine -> [State] -> Declaration
 stateEnum (StateMachine smName) ss =

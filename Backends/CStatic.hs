@@ -5,7 +5,8 @@ import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..), 
 import Grammars.C89
 import Unparsers.C89 (renderPretty)
 
-import Data.Graph.Inductive.Graph (labNodes)
+import Data.Graph.Inductive.Graph (labNodes, out)
+import Data.Map (insertWith, empty, toList)
 import System.Console.GetOpt
 import System.FilePath (FilePath, dropExtension, (<.>))
 
@@ -15,6 +16,32 @@ data CStaticOption = OutFile FilePath
 apply :: PostfixExpression -> [AssignmentExpression] -> PostfixExpression
 apply f [] = APostfixExpression f LEFTPAREN Nothing RIGHTPAREN
 apply f ps = APostfixExpression f LEFTPAREN (Just $ fromList ps) RIGHTPAREN
+
+handleEventFunction :: StateMachine -> Event -> [State] -> FunctionDefinition
+handleEventFunction (StateMachine smName) (Event evName) ss =
+    Function
+    (Just $ fromList [B VOID])
+    (Declarator Nothing
+        $ PDirectDeclarator
+          (IDirectDeclarator f_name)
+          LEFTPAREN
+          (Just $ Left $ ParameterTypeList
+                         (fromList [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
+                                    (Just $ Left $ Declarator (Just $ POINTER Nothing Nothing) $ IDirectDeclarator event_var)])
+                         Nothing)
+          RIGHTPAREN)
+    Nothing
+    (CompoundStatement
+    LEFTCURLY
+        Nothing
+        Nothing
+    RIGHTCURLY)
+    where
+        smMangledName = mangleIdentifier smName
+        evMangledName = mangleIdentifier evName
+        f_name = smMangledName ++ "_" ++ evMangledName
+        event_type = f_name ++ "_t"
+        event_var = "e"
 
 unhandledEventFunction :: StateMachine -> FunctionDefinition
 unhandledEventFunction (StateMachine smName) =
@@ -122,8 +149,13 @@ instance Backend CStaticOption where
               graphToCode gs = concat [[(ExternalDeclaration (Right $ stateEnum sm (states g))),
                                         (ExternalDeclaration (Left $ stateNameFunction sm (states g))),
                                         (ExternalDeclaration (Left $ unhandledEventFunction sm))]
+                                       ++ [ExternalDeclaration $ Left $ handleEventFunction sm e ss | (e, ss) <- toList $ events g]
                                        | (sm, g) <- gs]
               states g = [name | (_, name) <- labNodes g]
+              events g = foldl insert_event empty [(e', s) | (n, s) <- labNodes g, (_, _, e') <- out g n]
+              insert_event m ((Hustle e@(Event _) _), s@(State _)) = insertWith (++) e [s] m
+              insert_event m ((Bustle e@(Event _) _), s@(State _)) = insertWith (++) e [s] m
+              insert_event m                                     _ = m
               writeTranslationUnit u fp = (writeFile fp (renderPretty u)) >> (return fp)
               getFirstOrDefault :: ([a] -> b) -> b -> [a] -> b
               getFirstOrDefault _ d     [] = d

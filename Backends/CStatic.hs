@@ -145,13 +145,14 @@ instance Backend CStaticOption where
                [Option [] ["o"] (ReqArg OutFile "FILE")
                  "The name of the target file if not derived from source file."])
     generate os gs inputName = writeTranslationUnit tu (outputName os)
-        where tu = fromList $ graphToCode gs
-              graphToCode gs = concat [[(ExternalDeclaration (Right $ stateEnum sm (states g))),
-                                        (ExternalDeclaration (Left $ stateNameFunction sm (states g))),
-                                        (ExternalDeclaration (Left $ unhandledEventFunction sm))]
-                                       ++ [ExternalDeclaration $ Left $ handleEventFunction sm e ss | (e, ss) <- toList $ events g]
-                                       | (sm, g) <- gs]
-              states g = [name | (_, name) <- labNodes g]
+        where tu = fromList $ concat tus
+              tus = [[ExternalDeclaration $ Right $ stateEnum sm $ states g,
+                      ExternalDeclaration $ Left $ stateNameFunction sm $ states g,
+                      ExternalDeclaration $ Left $ unhandledEventFunction sm]
+                     ++ [ExternalDeclaration $ Left $ handleEventFunction sm e ss
+                         | (e, ss) <- toList $ events g]
+                     | (sm, g) <- gs]
+              states g = [s | (_, s) <- labNodes g]
               events g = foldl insert_event empty [(e', s) | (n, s) <- labNodes g, (_, _, e') <- out g n]
               insert_event m ((Hustle e@(Event _) _), s@(State _)) = insertWith (++) e [s] m
               insert_event m ((Bustle e@(Event _) _), s@(State _)) = insertWith (++) e [s] m

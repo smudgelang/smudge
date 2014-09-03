@@ -94,7 +94,7 @@ stateNameFunction (StateMachine smName) ss =
                                       (Just $ fromList [InitDeclarator (Declarator (Just $ POINTER Nothing Nothing) $
                                                                         CDirectDeclarator (IDirectDeclarator names_var) LEFTSQUARE Nothing RIGHTSQUARE)
                                                         (Just $ Pair EQUAL (LInitializer LEFTCURLY
-                                                                                         (fromList [AInitializer ((#:) (show $ show s) (:#)) | s <- ss])
+                                                                                         (fromList [AInitializer ((#:) (show s) (:#)) | (State s) <- ss])
                                                                                          Nothing
                                                                                          RIGHTCURLY))])
                                       SEMICOLON,
@@ -130,7 +130,7 @@ stateEnum (StateMachine smName) ss =
     SEMICOLON
     where
         smMangledName = mangleIdentifier smName ++ "_State"
-        ssMangled = [mangleIdentifier (smName ++ show s) | s <- ss]
+        ssMangled = [(mangleIdentifier smName) ++ "_" ++ (mangleIdentifier s) | (State s) <- ss]
 
 makeEnum :: Identifier -> [Identifier] -> TypeSpecifier
 makeEnum smName [] = ENUM (Left $ smName)
@@ -154,8 +154,8 @@ instance Backend CStaticOption where
                      | (sm, g) <- gs]
               states g = [s | (_, s) <- labNodes g]
               events g = foldl insert_event empty [(e', s) | (n, s) <- labNodes g, (_, _, e') <- out g n]
-              insert_event m ((Hustle e@(Event _) _), s@(State _)) = insertWith (++) e [s] m
-              insert_event m ((Bustle e@(Event _) _), s@(State _)) = insertWith (++) e [s] m
+              insert_event m ((Hustle e@(Event _) _), s@(State _)) = insertWith (flip (++)) e [s] m
+              insert_event m ((Bustle e@(Event _) _), s@(State _)) = insertWith (flip (++)) e [s] m
               insert_event m                                     _ = m
               writeTranslationUnit u fp = (writeFile fp (renderPretty u)) >> (return fp)
               getFirstOrDefault :: ([a] -> b) -> b -> [a] -> b

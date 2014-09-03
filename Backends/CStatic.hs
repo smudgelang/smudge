@@ -33,15 +33,37 @@ handleEventFunction (StateMachine smName) (Event evName) ss =
     Nothing
     (CompoundStatement
     LEFTCURLY
-        Nothing
-        Nothing
+        (Just $ fromList [Declaration (fromList [C CONST, B CHAR]) 
+                                      (Just $ fromList [InitDeclarator (Declarator (Just $ POINTER Nothing Nothing) $ IDirectDeclarator name_var)
+                                                        (Just $ Pair EQUAL $ AInitializer evname_e)])
+                                      SEMICOLON])
+        (Just $ fromList [SStatement $ SWITCH LEFTPAREN (fromList [state_var]) RIGHTPAREN $ CStatement $ CompoundStatement LEFTCURLY
+                                       Nothing
+                                       (Just $ fromList $ concat [[LStatement $ case_stmt s, JStatement $ BREAK SEMICOLON] | s <- ssMangled]
+                                                                 ++ [LStatement $ DEFAULT COLON $
+                                                                     EStatement $ ExpressionStatement (Just $ fromList [call_unhandled]) SEMICOLON,
+                                                                     JStatement $ BREAK SEMICOLON])
+                                       RIGHTCURLY])
     RIGHTCURLY)
     where
         smMangledName = mangleIdentifier smName
+        ssMangled = [smMangledName ++ "_" ++ (mangleIdentifier s) | (State s) <- ss]
         evMangledName = mangleIdentifier evName
         f_name = smMangledName ++ "_" ++ evMangledName
         event_type = f_name ++ "_t"
         event_var = "e"
+        name_var = "event_name"
+        event_ex = (#:) event_var (:#)
+        name_ex = (#:) name_var (:#)
+        evname_e = (#:) (show evName) (:#)
+        state_var = (#:) "state" (:#)
+        unhandled = (#:) "UNHANDLED_EVENT" (:#)
+        call_unhandled = (#:) (apply unhandled [name_ex]) (:#)
+        case_stmt s = let state_case = (#:) s (:#)
+                          state_evt_handler = (#:) (s ++ "_" ++ evMangledName) (:#)
+                          call_state_evt_handler = (#:) (apply state_evt_handler [event_ex]) (:#) in
+                        CASE state_case COLON $
+                        EStatement $ ExpressionStatement (Just $ fromList [call_state_evt_handler]) SEMICOLON
 
 unhandledEventFunction :: StateMachine -> FunctionDefinition
 unhandledEventFunction (StateMachine smName) =

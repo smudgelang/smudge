@@ -238,13 +238,13 @@ instance Backend CStaticOption where
                          | (e, _) <- toList $ events g]
                      ++ [ExternalDeclaration $ Right $ stateEnum sm $ states g]
                      ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration sm s e
-                         | (n, s) <- labNodes g, e@(Event _) <- map (eventOf . edgeLabel) $ out g n]
+                         | (n, s@(State _)) <- labNodes g, e@(Event _) <- map (eventOf . edgeLabel) $ out g n]
                      ++ [ExternalDeclaration $ Left $ stateNameFunction sm $ states g,
                          ExternalDeclaration $ Left $ unhandledEventFunction sm]
                      ++ [ExternalDeclaration $ Left $ handleEventFunction sm e ss
                          | (e, ss) <- toList $ events g]
                      ++ [ExternalDeclaration $ Left $ handleStateEventFunction sm s e
-                         | (n, s) <- labNodes g, e@(Event _) <- map (\ (_, _, h) -> eventOf h) $ out g n]
+                         | (n, s@(State _)) <- labNodes g, e@(Event _) <- map (\ (_, _, h) -> eventOf h) $ out g n]
                      | (sm, g) <- gs]
               states g = [s | (_, s) <- labNodes g]
               events g = foldl insert_event empty [(h, s) | (n, s) <- labNodes g, (_, _, h) <- out g n]

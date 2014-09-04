@@ -87,7 +87,7 @@ handleEventFunction debug (StateMachine smName) (Event evName) ss unss =
         event_ex = (#:) event_var (:#)
         name_ex = (#:) name_var (:#)
         evname_e = (#:) (show evName) (:#)
-        state_var = (#:) "state" (:#)
+        state_var = (#:) (smMangledName ++ "_state") (:#)
         unhandled = (#:) (smMangledName ++ "_UNHANDLED_EVENT") (:#)
         call_unhandled = (#:) (apply unhandled (if debug then [name_ex] else [])) (:#)
         unhd_stmt s = let state_case = (#:) s (:#) in
@@ -127,7 +127,7 @@ unhandledEventFunction debug (StateMachine smName) =
         assert_f = (#:) (if debug then "printf_assert" else "assert") (:#)
         assert_s = (#:) (show (smMangledName ++ "[%s]: Unhandled event \"%s\"\n")) (:#)
         sname_f  = (#:) (smMangledName ++ "_State_name") (:#)
-        state_var = (#:) "state" (:#)
+        state_var = (#:) (smMangledName ++ "_state") (:#)
         call_sname_f = (#:) (apply sname_f [state_var]) (:#)
         call_assert_f = (#:) (apply assert_f (if debug then [assert_s, call_sname_f, event_ex] else [])) (:#)
 
@@ -220,14 +220,15 @@ handleEventDeclaration (StateMachine smName) (Event evName) =
 stateVarDeclaration :: StateMachine -> State -> Declaration
 stateVarDeclaration (StateMachine smName) (State s) =
     Declaration
-    (fromList [A STATIC, B $ TypeSpecifier smMangledName])
+    (fromList [A STATIC, B $ TypeSpecifier smEnum])
     (Just $ fromList [InitDeclarator (Declarator Nothing (IDirectDeclarator state_var)) 
                                      (Just $ Pair EQUAL $ AInitializer ((#:) sMangled (:#)))])
     SEMICOLON
     where
-        smMangledName = mangleIdentifier smName ++ "_State"
-        sMangled = (mangleIdentifier smName) ++ "_" ++ (mangleIdentifier s)
-        state_var = "state"
+        smMangledName = mangleIdentifier smName
+        smEnum = smMangledName ++ "_State"
+        sMangled = smMangledName ++ "_" ++ (mangleIdentifier s)
+        state_var = smMangledName ++ "_state"
 
 stateEnum :: StateMachine -> [State] -> Declaration
 stateEnum (StateMachine smName) ss =

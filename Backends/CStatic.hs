@@ -5,7 +5,7 @@ import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..), 
 import Grammars.C89
 import Unparsers.C89 (renderPretty)
 
-import Data.Graph.Inductive.Graph (labNodes, out)
+import Data.Graph.Inductive.Graph (labNodes, lab, out)
 import Data.List ((\\))
 import Data.Map (insertWith, empty, toList)
 import System.Console.GetOpt
@@ -18,8 +18,8 @@ apply :: PostfixExpression -> [AssignmentExpression] -> PostfixExpression
 apply f [] = APostfixExpression f LEFTPAREN Nothing RIGHTPAREN
 apply f ps = APostfixExpression f LEFTPAREN (Just $ fromList ps) RIGHTPAREN
 
-handleStateEventFunction :: StateMachine -> State -> Event -> FunctionDefinition
-handleStateEventFunction (StateMachine smName) (State s) (Event evName) =
+handleStateEventFunction :: StateMachine -> State -> Happening -> State -> FunctionDefinition
+handleStateEventFunction (StateMachine smName) (State s) h (State s') =
     Function
     (Just $ fromList [A STATIC, B VOID])
     (Declarator Nothing
@@ -35,15 +35,21 @@ handleStateEventFunction (StateMachine smName) (State s) (Event evName) =
     (CompoundStatement
     LEFTCURLY
         Nothing
-        Nothing
+        (Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [assign_state]) SEMICOLON])
     RIGHTCURLY)
     where
         smMangledName = mangleIdentifier smName
         sMangledName = mangleIdentifier s
-        evMangledName = mangleIdentifier evName
+        destStateMangledName = mangleIdentifier s'
+        evMangledName = case h of 
+                          (Hustle (Event evName) _) -> mangleIdentifier evName
+                          (Bustle (Event evName) _) -> mangleIdentifier evName
         f_name = smMangledName ++ "_" ++ sMangledName ++ "_" ++ evMangledName
         event_type = smMangledName ++ "_" ++ evMangledName ++ "_t"
         event_var = "e"
+        state_var = (#:) (smMangledName ++ "_state") (:#)
+        dest_state = (#:) (smMangledName ++ "_" ++ destStateMangledName) (:#)
+        assign_state = (state_var `ASSIGN` dest_state)
 
 handleEventFunction :: Bool -> StateMachine -> Event -> [State] -> [State] -> FunctionDefinition
 handleEventFunction debug (StateMachine smName) (Event evName) ss unss =
@@ -289,8 +295,8 @@ instance Backend CStaticOption where
                      ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug sm]
                      ++ [ExternalDeclaration $ Left $ handleEventFunction debug sm e ss (states g \\ ss)
                          | (e, ss) <- toList $ events g]
-                     ++ [ExternalDeclaration $ Left $ handleStateEventFunction sm s e
-                         | (n, s@(State _)) <- labNodes g, e@(Event _) <- map (\ (_, _, h) -> eventOf h) $ out g n]
+                     ++ [ExternalDeclaration $ Left $ handleStateEventFunction sm s h s'
+                         | (n, s@(State _)) <- labNodes g, (_, n', h) <- out g n, (Just s'@(State _)) <- [lab g n'], e@(Event _) <- [eventOf h]]
                      | (sm, g) <- gs]
               states g = [s | (_, s) <- labNodes g]
               events g = foldl insert_event empty [(h, s) | (n, s) <- labNodes g, (_, _, h) <- out g n]

@@ -209,6 +209,18 @@ handleEventDeclaration (StateMachine smName) (Event evName) =
         f_name = smMangledName ++ "_" ++ evMangledName
         event_type = smMangledName ++ "_" ++ evMangledName ++ "_t"
 
+stateVarDeclaration :: StateMachine -> State -> Declaration
+stateVarDeclaration (StateMachine smName) (State s) =
+    Declaration
+    (fromList [A STATIC, B $ TypeSpecifier smMangledName])
+    (Just $ fromList [InitDeclarator (Declarator Nothing (IDirectDeclarator state_var)) 
+                                     (Just $ Pair EQUAL $ AInitializer ((#:) sMangled (:#)))])
+    SEMICOLON
+    where
+        smMangledName = mangleIdentifier smName ++ "_State"
+        sMangled = (mangleIdentifier smName) ++ "_" ++ (mangleIdentifier s)
+        state_var = "state"
+
 stateEnum :: StateMachine -> [State] -> Declaration
 stateEnum (StateMachine smName) ss =
     Declaration
@@ -259,6 +271,7 @@ instance Backend CStaticOption where
                      ++ [ExternalDeclaration $ Right $ handleEventDeclaration sm e
                          | (e, _) <- toList $ events g]
                      ++ [ExternalDeclaration $ Right $ stateEnum sm $ states g]
+                     ++ [ExternalDeclaration $ Right $ stateVarDeclaration sm $ (states g) !! 0]
                      ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration sm s e
                          | (n, s@(State _)) <- labNodes g, e@(Event _) <- map (eventOf . edgeLabel) $ out g n]
                      ++ [ExternalDeclaration $ Left $ stateNameFunction sm $ states g,

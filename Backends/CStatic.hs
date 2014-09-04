@@ -84,7 +84,7 @@ handleEventFunction (StateMachine smName) (Event evName) ss =
         name_ex = (#:) name_var (:#)
         evname_e = (#:) (show evName) (:#)
         state_var = (#:) "state" (:#)
-        unhandled = (#:) "UNHANDLED_EVENT" (:#)
+        unhandled = (#:) (smMangledName ++ "_UNHANDLED_EVENT") (:#)
         call_unhandled = (#:) (apply unhandled [name_ex]) (:#)
         case_stmt s = let state_case = (#:) s (:#)
                           state_evt_handler = (#:) (s ++ "_" ++ evMangledName) (:#)
@@ -112,9 +112,9 @@ unhandledEventFunction (StateMachine smName) =
         (Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [call_assert_f]) SEMICOLON])
     RIGHTCURLY)
     where
-        f_name = "UNHANDLED_EVENT"
         event_var = "e"
         smMangledName = mangleIdentifier smName
+        f_name = smMangledName ++ "_UNHANDLED_EVENT"
         event_ex = (#:) event_var (:#)
         assert_f = (#:) "printf_assert" (:#)
         assert_s = (#:) (show (smMangledName ++ "[%s]: Unhandled event \"%s\"\n")) (:#)

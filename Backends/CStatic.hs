@@ -217,7 +217,7 @@ instance Backend CStaticOption where
         where tu = fromList $ concat tus
               tus = [[ExternalDeclaration $ Right $ stateEnum sm $ states g]
                      ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration sm s e
-                         | (n, s) <- labNodes g, e@(Event _) <- map (\ (_, _, h) -> eventOf h) $ out g n]
+                         | (n, s) <- labNodes g, e@(Event _) <- map (eventOf . edgeLabel) $ out g n]
                      ++ [ExternalDeclaration $ Left $ stateNameFunction sm $ states g,
                          ExternalDeclaration $ Left $ unhandledEventFunction sm]
                      ++ [ExternalDeclaration $ Left $ handleEventFunction sm e ss
@@ -230,6 +230,7 @@ instance Backend CStaticOption where
               insert_event m ((Hustle e@(Event _) _), s@(State _)) = insertWith (flip (++)) e [s] m
               insert_event m ((Bustle e@(Event _) _), s@(State _)) = insertWith (flip (++)) e [s] m
               insert_event m                                     _ = m
+              edgeLabel (_, _, l) = l
               eventOf (Hustle e _) = e
               eventOf (Bustle e _) = e
               writeTranslationUnit u fp = (writeFile fp (renderPretty u)) >> (return fp)

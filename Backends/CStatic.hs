@@ -228,13 +228,35 @@ makeEnum smName ss =
     (fromList [Enumerator s Nothing | s <- ss])
     RIGHTCURLY))
 
+eventStruct :: StateMachine -> Event -> Declaration
+eventStruct (StateMachine smName) (Event evName) =
+    Declaration
+    (fromList [A TYPEDEF,
+               B (makeStruct event_type [])])
+    (Just $ fromList [InitDeclarator (Declarator Nothing (IDirectDeclarator event_type)) Nothing])
+    SEMICOLON
+    where
+        smMangledName = mangleIdentifier smName
+        evMangledName = mangleIdentifier evName
+        event_type = smMangledName ++ "_" ++ evMangledName ++ "_t"
+
+makeStruct :: Identifier -> [(SpecifierQualifierList, Identifier)] -> TypeSpecifier
+makeStruct smName [] = STRUCT (Left $ smName)
+makeStruct smName ss = 
+    STRUCT (Right (Quad (Just $ smName)
+    LEFTCURLY
+    (fromList [StructDeclaration sqs (fromList [StructDeclarator $ This $ Declarator Nothing $ IDirectDeclarator id]) SEMICOLON | (sqs, id) <- ss])
+    RIGHTCURLY))
+
 instance Backend CStaticOption where
     options = ("c",
                [Option [] ["o"] (ReqArg OutFile "FILE")
                  "The name of the target file if not derived from source file."])
     generate os gs inputName = writeTranslationUnit tu (outputName os)
         where tu = fromList $ concat tus
-              tus = [[ExternalDeclaration $ Right $ handleEventDeclaration sm e
+              tus = [[ExternalDeclaration $ Right $ eventStruct sm e
+                         | (e, _) <- toList $ events g]
+                     ++ [ExternalDeclaration $ Right $ handleEventDeclaration sm e
                          | (e, _) <- toList $ events g]
                      ++ [ExternalDeclaration $ Right $ stateEnum sm $ states g]
                      ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration sm s e

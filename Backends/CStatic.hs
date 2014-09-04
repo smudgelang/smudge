@@ -10,7 +10,7 @@ import Data.Map (insertWith, empty, toList)
 import System.Console.GetOpt
 import System.FilePath (FilePath, dropExtension, (<.>))
 
-data CStaticOption = OutFile FilePath
+data CStaticOption = OutFile FilePath | NoDebug
     deriving (Show, Eq)
 
 apply :: PostfixExpression -> [AssignmentExpression] -> PostfixExpression
@@ -44,8 +44,8 @@ handleStateEventFunction (StateMachine smName) (State s) (Event evName) =
         event_type = smMangledName ++ "_" ++ evMangledName ++ "_t"
         event_var = "e"
 
-handleEventFunction :: StateMachine -> Event -> [State] -> FunctionDefinition
-handleEventFunction (StateMachine smName) (Event evName) ss =
+handleEventFunction :: Bool -> StateMachine -> Event -> [State] -> FunctionDefinition
+handleEventFunction debug (StateMachine smName) (Event evName) ss =
     Function
     (Just $ fromList [B VOID])
     (Declarator Nothing
@@ -60,10 +60,11 @@ handleEventFunction (StateMachine smName) (Event evName) ss =
     Nothing
     (CompoundStatement
     LEFTCURLY
+      (if not debug then Nothing else
         (Just $ fromList [Declaration (fromList [C CONST, B CHAR]) 
                                       (Just $ fromList [InitDeclarator (Declarator (Just $ POINTER Nothing Nothing) $ IDirectDeclarator name_var)
                                                         (Just $ Pair EQUAL $ AInitializer evname_e)])
-                                      SEMICOLON])
+                                      SEMICOLON]))
         (Just $ fromList [SStatement $ SWITCH LEFTPAREN (fromList [state_var]) RIGHTPAREN $ CStatement $ CompoundStatement LEFTCURLY
                                        Nothing
                                        (Just $ fromList $ concat [[LStatement $ case_stmt s, JStatement $ BREAK SEMICOLON] | s <- ssMangled]
@@ -85,25 +86,26 @@ handleEventFunction (StateMachine smName) (Event evName) ss =
         evname_e = (#:) (show evName) (:#)
         state_var = (#:) "state" (:#)
         unhandled = (#:) (smMangledName ++ "_UNHANDLED_EVENT") (:#)
-        call_unhandled = (#:) (apply unhandled [name_ex]) (:#)
+        call_unhandled = (#:) (apply unhandled (if debug then [name_ex] else [])) (:#)
         case_stmt s = let state_case = (#:) s (:#)
                           state_evt_handler = (#:) (s ++ "_" ++ evMangledName) (:#)
                           call_state_evt_handler = (#:) (apply state_evt_handler [event_ex]) (:#) in
                         CASE state_case COLON $
                         EStatement $ ExpressionStatement (Just $ fromList [call_state_evt_handler]) SEMICOLON
 
-unhandledEventFunction :: StateMachine -> FunctionDefinition
-unhandledEventFunction (StateMachine smName) =
+unhandledEventFunction :: Bool -> StateMachine -> FunctionDefinition
+unhandledEventFunction debug (StateMachine smName) =
     Function
     (Just $ fromList [A STATIC, B VOID])
     (Declarator Nothing
         $ PDirectDeclarator
           (IDirectDeclarator f_name)
           LEFTPAREN
-          (Just $ Left $ ParameterTypeList
+          (if not debug then Nothing else
+            (Just $ Left $ ParameterTypeList
                          (fromList [ParameterDeclaration (fromList [C CONST, B CHAR])
                                     (Just $ Left $ Declarator (Just $ POINTER Nothing Nothing) $ IDirectDeclarator event_var)])
-                         Nothing)
+                         Nothing))
           RIGHTPAREN)
     Nothing
     (CompoundStatement
@@ -116,12 +118,12 @@ unhandledEventFunction (StateMachine smName) =
         smMangledName = mangleIdentifier smName
         f_name = smMangledName ++ "_UNHANDLED_EVENT"
         event_ex = (#:) event_var (:#)
-        assert_f = (#:) "printf_assert" (:#)
+        assert_f = (#:) (if debug then "printf_assert" else "assert") (:#)
         assert_s = (#:) (show (smMangledName ++ "[%s]: Unhandled event \"%s\"\n")) (:#)
         sname_f  = (#:) (smMangledName ++ "_State_name") (:#)
         state_var = (#:) "state" (:#)
         call_sname_f = (#:) (apply sname_f [state_var]) (:#)
-        call_assert_f = (#:) (apply assert_f [assert_s, call_sname_f, event_ex]) (:#)
+        call_assert_f = (#:) (apply assert_f (if debug then [assert_s, call_sname_f, event_ex] else [])) (:#)
 
 stateNameFunction :: StateMachine -> [State] -> FunctionDefinition
 stateNameFunction (StateMachine smName) ss =
@@ -263,7 +265,9 @@ makeStruct smName ss =
 instance Backend CStaticOption where
     options = ("c",
                [Option [] ["o"] (ReqArg OutFile "FILE")
-                 "The name of the target file if not derived from source file."])
+                 "The name of the target file if not derived from source file.",
+                Option [] ["no-debug"] (NoArg NoDebug)
+                 "Don't generate debugging information"])
     generate os gs inputName = writeTranslationUnit tu (outputName os)
         where tu = fromList $ concat tus
               tus = [[ExternalDeclaration $ Right $ eventStruct sm e
@@ -274,9 +278,9 @@ instance Backend CStaticOption where
                      ++ [ExternalDeclaration $ Right $ stateVarDeclaration sm $ [s | s@(State _) <- (states g)] !! 0]
                      ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration sm s e
                          | (n, s@(State _)) <- labNodes g, e@(Event _) <- map (eventOf . edgeLabel) $ out g n]
-                     ++ [ExternalDeclaration $ Left $ stateNameFunction sm $ states g,
-                         ExternalDeclaration $ Left $ unhandledEventFunction sm]
-                     ++ [ExternalDeclaration $ Left $ handleEventFunction sm e ss
+                     ++ (if debug then [ExternalDeclaration $ Left $ stateNameFunction sm $ states g] else [])
+                     ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug sm]
+                     ++ [ExternalDeclaration $ Left $ handleEventFunction debug sm e ss
                          | (e, ss) <- toList $ events g]
                      ++ [ExternalDeclaration $ Left $ handleStateEventFunction sm s e
                          | (n, s@(State _)) <- labNodes g, e@(Event _) <- map (\ (_, _, h) -> eventOf h) $ out g n]
@@ -295,3 +299,6 @@ instance Backend CStaticOption where
               getFirstOrDefault f _ (x:xs) = f xs
               outputName ((OutFile f):_) = f
               outputName xs = getFirstOrDefault outputName ((dropExtension inputName) <.> "c") xs
+              doDebug ((NoDebug):_) = False
+              doDebug xs = getFirstOrDefault doDebug True xs
+              debug = doDebug os

@@ -271,7 +271,7 @@ instance Backend CStaticOption where
                      ++ [ExternalDeclaration $ Right $ handleEventDeclaration sm e
                          | (e, _) <- toList $ events g]
                      ++ [ExternalDeclaration $ Right $ stateEnum sm $ states g]
-                     ++ [ExternalDeclaration $ Right $ stateVarDeclaration sm $ (states g) !! 0]
+                     ++ [ExternalDeclaration $ Right $ stateVarDeclaration sm $ [s | s@(State _) <- (states g)] !! 0]
                      ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration sm s e
                          | (n, s@(State _)) <- labNodes g, e@(Event _) <- map (eventOf . edgeLabel) $ out g n]
                      ++ [ExternalDeclaration $ Left $ stateNameFunction sm $ states g,

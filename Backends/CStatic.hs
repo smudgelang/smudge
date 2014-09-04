@@ -190,6 +190,25 @@ handleStateEventDeclaration (StateMachine smName) (State s) (Event evName) =
         f_name = smMangledName ++ "_" ++ sMangledName ++ "_" ++ evMangledName
         event_type = smMangledName ++ "_" ++ evMangledName ++ "_t"
 
+handleEventDeclaration :: StateMachine -> Event -> Declaration
+handleEventDeclaration (StateMachine smName) (Event evName) =
+    Declaration
+    (fromList [B VOID])
+    (Just $ fromList [InitDeclarator (Declarator Nothing (PDirectDeclarator
+          (IDirectDeclarator f_name)
+          LEFTPAREN
+          (Just $ Left $ ParameterTypeList
+                         (fromList [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
+                                    (Just $ Right $ AbstractDeclarator $ This $ POINTER Nothing Nothing)])
+                         Nothing)
+          RIGHTPAREN)) Nothing])
+    SEMICOLON
+    where
+        smMangledName = mangleIdentifier smName
+        evMangledName = mangleIdentifier evName
+        f_name = smMangledName ++ "_" ++ evMangledName
+        event_type = smMangledName ++ "_" ++ evMangledName ++ "_t"
+
 stateEnum :: StateMachine -> [State] -> Declaration
 stateEnum (StateMachine smName) ss =
     Declaration
@@ -215,7 +234,9 @@ instance Backend CStaticOption where
                  "The name of the target file if not derived from source file."])
     generate os gs inputName = writeTranslationUnit tu (outputName os)
         where tu = fromList $ concat tus
-              tus = [[ExternalDeclaration $ Right $ stateEnum sm $ states g]
+              tus = [[ExternalDeclaration $ Right $ handleEventDeclaration sm e
+                         | (e, _) <- toList $ events g]
+                     ++ [ExternalDeclaration $ Right $ stateEnum sm $ states g]
                      ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration sm s e
                          | (n, s) <- labNodes g, e@(Event _) <- map (eventOf . edgeLabel) $ out g n]
                      ++ [ExternalDeclaration $ Left $ stateNameFunction sm $ states g,

@@ -499,7 +499,13 @@ instance Prettyable DeclarationList where
     pretty (SimpleList x dl) = pretty x $+$ pretty dl
 
 instance Prettyable StatementList where
+    pretty (SimpleList l@(CStatement _) sl) = pretty l $++$ pretty sl
+    pretty (SimpleList l@(SStatement _) sl) = pretty l $++$ pretty sl
+    pretty (SimpleList l@(IStatement _) sl) = pretty l $++$ pretty sl
     pretty (SimpleList x (Just (SimpleList l@(LStatement _) sl))) = pretty x $++$ pretty l $+$ pretty sl
+    pretty (SimpleList x (Just (SimpleList l@(CStatement _) sl))) = pretty x $++$ pretty l $++$ pretty sl
+    pretty (SimpleList x (Just (SimpleList l@(SStatement _) sl))) = pretty x $++$ pretty l $++$ pretty sl
+    pretty (SimpleList x (Just (SimpleList l@(IStatement _) sl))) = pretty x $++$ pretty l $++$ pretty sl
     pretty (SimpleList x sl) = pretty x $+$ pretty sl
 
 instance Prettyable ExpressionStatement where

@@ -11,7 +11,7 @@ import Data.Map (insertWith, empty, toList)
 import System.Console.GetOpt
 import System.FilePath (FilePath, dropExtension, (<.>))
 
-data CStaticOption = OutFile FilePath | NoDebug
+data CStaticOption = OutFile FilePath | Header FilePath | NoDebug
     deriving (Show, Eq)
 
 apply :: PostfixExpression -> [AssignmentExpression] -> PostfixExpression
@@ -359,15 +359,20 @@ instance Backend CStaticOption where
     options = ("c",
                [Option [] ["o"] (ReqArg OutFile "FILE")
                  "The name of the target file if not derived from source file.",
+                Option [] ["h"] (ReqArg Header "FILE")
+                 "The name of the target header file if not derived from source file.",
                 Option [] ["no-debug"] (NoArg NoDebug)
                  "Don't generate debugging information"])
-    generate os gs inputName = writeTranslationUnit tu (outputName os)
-        where tu = fromList $ concat tus
-              tus = [[ExternalDeclaration $ Right $ eventStruct sm e
+    generate os gs inputName = sequence [writeTranslationUnit hdr $ headerName os,
+                                         writeTranslationUnit src $ outputName os]
+        where src = fromList $ concat tus
+              hdr = fromList $ concat tuh
+              tuh = [[ExternalDeclaration $ Right $ eventStruct sm e
                          | (e, _) <- toList $ events g]
                      ++ [ExternalDeclaration $ Right $ handleEventDeclaration sm e
                          | (e, _) <- toList $ events g]
-                     ++ [ExternalDeclaration $ Right $ stateEnum sm $ states g]
+                     | (sm, g) <- gs]
+              tus = [[ExternalDeclaration $ Right $ stateEnum sm $ states g]
                      ++ [ExternalDeclaration $ Right $ stateVarDeclaration sm $ [s | s@(State _) <- (states g)] !! 0]
                      ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration sm s e
                          | (n, s@(State _)) <- labNodes g, e <- map (eventOf . edgeLabel) $ out g n]
@@ -397,6 +402,8 @@ instance Backend CStaticOption where
               getFirstOrDefault f _ (x:xs) = f xs
               outputName ((OutFile f):_) = f
               outputName xs = getFirstOrDefault outputName ((dropExtension inputName) <.> "c") xs
+              headerName ((Header f):_) = f
+              headerName xs = getFirstOrDefault headerName ((dropExtension inputName) <.> "h") xs
               doDebug ((NoDebug):_) = False
               doDebug xs = getFirstOrDefault doDebug True xs
               debug = doDebug os

@@ -105,14 +105,16 @@ main = do
                                 GraphVizOption a -> True
                                 otherwise -> False
                     let gvos = map (\ (GraphVizOption a) -> a) $ filter filt os
-                    outputName <- generate gvos gs fileName
-                    putStrLn $ "Wrote file \"" ++ outputName ++ "\""
+                    outputNames <- generate gvos gs fileName
+                    mapM_ putStrLn $ do outputName <- outputNames
+                                        ["Wrote file \"" ++ outputName ++ "\""]
                     let filt' o =
                             case o of
                                 CStaticOption a -> True
                                 otherwise -> False
                     let csos = map (\ (CStaticOption a) -> a) $ filter filt' os
-                    outputName <- generate csos gs fileName
-                    putStrLn $ "Wrote file \"" ++ outputName ++ "\""
+                    outputNames <- generate csos gs fileName
+                    mapM_ putStrLn $ do outputName <- outputNames
+                                        ["Wrote file \"" ++ outputName ++ "\""]
 
         (_,              _,  _) -> printUsage

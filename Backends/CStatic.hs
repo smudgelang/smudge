@@ -18,6 +18,34 @@ apply :: PostfixExpression -> [AssignmentExpression] -> PostfixExpression
 apply f [] = APostfixExpression f LEFTPAREN Nothing RIGHTPAREN
 apply f ps = APostfixExpression f LEFTPAREN (Just $ fromList ps) RIGHTPAREN
 
+changeStateFunction :: StateMachine -> FunctionDefinition
+changeStateFunction (StateMachine smName) =
+    Function
+    (Just $ fromList [A STATIC, B VOID])
+    (Declarator Nothing
+        $ PDirectDeclarator
+          (IDirectDeclarator $ f_name)
+          LEFTPAREN
+          (Just $ Left $ ParameterTypeList
+                         (fromList [ParameterDeclaration (fromList [B $ TypeSpecifier smEnum])
+                                    (Just $ Left $ Declarator Nothing $ IDirectDeclarator state_param)])
+                         Nothing)
+          RIGHTPAREN)
+    Nothing
+    (CompoundStatement
+    LEFTCURLY
+        Nothing
+        (Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [assign_state]) SEMICOLON])
+    RIGHTCURLY)
+    where
+        smMangledName = mangleIdentifier smName
+        smEnum = smMangledName ++ "_State"
+        f_name = smMangledName ++ "_change_state"
+        state_param = "s"
+        state_var = (#:) (smMangledName ++ "_state") (:#)
+        dest_state = (#:) state_param (:#)
+        assign_state = (state_var `ASSIGN` dest_state)
+
 handleStateEventFunction :: StateMachine -> State -> Happening -> State -> FunctionDefinition
 handleStateEventFunction (StateMachine smName) (State s) h (State s') =
     Function
@@ -35,7 +63,7 @@ handleStateEventFunction (StateMachine smName) (State s) h (State s') =
     (CompoundStatement
     LEFTCURLY
         Nothing
-        (Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [assign_state]) SEMICOLON])
+        (Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [call_change_state]) SEMICOLON])
     RIGHTCURLY)
     where
         smMangledName = mangleIdentifier smName
@@ -47,9 +75,9 @@ handleStateEventFunction (StateMachine smName) (State s) h (State s') =
         f_name = smMangledName ++ "_" ++ sMangledName ++ "_" ++ evMangledName
         event_type = smMangledName ++ "_" ++ evMangledName ++ "_t"
         event_var = "e"
-        state_var = (#:) (smMangledName ++ "_state") (:#)
+        change_state = (#:) (smMangledName ++ "_change_state") (:#)
         dest_state = (#:) (smMangledName ++ "_" ++ destStateMangledName) (:#)
-        assign_state = (state_var `ASSIGN` dest_state)
+        call_change_state = (#:) (apply change_state [dest_state]) (:#)
 
 handleEventFunction :: Bool -> StateMachine -> Event -> [State] -> [State] -> FunctionDefinition
 handleEventFunction debug (StateMachine smName) (Event evName) ss unss =
@@ -292,7 +320,8 @@ instance Backend CStaticOption where
                      ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration sm s e
                          | (n, s@(State _)) <- labNodes g, e@(Event _) <- map (eventOf . edgeLabel) $ out g n]
                      ++ (if debug then [ExternalDeclaration $ Left $ stateNameFunction sm $ states g] else [])
-                     ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug sm]
+                     ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug sm,
+                         ExternalDeclaration $ Left $ changeStateFunction sm]
                      ++ [ExternalDeclaration $ Left $ handleEventFunction debug sm e ss (states g \\ ss)
                          | (e, ss) <- toList $ events g]
                      ++ [ExternalDeclaration $ Left $ handleStateEventFunction sm s h s'

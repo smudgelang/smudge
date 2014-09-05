@@ -63,7 +63,7 @@ handleStateEventFunction (StateMachine smName) (State s) h (State s') =
     (CompoundStatement
     LEFTCURLY
         Nothing
-        (Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [call_change_state]) SEMICOLON])
+        (Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [se]) SEMICOLON | se <- side_effects])
     RIGHTCURLY)
     where
         smMangledName = mangleIdentifier smName
@@ -75,9 +75,13 @@ handleStateEventFunction (StateMachine smName) (State s) h (State s') =
         f_name = smMangledName ++ "_" ++ sMangledName ++ "_" ++ evMangledName
         event_type = smMangledName ++ "_" ++ evMangledName ++ "_t"
         event_var = "e"
+        event_ex = (#:) event_var (:#)
         change_state = (#:) (smMangledName ++ "_change_state") (:#)
         dest_state = (#:) (smMangledName ++ "_" ++ destStateMangledName) (:#)
-        call_change_state = (#:) (apply change_state [dest_state]) (:#)
+        call_change = (#:) (apply change_state [dest_state]) (:#)
+        side_effects = case h of
+                          (Hustle _ ses) -> [(#:) (apply ((#:) se (:#)) [event_ex]) (:#) | (FuncVoid se) <- ses] ++ [call_change]
+                          (Bustle _ ses) -> [(#:) (apply ((#:) se (:#)) [event_ex]) (:#) | (FuncVoid se) <- ses]
 
 handleEventFunction :: Bool -> StateMachine -> Event -> [State] -> [State] -> FunctionDefinition
 handleEventFunction debug (StateMachine smName) (Event evName) ss unss =

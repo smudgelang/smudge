@@ -88,10 +88,11 @@ handleStateEventFunction (StateMachine smName) (State s) h (State s') =
         $ PDirectDeclarator
           (IDirectDeclarator f_name)
           LEFTPAREN
-          (Just $ Left $ ParameterTypeList
-                         (fromList [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
-                                    (Just $ Left $ Declarator (Just $ POINTER Nothing Nothing) $ IDirectDeclarator event_var)])
-                         Nothing)
+          (if not hasPs then Nothing else
+            (Just $ Left $ ParameterTypeList
+                           (fromList [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
+                                      (Just $ Left $ Declarator (Just $ POINTER Nothing Nothing) $ IDirectDeclarator event_var)])
+                           Nothing))
           RIGHTPAREN)
     Nothing
     (CompoundStatement
@@ -103,9 +104,14 @@ handleStateEventFunction (StateMachine smName) (State s) h (State s') =
         smMangledName = mangleIdentifier smName
         sMangledName = mangleIdentifier s
         destStateMangledName = mangleIdentifier s'
-        evMangledName = case h of 
-                          (Hustle (Event evName) _) -> mangleIdentifier evName
-                          (Bustle (Event evName) _) -> mangleIdentifier evName
+        evMangledName = case (case h of (Hustle e _) -> e; (Bustle e _) -> e) of
+                            (Event evName) -> mangleIdentifier evName
+                            (EventEnter) -> "enter"
+                            (EventExit) -> "exit"
+                            (EventAny) -> "any"
+        hasPs = case (case h of (Hustle e _) -> e; (Bustle e _) -> e) of
+                        (Event _) -> True
+                        otherwise -> False
         f_name = smMangledName ++ "_" ++ sMangledName ++ "_" ++ evMangledName
         event_type = smMangledName ++ "_" ++ evMangledName ++ "_t"
         event_var = "e"
@@ -114,8 +120,8 @@ handleStateEventFunction (StateMachine smName) (State s) h (State s') =
         dest_state = (#:) (smMangledName ++ "_" ++ destStateMangledName) (:#)
         call_change = (#:) (apply change_state [dest_state]) (:#)
         side_effects = case h of
-                          (Hustle _ ses) -> [(#:) (apply ((#:) se (:#)) [event_ex]) (:#) | (FuncVoid se) <- ses] ++ [call_change]
-                          (Bustle _ ses) -> [(#:) (apply ((#:) se (:#)) [event_ex]) (:#) | (FuncVoid se) <- ses]
+                          (Hustle _ ses) -> [(#:) (apply ((#:) se (:#)) (if hasPs then [event_ex] else [])) (:#) | (FuncVoid se) <- ses] ++ [call_change]
+                          (Bustle _ ses) -> [(#:) (apply ((#:) se (:#)) (if hasPs then [event_ex] else [])) (:#) | (FuncVoid se) <- ses]
 
 handleEventFunction :: Bool -> StateMachine -> Event -> [State] -> [State] -> FunctionDefinition
 handleEventFunction debug (StateMachine smName) (Event evName) ss unss =
@@ -251,22 +257,30 @@ stateNameFunction (StateMachine smName) ss =
         safe_array_index_e = (#:) (bounds_check_e `QUESTION` (Trio (fromList [array_index_e]) COLON default_state)) (:#)
 
 handleStateEventDeclaration :: StateMachine -> State -> Event -> Declaration
-handleStateEventDeclaration (StateMachine smName) (State s) (Event evName) =
+handleStateEventDeclaration (StateMachine smName) (State s) e =
     Declaration
     (fromList [A STATIC, B VOID])
     (Just $ fromList [InitDeclarator (Declarator Nothing (PDirectDeclarator
           (IDirectDeclarator f_name)
           LEFTPAREN
-          (Just $ Left $ ParameterTypeList
-                         (fromList [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
-                                    (Just $ Right $ AbstractDeclarator $ This $ POINTER Nothing Nothing)])
-                         Nothing)
+          (if not hasPs then Nothing else
+            (Just $ Left $ ParameterTypeList
+                           (fromList [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
+                                      (Just $ Right $ AbstractDeclarator $ This $ POINTER Nothing Nothing)])
+                           Nothing))
           RIGHTPAREN)) Nothing])
     SEMICOLON
     where
         smMangledName = mangleIdentifier smName
         sMangledName = mangleIdentifier s
-        evMangledName = mangleIdentifier evName
+        evMangledName = case e of
+                            (Event evName) -> mangleIdentifier evName
+                            (EventEnter) -> "enter"
+                            (EventExit) -> "exit"
+                            (EventAny) -> "any"
+        hasPs = case e of
+                        (Event _) -> True
+                        otherwise -> False
         f_name = smMangledName ++ "_" ++ sMangledName ++ "_" ++ evMangledName
         event_type = smMangledName ++ "_" ++ evMangledName ++ "_t"
 
@@ -356,7 +370,7 @@ instance Backend CStaticOption where
                      ++ [ExternalDeclaration $ Right $ stateEnum sm $ states g]
                      ++ [ExternalDeclaration $ Right $ stateVarDeclaration sm $ [s | s@(State _) <- (states g)] !! 0]
                      ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration sm s e
-                         | (n, s@(State _)) <- labNodes g, e@(Event _) <- map (eventOf . edgeLabel) $ out g n]
+                         | (n, s@(State _)) <- labNodes g, e <- map (eventOf . edgeLabel) $ out g n]
                      ++ (if debug then [ExternalDeclaration $ Left $ stateNameFunction sm $ states g] else [])
                      ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug sm]
                      ++ [ExternalDeclaration $ Left $ transitionFunction sm EventEnter
@@ -367,7 +381,7 @@ instance Backend CStaticOption where
                      ++ [ExternalDeclaration $ Left $ handleEventFunction debug sm e ss (states g \\ ss)
                          | (e, ss) <- toList $ events g]
                      ++ [ExternalDeclaration $ Left $ handleStateEventFunction sm s h s'
-                         | (n, s@(State _)) <- labNodes g, (_, n', h) <- out g n, (Just s'@(State _)) <- [lab g n'], e@(Event _) <- [eventOf h]]
+                         | (n, s@(State _)) <- labNodes g, (_, n', h) <- out g n, (Just s'@(State _)) <- [lab g n']]
                      | (sm, g) <- gs]
               states g = [s | (_, s) <- labNodes g]
               events g = foldl insert_event empty [(h, s) | (n, s) <- labNodes g, (_, _, h) <- out g n]

@@ -5,7 +5,7 @@ import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..), 
 import Grammars.C89
 import Unparsers.C89 (renderPretty)
 
-import Data.Graph.Inductive.Graph (labNodes, lab, out)
+import Data.Graph.Inductive.Graph (labNodes, lab, out, context, nodes)
 import Data.List ((\\))
 import Data.Map (insertWith, empty, toList)
 import System.Console.GetOpt
@@ -17,6 +17,34 @@ data CStaticOption = OutFile FilePath | NoDebug
 apply :: PostfixExpression -> [AssignmentExpression] -> PostfixExpression
 apply f [] = APostfixExpression f LEFTPAREN Nothing RIGHTPAREN
 apply f ps = APostfixExpression f LEFTPAREN (Just $ fromList ps) RIGHTPAREN
+
+transitionFunction :: StateMachine -> Event -> [State] -> FunctionDefinition
+transitionFunction (StateMachine smName) e ss =
+    Function
+    (Just $ fromList [A STATIC, B VOID])
+    (Declarator Nothing $ PDirectDeclarator (IDirectDeclarator $ f_name) LEFTPAREN Nothing RIGHTPAREN)
+    Nothing
+    (CompoundStatement
+    LEFTCURLY
+        Nothing
+        (Just $ fromList [SStatement $ SWITCH LEFTPAREN (fromList [state_var]) RIGHTPAREN $ CStatement $ CompoundStatement LEFTCURLY
+                                       Nothing
+                                       (Just $ fromList $ concat ([[LStatement $ case_stmt s, JStatement $ BREAK SEMICOLON] | s <- ssMangled])
+                                                                 ++ [LStatement $ DEFAULT COLON $
+                                                                     JStatement $ BREAK SEMICOLON])
+                                       RIGHTCURLY])
+    RIGHTCURLY)
+    where
+        smMangledName = mangleIdentifier smName
+        tType = case e of EventEnter -> "enter"; EventExit -> "exit"
+        f_name = smMangledName ++ "_" ++ tType
+        state_var = (#:) (smMangledName ++ "_state") (:#)
+        ssMangled = [smMangledName ++ "_" ++ (mangleIdentifier s) | (State s) <- ss]
+        case_stmt s = let state_case = (#:) s (:#)
+                          state_evt_handler = (#:) (s ++ "_" ++ tType) (:#)
+                          call_state_evt_handler = (#:) (apply state_evt_handler []) (:#) in
+                        CASE state_case COLON $
+                        EStatement $ ExpressionStatement (Just $ fromList [call_state_evt_handler]) SEMICOLON
 
 changeStateFunction :: StateMachine -> FunctionDefinition
 changeStateFunction (StateMachine smName) =
@@ -35,7 +63,9 @@ changeStateFunction (StateMachine smName) =
     (CompoundStatement
     LEFTCURLY
         Nothing
-        (Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [assign_state]) SEMICOLON])
+        (Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [call_exit]) SEMICOLON,
+                          EStatement $ ExpressionStatement (Just $ fromList [assign_state]) SEMICOLON,
+                          EStatement $ ExpressionStatement (Just $ fromList [call_enter]) SEMICOLON])
     RIGHTCURLY)
     where
         smMangledName = mangleIdentifier smName
@@ -45,6 +75,10 @@ changeStateFunction (StateMachine smName) =
         state_var = (#:) (smMangledName ++ "_state") (:#)
         dest_state = (#:) state_param (:#)
         assign_state = (state_var `ASSIGN` dest_state)
+        exit_f = (#:) (smMangledName ++ "_exit") (:#)
+        enter_f = (#:) (smMangledName ++ "_enter") (:#)
+        call_exit = (#:) (apply exit_f []) (:#)
+        call_enter = (#:) (apply enter_f []) (:#)
 
 handleStateEventFunction :: StateMachine -> State -> Happening -> State -> FunctionDefinition
 handleStateEventFunction (StateMachine smName) (State s) h (State s') =
@@ -324,8 +358,12 @@ instance Backend CStaticOption where
                      ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration sm s e
                          | (n, s@(State _)) <- labNodes g, e@(Event _) <- map (eventOf . edgeLabel) $ out g n]
                      ++ (if debug then [ExternalDeclaration $ Left $ stateNameFunction sm $ states g] else [])
-                     ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug sm,
-                         ExternalDeclaration $ Left $ changeStateFunction sm]
+                     ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug sm]
+                     ++ [ExternalDeclaration $ Left $ transitionFunction sm EventEnter
+                         [s | (_, _, s, adjs) <- map (context g) $ nodes g, EventEnter <- map (eventOf . fst) adjs]]
+                     ++ [ExternalDeclaration $ Left $ transitionFunction sm EventExit
+                         [s | (_, _, s, adjs) <- map (context g) $ nodes g, EventExit <- map (eventOf . fst) adjs]]
+                     ++ [ExternalDeclaration $ Left $ changeStateFunction sm]
                      ++ [ExternalDeclaration $ Left $ handleEventFunction debug sm e ss (states g \\ ss)
                          | (e, ss) <- toList $ events g]
                      ++ [ExternalDeclaration $ Left $ handleStateEventFunction sm s h s'

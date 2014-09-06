@@ -12,4 +12,4 @@ type Transition = (Maybe SideEffect, Maybe SideEffect)
 
 class Backend a where
     options :: (String, [OptDescr a])
-    generate :: [a] -> [(StateMachine, Gr WholeState Happening)] -> FilePath -> IO FilePath
+    generate :: [a] -> [(StateMachine, Gr WholeState Happening)] -> FilePath -> IO [FilePath]

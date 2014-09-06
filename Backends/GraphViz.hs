@@ -121,7 +121,7 @@ instance Backend GraphVizOption where
                 Option [] ["no-se"] (NoArg SuppressSideEffects)
                  "Suppress side effects from output"])
 
-    generate os gs inputName = (runner os) (runGraphviz d) (format os) (outputName os)
+    generate os gs inputName = sequence [(runner os) (runGraphviz d) (format os) (outputName os)]
         where d = (graphToDot (smudgeParams suppressSE (length gs > 1) inputName) (gfold gs)) {graphID = Just (toGraphID " ")}
               suppressSE = not $ SuppressSideEffects `elem` os
 

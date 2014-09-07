@@ -3,13 +3,14 @@ module Backends.CStatic where
 import Backends.Backend (Backend(..))
 import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..), Happening(..))
 import Grammars.C89
+import Trashcan.FilePath (relPath)
 import Unparsers.C89 (renderPretty)
 
 import Data.Graph.Inductive.Graph (labNodes, lab, out, context, nodes)
 import Data.List ((\\))
 import Data.Map (insertWith, empty, toList)
 import System.Console.GetOpt
-import System.FilePath (FilePath, dropExtension, (<.>))
+import System.FilePath (FilePath, dropExtension, takeDirectory, (<.>))
 
 data CStaticOption = OutFile FilePath | Header FilePath | NoDebug
     deriving (Show, Eq)
@@ -404,6 +405,7 @@ instance Backend CStaticOption where
               outputName xs = getFirstOrDefault outputName ((dropExtension inputName) <.> "c") xs
               headerName ((Header f):_) = f
               headerName xs = getFirstOrDefault headerName ((dropExtension inputName) <.> "h") xs
+              headerIncludePath = relPath (takeDirectory $ outputName os) (headerName os)
               doDebug ((NoDebug):_) = False
               doDebug xs = getFirstOrDefault doDebug True xs
               debug = doDebug os

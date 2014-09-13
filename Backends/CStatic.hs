@@ -376,21 +376,21 @@ instance Backend CStaticOption where
               tus = [[ExternalDeclaration $ Right $ stateEnum sm $ states g]
                      ++ [ExternalDeclaration $ Right $ stateVarDeclaration sm $ [s | s@(State _) <- (states g)] !! 0]
                      ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration sm s e
-                         | (n, s@(State _)) <- labNodes g, e <- map (eventOf . edgeLabel) $ out g n]
+                         | (n, (_, s@(State _), _)) <- labNodes g, e <- map (eventOf . edgeLabel) $ out g n]
                      ++ (if debug then [ExternalDeclaration $ Left $ stateNameFunction sm $ states g] else [])
                      ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug sm]
                      ++ [ExternalDeclaration $ Left $ transitionFunction sm EventEnter
-                         [s | (_, _, s, adjs) <- map (context g) $ nodes g, EventEnter <- map (eventOf . fst) adjs]]
+                         [s | (_, _, (_, s, _), adjs) <- map (context g) $ nodes g, EventEnter <- map (eventOf . fst) adjs]]
                      ++ [ExternalDeclaration $ Left $ transitionFunction sm EventExit
-                         [s | (_, _, s, adjs) <- map (context g) $ nodes g, EventExit <- map (eventOf . fst) adjs]]
+                         [s | (_, _, (_, s, _), adjs) <- map (context g) $ nodes g, EventExit <- map (eventOf . fst) adjs]]
                      ++ [ExternalDeclaration $ Left $ changeStateFunction sm]
                      ++ [ExternalDeclaration $ Left $ handleEventFunction debug sm e ss (states g \\ ss)
                          | (e, ss) <- toList $ events g]
                      ++ [ExternalDeclaration $ Left $ handleStateEventFunction sm s h s'
-                         | (n, s@(State _)) <- labNodes g, (_, n', h) <- out g n, (Just s'@(State _)) <- [lab g n']]
+                         | (n, (_, s@(State _), _)) <- labNodes g, (_, n', h) <- out g n, (Just (_, s'@(State _), _)) <- [lab g n']]
                      | (sm, g) <- gs]
-              states g = [s | (_, s) <- labNodes g]
-              events g = foldl insert_event empty [(h, s) | (n, s) <- labNodes g, (_, _, h) <- out g n]
+              states g = [s | (_, (_, s, _)) <- labNodes g]
+              events g = foldl insert_event empty [(h, s) | (n, (_, s, _)) <- labNodes g, (_, _, h) <- out g n]
               insert_event m ((Hustle e@(Event _) _), s@(State _)) = insertWith (flip (++)) e [s] m
               insert_event m ((Bustle e@(Event _) _), s@(State _)) = insertWith (flip (++)) e [s] m
               insert_event m                                     _ = m

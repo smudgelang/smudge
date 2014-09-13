@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances #-} --, FlexibleInstances, OverlappingInstances #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, OverlappingInstances #-}
 
 module Unparsers.C89 (
     renderPretty

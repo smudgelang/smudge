@@ -1,4 +1,4 @@
-HSFILES=$(wildcard *.hs) $(wildcard Backends/*.hs) $(wildcard dist/build/autogen/*.hs)
+HSFILES=$(wildcard *.hs) $(wildcard Backends/*.hs) $(wildcard Grammars/*.hs) $(wildcard Parsers/*.hs) $(wildcard Unparsers/*.hs) $(wildcard dist/build/autogen/*.hs)
 
 .PHONY: tags clean build examples config
 

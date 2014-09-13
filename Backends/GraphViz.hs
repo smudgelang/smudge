@@ -37,14 +37,18 @@ instance Labellable State where
     toLabelValue (State s) = toLabelValue s
     toLabelValue s         = toLabelValue $ show s
 
-deco :: Show b => String -> Maybe b -> String
-deco s Nothing = s
-deco s (Just l) = s ++ "\n" ++ (show l)
+decorate :: EnterExitState -> String
+decorate (en, s, ex) =
+    let efl l e = case l of
+            Nothing -> ""
+            Just ens -> "\n" ++ intercalate "\n" (e:(map show ens))
+        s' = case s of
+            StateAny -> "Any"
+            State sl -> sl
+    in s' ++ (efl en "Enter:") ++ (efl ex "Exit:")
 
 instance Labellable QualifiedState where
-    toLabelValue (_, (en, StateAny, ex)) = toLabelValue $ deco (deco "Any" en) ex
-    toLabelValue (_, (en, State s, ex))  = toLabelValue $ deco (deco s en) ex
-    toLabelValue s                        = toLabelValue $ show s
+    toLabelValue (_, qs) = toLabelValue $ decorate qs
 
 instance Labellable Event where
     toLabelValue (Event e) = toLabelValue e

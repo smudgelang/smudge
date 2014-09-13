@@ -37,9 +37,13 @@ instance Labellable State where
     toLabelValue (State s) = toLabelValue s
     toLabelValue s         = toLabelValue $ show s
 
+deco :: Show b => String -> Maybe b -> String
+deco s Nothing = s
+deco s (Just l) = s ++ "\n" ++ (show l)
+
 instance Labellable QualifiedState where
-    toLabelValue (_, (_, StateAny, _)) = toLabelValue "Any"
-    toLabelValue (_, (_, State s, _))  = toLabelValue s
+    toLabelValue (_, (en, StateAny, ex)) = toLabelValue $ deco (deco "Any" en) ex
+    toLabelValue (_, (en, State s, ex))  = toLabelValue $ deco (deco s en) ex
     toLabelValue s                        = toLabelValue $ show s
 
 instance Labellable Event where

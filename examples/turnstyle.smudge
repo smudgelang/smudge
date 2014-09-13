@@ -21,3 +21,11 @@ turnstyle {
         _ -(@soundError)-
     ]
 }
+
+coinInspector {
+    ready [
+        validate -(@validateCoin)-,
+        valid -(turnstyle.coin-valid)-,
+        invalid -(turnstyle.coin-invalid)-
+    ]
+}

@@ -25,7 +25,7 @@ turnstyle {
 coinInspector {
     ready [
         validate -(@validateCoin)-,
-        valid -(turnstyle.coin-valid)-,
-        invalid -(turnstyle.coin-invalid)-
+        valid -(turnstyle.coin-valid)->ready,
+        invalid -(turnstyle.coin-invalid)->ready
     ]
 }

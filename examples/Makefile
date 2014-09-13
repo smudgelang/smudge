@@ -11,4 +11,4 @@ all: $(OBJS)
 	$(SMUDGE) $(OPTIONS) --dot-fmt=Svg $<
 
 clean:
-	rm -f *.svg
+	rm -f *.svg *.h *.c

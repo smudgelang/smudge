@@ -2,7 +2,9 @@ syntax:glob
 dist
 TAGS
 tags
+*~
 *.c
+*.h
 *.dot
 *.png
 *.svg

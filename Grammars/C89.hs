@@ -170,7 +170,6 @@ mangleChar c                     = '_' : (toAsciiCode c) ++ "_"
 
 mangleIdentifier :: String -> Identifier
 mangleIdentifier []     = "__"
-mangleIdentifier [c]    = mangleChar c
 mangleIdentifier (c:cs) = (mangleChar c) ++ (mangleIdentifier cs)
 
 -- A.1.1.4 Constants

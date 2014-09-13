@@ -1,8 +1,8 @@
 HSFILES=$(wildcard *.hs) $(wildcard Backends/*.hs) $(wildcard dist/build/autogen/*.hs)
 
-.PHONY: tags clean config
+.PHONY: tags clean build examples config
 
-all: build tags
+all: build examples tags
 
 tags: TAGS
 	echo ":ctags" | ghci -v0 `find . -iname \*\.hs | grep -v Setup.hs`
@@ -10,6 +10,9 @@ tags: TAGS
 config: dist/setup-config
 
 build: dist/build/smudge/smudge
+
+examples: build
+	cd examples && $(MAKE) all
 
 # Let Cabal handle dependencies.
 dist/setup-config: smudge.cabal
@@ -23,3 +26,4 @@ TAGS: $(HSFILES)
 
 clean:
 	rm -rf dist TAGS tags
+	cd examples && $(MAKE) clean

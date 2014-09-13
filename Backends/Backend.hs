@@ -2,7 +2,7 @@ module Backends.Backend (
     Backend(..),
 ) where
 
-import Grammars.Smudge (StateMachine, State, Happening, WholeState, SideEffect)
+import Grammars.Smudge (StateMachine, State, Happening, EnterExitState, SideEffect)
 
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import System.Console.GetOpt (OptDescr)
@@ -12,4 +12,4 @@ type Transition = (Maybe SideEffect, Maybe SideEffect)
 
 class Backend a where
     options :: (String, [OptDescr a])
-    generate :: [a] -> [(StateMachine, Gr WholeState Happening)] -> FilePath -> IO [FilePath]
+    generate :: [a] -> [(StateMachine, Gr EnterExitState Happening)] -> FilePath -> IO [FilePath]

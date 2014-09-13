@@ -2,7 +2,7 @@
 module Backends.GraphViz where
 
 import Backends.Backend (Backend(..))
-import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..), Happening(..), WholeState(..))
+import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..), Happening(..), EnterExitState(..))
 
 import Data.GraphViz
 import Data.GraphViz.Attributes.Complete (Label(..))
@@ -16,12 +16,12 @@ import Data.Text.Lazy.Internal (Text(..))
 import System.Console.GetOpt
 import System.FilePath (FilePath, dropExtension)
 
-type QualifiedState = (StateMachine, WholeState)
-type UnqualifiedGraph = Gr WholeState Happening
+type QualifiedState = (StateMachine, EnterExitState)
+type UnqualifiedGraph = Gr EnterExitState Happening
 type QualifiedGraph = Gr QualifiedState Happening
 type NodeMap = M.Map G.Node G.Node
 type QualifiedContext = G.Context QualifiedState Happening
-type UnqualifiedContext = G.Context WholeState Happening
+type UnqualifiedContext = G.Context EnterExitState Happening
 
 
 -- Sinful.  This instance is incomplete.
@@ -38,8 +38,8 @@ instance Labellable State where
     toLabelValue s         = toLabelValue $ show s
 
 instance Labellable QualifiedState where
-    toLabelValue (_, (StateAny, _, _, _)) = toLabelValue "Any"
-    toLabelValue (_, (State s, _, _, _))  = toLabelValue s
+    toLabelValue (_, (_, StateAny, _)) = toLabelValue "Any"
+    toLabelValue (_, (_, State s, _))  = toLabelValue s
     toLabelValue s                        = toLabelValue $ show s
 
 instance Labellable Event where

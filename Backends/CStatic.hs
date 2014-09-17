@@ -380,9 +380,9 @@ instance Backend CStaticOption where
                      ++ (if debug then [ExternalDeclaration $ Left $ stateNameFunction sm $ states g] else [])
                      ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug sm]
                      ++ [ExternalDeclaration $ Left $ transitionFunction sm EventEnter
-                         [s | (_, _, (_, s, _), adjs) <- map (context g) $ nodes g, EventEnter <- map (eventOf . fst) adjs]]
+                         [s | (_, (Just (e:_), s, _)) <- labNodes g]]
                      ++ [ExternalDeclaration $ Left $ transitionFunction sm EventExit
-                         [s | (_, _, (_, s, _), adjs) <- map (context g) $ nodes g, EventExit <- map (eventOf . fst) adjs]]
+                         [s | (_, (_, s, Just (e:_))) <- labNodes g]]
                      ++ [ExternalDeclaration $ Left $ changeStateFunction sm]
                      ++ [ExternalDeclaration $ Left $ handleEventFunction debug sm e ss (states g \\ ss)
                          | (e, ss) <- toList $ events g]

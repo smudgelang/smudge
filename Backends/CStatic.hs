@@ -386,8 +386,12 @@ instance Backend CStaticOption where
                      ++ [ExternalDeclaration $ Left $ changeStateFunction sm]
                      ++ [ExternalDeclaration $ Left $ handleEventFunction debug sm e ss (states g \\ ss)
                          | (e, ss) <- toList $ events g]
+                     ++ [ExternalDeclaration $ Left $ handleStateEventFunction sm s h s
+                         | (n, (en, s@(State _), ex)) <- labNodes g, h <- mb2h EventEnter en]
                      ++ [ExternalDeclaration $ Left $ handleStateEventFunction sm s h s'
                          | (n, (_, s@(State _), _)) <- labNodes g, (_, n', h) <- out g n, (Just (_, s'@(State _), _)) <- [lab g n']]
+                     ++ [ExternalDeclaration $ Left $ handleStateEventFunction sm s h s
+                         | (n, (en, s@(State _), ex)) <- labNodes g, h <- mb2h EventExit ex]
                      | (sm, g) <- gs]
               states g = [s | (_, (_, s, _)) <- labNodes g]
               events g = foldl insert_event empty [(h, s) | (n, (_, s, _)) <- labNodes g, (_, _, h) <- out g n]
@@ -395,6 +399,7 @@ instance Backend CStaticOption where
               insert_event m ((Bustle e@(Event _) _), s@(State _)) = insertWith (flip (++)) e [s] m
               insert_event m                                     _ = m
               mb2e d me = maybe [] (\_ -> [d]) me
+              mb2h d me = maybe [] (\ss -> [Bustle d ss]) me
               edgeLabel (_, _, l) = l
               eventOf (Hustle e _) = e
               eventOf (Bustle e _) = e

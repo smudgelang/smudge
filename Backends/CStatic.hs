@@ -376,7 +376,7 @@ instance Backend CStaticOption where
               tus = [[ExternalDeclaration $ Right $ stateEnum sm $ states g]
                      ++ [ExternalDeclaration $ Right $ stateVarDeclaration sm $ [s | s@(State _) <- (states g)] !! 0]
                      ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration sm s e
-                         | (n, (_, s@(State _), _)) <- labNodes g, e <- map (eventOf . edgeLabel) $ out g n]
+                         | (n, (en, s@(State _), ex)) <- labNodes g, e <- (mb2e EventEnter en) ++ (map (eventOf . edgeLabel) $ out g n) ++ (mb2e EventExit ex)]
                      ++ (if debug then [ExternalDeclaration $ Left $ stateNameFunction sm $ states g] else [])
                      ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug sm]
                      ++ [ExternalDeclaration $ Left $ transitionFunction sm EventEnter
@@ -394,6 +394,7 @@ instance Backend CStaticOption where
               insert_event m ((Hustle e@(Event _) _), s@(State _)) = insertWith (flip (++)) e [s] m
               insert_event m ((Bustle e@(Event _) _), s@(State _)) = insertWith (flip (++)) e [s] m
               insert_event m                                     _ = m
+              mb2e d me = maybe [] (\_ -> [d]) me
               edgeLabel (_, _, l) = l
               eventOf (Hustle e _) = e
               eventOf (Bustle e _) = e

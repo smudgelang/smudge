@@ -6,12 +6,14 @@ import Backends.GraphViz (GraphVizOption(..))
 import Backends.CStatic (CStaticOption(..))
 import Grammars.Smudge (StateMachine, State(..), Event, SideEffect, Happening(..), WholeState, EnterExitState)
 import Parsers.Smudge (state_machine, smudgle)
+import Semantics (make_passes)
 
 import Control.Applicative ((<$>), (<*>))
 import Distribution.Package (packageVersion, packageName, PackageName(..))
 import Text.ParserCombinators.Parsec (parse, ParseError)
 import System.Console.GetOpt (usageInfo, getOpt, OptDescr(..), ArgDescr(..), ArgOrder(..))
 import System.Environment (getArgs)
+import System.Exit (exitFailure)
 import Data.Graph.Inductive.Graph (mkGraph, Node)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Version (showVersion)
@@ -97,8 +99,16 @@ main = do
             case parse smudgle fileName compilationUnit of
                 Left err -> print err
                 Right sms -> m sms
-            where m sms = do
+            where
+                m sms = do
                     let gs = zip (map fst sms) (map smToGraph sms)
+                    case and $ map (make_passes . snd) gs of
+                        False -> report_failure
+                        _ -> make_output gs
+                report_failure = do
+                    putStrLn "Semantic check failed."
+                    exitFailure
+                make_output gs = do
                     let filt o =
                             case o of
                                 GraphVizOption a -> True

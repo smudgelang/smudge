@@ -3,10 +3,10 @@ module Backends.GraphViz where
 
 import Backends.Backend (Backend(..))
 import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..), Happening(..), EnterExitState(..))
+import Trashcan.Graph
 
 import Data.GraphViz
 import Data.GraphViz.Attributes.Complete (Label(..))
-
 import qualified Data.Graph.Inductive.Graph as G
 import qualified Data.Map as M
 import Data.Graph.Inductive.PatriciaTree (Gr)
@@ -91,33 +91,10 @@ outputFormats :: [GraphvizOutput]
 outputFormats = [minBound..maxBound]
 
 gfold :: [(StateMachine, UnqualifiedGraph)] -> QualifiedGraph
-gfold = foldl gf G.empty
+gfold = mconcat . (map qualify)
     where
-        gf :: QualifiedGraph -> (StateMachine, UnqualifiedGraph) -> QualifiedGraph
-        gf qg (sm, ug) = G.ufold (qualifyAndRename sm nameMap) qg ug
-            where
-                nameMap :: NodeMap
-                nameMap =
-                    let
-                        before :: [G.Node]
-                        before = [fst (G.nodeRange ug)..snd (G.nodeRange ug)]
-                        after :: [G.Node]
-                        after = G.newNodes (length before) qg
-                    in M.fromList $ zip before after
-                qualifyAndRename :: StateMachine -> NodeMap ->
-                    UnqualifiedContext -> QualifiedGraph -> QualifiedGraph
-                qualifyAndRename sm nm c acc =
-                    let
-                        (ins, n, l, outs) = c
-                        renameAdj :: (l, G.Node) -> (l, G.Node)
-                        renameAdj (lbl, n) = (lbl, nameMap M.! n)
-                        rins = map renameAdj ins
-                        routs = map renameAdj outs
-                        rn = nameMap M.! n
-                        ql = (sm, l)
-                        done :: QualifiedContext
-                        done = (rins, rn, ql, routs)
-                    in done G.& acc
+        qualify :: (StateMachine, UnqualifiedGraph) -> QualifiedGraph
+        qualify (sm, ug) = G.gmap (\ (i, n, l, o) -> (i, n, (sm, l), o)) ug
 
 instance Backend GraphVizOption where
     options = ("dot",

@@ -4,9 +4,8 @@ module Semantics.NoTransientStateCycles (
 
 import Grammars.Smudge (State, Event(EventEnter), EnterExitState, Happening(..))
 import Semantics.Semantic (Passable(..))
-import Trashcan.Graph
+import Trashcan.Graph (cycles)
 
---import Data.Graph.Analysis.Algorithms.Common (cyclesIn)
 import Data.Graph.Inductive.Graph (Context, (&))
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Monoid (Monoid(..))
@@ -18,7 +17,7 @@ instance Monoid NoTransientStateCycles where
 
 instance Passable NoTransientStateCycles where
     accumulate = tfilter
-    test (NoTransientStateCycles g) = null [] -- $ cyclesIn g
+    test (NoTransientStateCycles g) = null $ cycles g
 
 tfilter :: Context EnterExitState Happening -> NoTransientStateCycles -> NoTransientStateCycles
 tfilter (i, n, l, o) (NoTransientStateCycles a) = NoTransientStateCycles ((efs i, n, l, efs o) & a)

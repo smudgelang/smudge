@@ -9,7 +9,7 @@ OPTIONS ?= --dot-no-se
 all: $(OBJS) test
 
 test: $(COUNTEREXAMPLES) $(SMUDGE)
-	for f in $(COUNTEREXAMPLES); do ! $(SMUDGE) $$f; done
+	$(foreach f, $(COUNTEREXAMPLES), ! $(SMUDGE) $f &&) true
 
 %.svg: %.smudge $(SMUDGE)
 	$(SMUDGE) $(OPTIONS) --dot-fmt=Svg $<

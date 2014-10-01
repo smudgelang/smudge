@@ -9,7 +9,7 @@ import Grammars.Smudge (StateMachine, State(..), Event, SideEffect)
 
 import Data.Graph.Inductive.Graph (mkGraph, Node)
 import Data.Graph.Inductive.PatriciaTree (Gr)
-import qualified Data.Map as Map
+import Data.Map (Map, fromList, (!))
 
 type WholeState = (State, Maybe [SideEffect], [(Event, [SideEffect], State)], Maybe [SideEffect])
 
@@ -31,10 +31,10 @@ smToGraph (sm, ss) =
     where
         getEeState (s, en, _, ex) = (en, s, ex)
         getState (s, _, _, _) = s
-        sn :: Map.Map State Node
-        sn = Map.fromList [s | s <- zip (map getState ss) [1..]]
+        sn :: Map State Node
+        sn = fromList [s | s <- zip (map getState ss) [1..]]
         mkEdge :: State -> State -> Happening -> (Node, Node, Happening)
-        mkEdge s s'' eses = (sn Map.! s, sn Map.! s'', eses)
+        mkEdge s s'' eses = (sn ! s, sn ! s'', eses)
         es = [ese | ese <- concat $ map f ss]
             where
                 f :: WholeState -> [(Node, Node, Happening)]

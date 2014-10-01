@@ -99,7 +99,7 @@ handleStateEventFunction (StateMachine smName) (State s) h (State s') =
     (CompoundStatement
     LEFTCURLY
         Nothing
-        (Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [se]) SEMICOLON | se <- side_effects])
+        (if null side_effects then Nothing else Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [se]) SEMICOLON | se <- side_effects])
     RIGHTCURLY)
     where
         smMangledName = mangleIdentifier smName

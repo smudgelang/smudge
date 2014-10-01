@@ -2,9 +2,11 @@ module Semantics.ValidDestinationStates (
     ValidDestinationStates
 ) where
 
+import Grammars.Smudge (State)
 import Semantics.Semantic (Passable(..))
 
 import Data.Set (Set, isSubsetOf)
+import Data.Monoid (Monoid(..))
 
 data ValidDestinationStates = ValidDestinationStates [State] [State]
 instance Monoid ValidDestinationStates where

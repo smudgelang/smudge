@@ -2,7 +2,8 @@ module Semantics.NoTransientStateCycles (
     NoTransientStateCycles
 ) where
 
-import Grammars.Smudge (State, Event(EventEnter), EnterExitState, Happening(..))
+import Grammars.Smudge (State, Event(EventEnter))
+import Model (EnterExitState, Happening(..))
 import Semantics.Semantic (Passable(..))
 import Trashcan.Graph (cycles)
 

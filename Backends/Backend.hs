@@ -2,7 +2,8 @@ module Backends.Backend (
     Backend(..),
 ) where
 
-import Grammars.Smudge (StateMachine, State, Happening, EnterExitState, SideEffect)
+import Grammars.Smudge (StateMachine, State, SideEffect)
+import Model (Happening, EnterExitState)
 
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import System.Console.GetOpt (OptDescr)

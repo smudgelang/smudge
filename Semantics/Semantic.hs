@@ -3,7 +3,7 @@ module Semantics.Semantic (
     pass
 ) where
 
-import Grammars.Smudge (EnterExitState, Happening)
+import Model (EnterExitState, Happening)
 
 import Data.Graph.Inductive.Graph (Graph, Context, ufold)
 import Data.Monoid (Monoid, mempty)

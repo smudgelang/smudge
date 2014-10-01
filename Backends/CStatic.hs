@@ -1,8 +1,9 @@
 module Backends.CStatic where
 
 import Backends.Backend (Backend(..))
-import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..), Happening(..))
+import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..))
 import Grammars.C89
+import Model (Happening(..))
 import Trashcan.FilePath (relPath)
 import Unparsers.C89 (renderPretty)
 

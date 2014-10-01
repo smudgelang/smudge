@@ -2,7 +2,7 @@ module Semantics (
     make_passes
 ) where
 
-import Grammars.Smudge (EnterExitState, Happening)
+import Model (EnterExitState, Happening)
 import Semantics.Semantic (pass)
 import Semantics.NoTransientStateCycles (NoTransientStateCycles)
 import Semantics.UniqueStateNames (UniqueStateNames)

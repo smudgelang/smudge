@@ -2,7 +2,8 @@
 module Backends.GraphViz where
 
 import Backends.Backend (Backend(..))
-import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..), Happening(..), EnterExitState(..))
+import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..))
+import Model (Happening(..), EnterExitState(..))
 import Trashcan.Graph
 
 import Data.GraphViz

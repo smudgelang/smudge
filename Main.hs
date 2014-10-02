@@ -57,6 +57,44 @@ printVersion :: IO ()
 printVersion = putStrLn (app_name ++ " version: " ++
                          (showVersion $ packageVersion packageInfo))
 
+--processFile :: String -> (Gr EnterExitState Happening -> IO ()) -> IO ()
+processFile fileName process = do
+    compilationUnit <-
+        if fileName == "-"
+            then getContents
+            else readFile fileName
+    case parse smudgle fileName compilationUnit of
+        Left err -> print err
+        Right sms -> m sms
+    where
+        m sms = do
+            let gs = zip (map fst sms) (map smToGraph sms)
+            case and $ map (make_passes . snd) gs of
+                False -> report_failure
+                _ -> process gs
+        report_failure = do
+            putStrLn "Semantic check failed."
+            exitFailure
+
+--make_output :: String -> [Options] -> Gr EnterExitState Happening -> IO ()
+make_output fileName os gs = do
+    let filt o =
+            case o of
+                GraphVizOption a -> True
+                otherwise -> False
+    let gvos = map (\ (GraphVizOption a) -> a) $ filter filt os
+    outputNames <- generate gvos gs fileName
+    mapM_ putStrLn $ do outputName <- outputNames
+                        ["Wrote file \"" ++ outputName ++ "\""]
+    let filt' o =
+            case o of
+                CStaticOption a -> True
+                otherwise -> False
+    let csos = map (\ (CStaticOption a) -> a) $ filter filt' os
+    outputNames <- generate csos gs fileName
+    mapM_ putStrLn $ do outputName <- outputNames
+                        ["Wrote file \"" ++ outputName ++ "\""]
+
 main = do
     args <- getArgs
     case getOpt Permute all_opts args of
@@ -64,39 +102,6 @@ main = do
             | elem (SystemOption Help) os -> printUsage
             | elem (SystemOption Version) os -> printVersion
 
-        (os, (fileName:as),  _) -> do
-            compilationUnit <-
-                if fileName == "-"
-                    then getContents
-                    else readFile fileName
-            case parse smudgle fileName compilationUnit of
-                Left err -> print err
-                Right sms -> m sms
-            where
-                m sms = do
-                    let gs = zip (map fst sms) (map smToGraph sms)
-                    case and $ map (make_passes . snd) gs of
-                        False -> report_failure
-                        _ -> make_output gs
-                report_failure = do
-                    putStrLn "Semantic check failed."
-                    exitFailure
-                make_output gs = do
-                    let filt o =
-                            case o of
-                                GraphVizOption a -> True
-                                otherwise -> False
-                    let gvos = map (\ (GraphVizOption a) -> a) $ filter filt os
-                    outputNames <- generate gvos gs fileName
-                    mapM_ putStrLn $ do outputName <- outputNames
-                                        ["Wrote file \"" ++ outputName ++ "\""]
-                    let filt' o =
-                            case o of
-                                CStaticOption a -> True
-                                otherwise -> False
-                    let csos = map (\ (CStaticOption a) -> a) $ filter filt' os
-                    outputNames <- generate csos gs fileName
-                    mapM_ putStrLn $ do outputName <- outputNames
-                                        ["Wrote file \"" ++ outputName ++ "\""]
+        (os, (fileName:as),  _) -> processFile fileName (make_output fileName os)
 
         (_,              _,  _) -> printUsage

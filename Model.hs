@@ -1,6 +1,7 @@
 module Model (
     WholeState(..),
     EnterExitState(..),
+    HappeningFlag(..),
     Happening(..),
     smToGraph,
 ) where
@@ -15,13 +16,11 @@ type WholeState = (State, Maybe [SideEffect], [(Event, [SideEffect], State)], Ma
 
 type EnterExitState = (Maybe [SideEffect], State, Maybe [SideEffect])
 
-{- Happenings are events and their lists of side effects. Hustles are
-used when there's a state transition (i.e. -(...)->) and Bustles are
-used when there isn't (-(...)-). These names are better than
-EventAndSideEffects and NoTransitionEventAndSide Effects.  -}
-data Happening = Hustle Event [SideEffect] | Bustle Event [SideEffect]
+data HappeningFlag = NoTransition
     deriving (Show, Eq, Ord)
 
+data Happening = Happening Event [SideEffect] [HappeningFlag]
+    deriving (Show, Eq, Ord)
 
 smToGraph :: (StateMachine, [WholeState]) ->
                  Gr EnterExitState Happening
@@ -43,6 +42,6 @@ smToGraph (sm, ss) =
                         g :: (Event, [SideEffect], State) -> (Node, Node, Happening)
                         g (e, ses, s') =
                             let (e', s'') = case s' of
-                                    StateSame -> (Bustle e ses, s)
-                                    otherwise -> (Hustle e ses, s')
+                                    StateSame -> (Happening e ses [NoTransition], s)
+                                    otherwise -> (Happening e ses [], s')
                             in mkEdge s s'' e'

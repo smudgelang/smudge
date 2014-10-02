@@ -3,7 +3,7 @@ module Backends.CStatic where
 import Backends.Backend (Backend(..))
 import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..))
 import Grammars.C89
-import Model (Happening(..))
+import Model (HappeningFlag(..), Happening(..))
 import Trashcan.FilePath (relPath)
 import Unparsers.C89 (renderPretty)
 
@@ -106,12 +106,12 @@ handleStateEventFunction (StateMachine smName) (State s) h (State s') =
         smMangledName = mangleIdentifier smName
         sMangledName = mangleIdentifier s
         destStateMangledName = mangleIdentifier s'
-        evMangledName = case (case h of (Hustle e _) -> e; (Bustle e _) -> e) of
+        evMangledName = case (case h of (Happening e _ _) -> e) of
                             (Event evName) -> mangleIdentifier evName
                             (EventEnter) -> "enter"
                             (EventExit) -> "exit"
                             (EventAny) -> "any"
-        hasPs = case (case h of (Hustle e _) -> e; (Bustle e _) -> e) of
+        hasPs = case (case h of (Happening e _ _) -> e) of
                         (Event _) -> True
                         otherwise -> False
         f_name = smMangledName ++ "_" ++ sMangledName ++ "_" ++ evMangledName
@@ -122,8 +122,8 @@ handleStateEventFunction (StateMachine smName) (State s) h (State s') =
         dest_state = (#:) (smMangledName ++ "_" ++ destStateMangledName) (:#)
         call_change = (#:) (apply change_state [dest_state]) (:#)
         side_effects = case h of
-                          (Hustle _ ses) -> [(#:) (apply ((#:) se (:#)) (if hasPs then [event_ex] else [])) (:#) | (FuncVoid se) <- ses] ++ [call_change]
-                          (Bustle _ ses) -> [(#:) (apply ((#:) se (:#)) (if hasPs then [event_ex] else [])) (:#) | (FuncVoid se) <- ses]
+                          (Happening _ ses [])                        -> [(#:) (apply ((#:) se (:#)) (if hasPs then [event_ex] else [])) (:#) | (FuncVoid se) <- ses] ++ [call_change]
+                          (Happening _ ses fs) | elem NoTransition fs -> [(#:) (apply ((#:) se (:#)) (if hasPs then [event_ex] else [])) (:#) | (FuncVoid se) <- ses]
 
 handleEventFunction :: Bool -> StateMachine -> Event -> [State] -> [State] -> FunctionDefinition
 handleEventFunction debug (StateMachine smName) (Event evName) ss unss =
@@ -396,14 +396,12 @@ instance Backend CStaticOption where
                      | (sm, g) <- gs]
               states g = [s | (_, (_, s, _)) <- labNodes g]
               events g = foldl insert_event empty [(h, s) | (n, (_, s, _)) <- labNodes g, (_, _, h) <- out g n]
-              insert_event m ((Hustle e@(Event _) _), s@(State _)) = insertWith (flip (++)) e [s] m
-              insert_event m ((Bustle e@(Event _) _), s@(State _)) = insertWith (flip (++)) e [s] m
-              insert_event m                                     _ = m
+              insert_event m ((Happening e@(Event _) _ _), s@(State _)) = insertWith (flip (++)) e [s] m
+              insert_event m                                          _ = m
               mb2e d me = maybe [] (\_ -> [d]) me
-              mb2h d me = maybe [] (\ss -> [Bustle d ss]) me
+              mb2h d me = maybe [] (\ss -> [Happening d ss [NoTransition]]) me
               edgeLabel (_, _, l) = l
-              eventOf (Hustle e _) = e
-              eventOf (Bustle e _) = e
+              eventOf (Happening e _ _) = e
               writeTranslationUnit u fp = (writeFile fp (renderPretty u)) >> (return fp)
               getFirstOrDefault :: ([a] -> b) -> b -> [a] -> b
               getFirstOrDefault _ d     [] = d

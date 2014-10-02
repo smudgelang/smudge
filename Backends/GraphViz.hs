@@ -3,7 +3,7 @@ module Backends.GraphViz where
 
 import Backends.Backend (Backend(..))
 import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..))
-import Model (Happening(..), EnterExitState(..))
+import Model (HappeningFlag(..), Happening(..), EnterExitState(..))
 import Trashcan.Graph
 
 import Data.GraphViz
@@ -61,8 +61,7 @@ instance Labellable SideEffect where
     toLabelValue (FuncDefault (s, e)) = mconcat $ toLabelValue s : [toLabelValue e]
 
 instance Labellable Happening where
-    toLabelValue (Hustle e ses) = mconcat $ intersperse (toLabelValue "\n") $ toLabelValue e : map toLabelValue ses
-    toLabelValue (Bustle e ses) = mconcat $ intersperse (toLabelValue "\n") $ toLabelValue e : map toLabelValue ses
+    toLabelValue (Happening e ses _) = mconcat $ intersperse (toLabelValue "\n") $ toLabelValue e : map toLabelValue ses
 
 smudgeParams sideEffects clusterBox title=
     defaultParams
@@ -80,10 +79,9 @@ smudgeParams sideEffects clusterBox title=
             clusterAttrs c = [GraphAttrs [toLabel c]]
             smToString (StateMachine s) = s
             keep (_, _, l) = [toLabel l, arrow l]
-            drop (start, end, ese@(Hustle e _)) = [toLabel e, arrow ese]
-            drop (start, end, ese@(Bustle e _)) = [toLabel e, arrow ese]
-            arrow (Hustle _ _) = edgeEnds Forward
-            arrow (Bustle _ _) = edgeEnds NoDir
+            drop (start, end, ese@(Happening e _ _)) = [toLabel e, arrow ese]
+            arrow (Happening _ _ [])                        = edgeEnds Forward
+            arrow (Happening _ _ fs) | elem NoTransition fs = edgeEnds NoDir
 
 data GraphVizOption = Format GraphvizOutput | OutFile FilePath | SuppressSideEffects
     deriving (Show, Eq)

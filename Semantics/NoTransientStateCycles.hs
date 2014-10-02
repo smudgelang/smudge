@@ -22,4 +22,4 @@ instance Passable NoTransientStateCycles where
 
 tfilter :: Context EnterExitState Happening -> NoTransientStateCycles -> NoTransientStateCycles
 tfilter (i, n, l, o) (NoTransientStateCycles a) = NoTransientStateCycles ((efs i, n, l, efs o) & a)
-    where efs es = [e | e@(Hustle EventEnter _, _) <- es]
+    where efs es = [e | e@(Happening EventEnter _ _, _) <- es]

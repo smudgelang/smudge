@@ -7,6 +7,7 @@ import Backends.CStatic (CStaticOption(..))
 import Model (smToGraph)
 import Parsers.Smudge (state_machine, smudgle)
 import Semantics (make_passes)
+import Trashcan.Graph
 
 import Control.Applicative ((<$>), (<*>))
 import Distribution.Package (packageVersion, packageName, PackageName(..))
@@ -15,6 +16,7 @@ import System.Console.GetOpt (usageInfo, getOpt, OptDescr(..), ArgDescr(..), Arg
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
 import Data.Version (showVersion)
+import Data.Monoid (mempty)
 
 subcommand :: String -> (a -> b) -> [OptDescr a] -> [OptDescr b]
 subcommand name f os = map makeSub os
@@ -57,26 +59,29 @@ printVersion :: IO ()
 printVersion = putStrLn (app_name ++ " version: " ++
                          (showVersion $ packageVersion packageInfo))
 
---processFile :: String -> (Gr EnterExitState Happening -> IO ()) -> IO ()
-processFile fileName process = do
+--processFile :: String -> IO [Gr EnterExitState Happening]
+processFile fileName = do
     compilationUnit <-
         if fileName == "-"
             then getContents
             else readFile fileName
     case parse smudgle fileName compilationUnit of
-        Left err -> print err
+        Left err -> print_exit (show err)
         Right sms -> m sms
     where
         m sms = do
             let gs = zip (map fst sms) (map smToGraph sms)
             case and $ map (make_passes . snd) gs of
                 False -> report_failure
-                _ -> process gs
-        report_failure = do
-            putStrLn "Semantic check failed."
+                _ -> return gs
+        report_failure =
+            print_exit "Semantic check failed."
+        print_exit e = do
+            putStrLn e
             exitFailure
+            return mempty
 
---make_output :: String -> [Options] -> Gr EnterExitState Happening -> IO ()
+--make_output :: String -> [Options] -> [Gr EnterExitState Happening] -> IO ()
 make_output fileName os gs = do
     let filt o =
             case o of
@@ -102,6 +107,6 @@ main = do
             | elem (SystemOption Help) os -> printUsage
             | elem (SystemOption Version) os -> printVersion
 
-        (os, (fileName:as),  _) -> processFile fileName (make_output fileName os)
+        (os, (fileName:as),  _) -> processFile fileName >>= make_output fileName os
 
         (_,              _,  _) -> printUsage

@@ -3,41 +3,41 @@ module Parsers.Smudge (
     smudgle,
 ) where
 
-import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..))
+import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..), EventHandler, WholeState)
 
 import Text.ParserCombinators.Parsec hiding (State)
 import Control.Applicative hiding ((<|>), empty, many)
-import Data.Maybe (maybeToList)
+import Data.Foldable (toList)
 
-smudgle :: Parser [(StateMachine, [(State, Maybe [SideEffect], [(Event, [SideEffect], State)], Maybe [SideEffect])])]
+smudgle :: Parser [(StateMachine, [WholeState])]
 smudgle = many1 state_machine
 
-state_machine :: Parser (StateMachine, [(State, Maybe [SideEffect], [(Event, [SideEffect], State)], Maybe [SideEffect])])
+state_machine :: Parser (StateMachine, [WholeState])
 state_machine = (,) <$> (empty *> state_machine_name <* empty) <*> state_machine_spec <* empty
 
-state_machine_spec :: Parser [(State, Maybe [SideEffect], [(Event, [SideEffect], State)], Maybe [SideEffect])]
+state_machine_spec :: Parser [WholeState]
 state_machine_spec = (char '{' >> empty) *> state_list <* (empty >> char '}')
 
-state_list :: Parser [(State, Maybe [SideEffect], [(Event, [SideEffect], State)], Maybe [SideEffect])]
+state_list :: Parser [WholeState]
 state_list = sepBy (state <* empty) (char ',' >> empty)
 
-state :: Parser (State, Maybe [SideEffect], [(Event, [SideEffect], State)], Maybe [SideEffect])
-state = try ((,,,) <$> state_title <* empty <*> pure Nothing
-                   <*> ((:[]) <$> ((\ (ses, s) -> (EventEnter, ses, s)) <$> to_state)) <*> pure Nothing)
+state :: Parser WholeState
+state = try ((,,,) <$> state_title <* empty <*> pure []
+                   <*> ((:[]) <$> ((\ (ses, s) -> (EventEnter, ses, s)) <$> to_state)) <*> pure [])
          <|> (,,,) <$> state_title <* empty <*> enter_function <* empty
                    <*> event_handler_spec <* empty <*> exit_function
 
-event_handler_spec :: Parser [(Event, [SideEffect], State)]
+event_handler_spec :: Parser [EventHandler]
 event_handler_spec = (char '[' >> empty) *> event_handler_list <* (empty >> char ']')
 
-event_handler_list :: Parser [(Event, [SideEffect], State)]
+event_handler_list :: Parser [EventHandler]
 event_handler_list = sepBy (event_handler <* empty) (char ',' >> empty)
 
-enter_function :: Parser (Maybe [SideEffect])
-enter_function = optionMaybe (function_call >>= \f -> return [FuncVoid f])
+enter_function :: Parser [SideEffect]
+enter_function = (fmap toList . optionMaybe) (function_call >>= \f -> return (FuncVoid f))
 
-exit_function :: Parser (Maybe [SideEffect])
-exit_function = optionMaybe (function_call >>= \f -> return [FuncVoid f])
+exit_function :: Parser [SideEffect]
+exit_function = (fmap toList . optionMaybe) (function_call >>= \f -> return (FuncVoid f))
 
 side_effect_container :: Parser [SideEffect]
 side_effect_container = (char '(' >> empty) *> side_effect_list <* (empty >> char ')')
@@ -51,7 +51,7 @@ dash = (char '-') *> option [] side_effect_container <* (char '-')
 arrow :: Parser [SideEffect]
 arrow = dash <* (char '>')
 
-event_handler :: Parser (Event, [SideEffect], State)
+event_handler :: Parser EventHandler
 event_handler =
     do ev <- event_name <|> event_any
        empty

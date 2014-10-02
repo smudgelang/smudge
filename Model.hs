@@ -1,20 +1,17 @@
 module Model (
-    WholeState(..),
     EnterExitState(..),
     HappeningFlag(..),
     Happening(..),
     smToGraph,
 ) where
 
-import Grammars.Smudge (StateMachine, State(..), Event, SideEffect)
+import Grammars.Smudge (StateMachine, State(..), Event, SideEffect, WholeState)
 
 import Data.Graph.Inductive.Graph (mkGraph, Node)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Map (Map, fromList, (!))
 
-type WholeState = (State, Maybe [SideEffect], [(Event, [SideEffect], State)], Maybe [SideEffect])
-
-type EnterExitState = (Maybe [SideEffect], State, Maybe [SideEffect])
+type EnterExitState = ([SideEffect], State, [SideEffect])
 
 data HappeningFlag = NoTransition
     deriving (Show, Eq, Ord)

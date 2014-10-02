@@ -41,8 +41,8 @@ instance Labellable State where
 decorate :: EnterExitState -> String
 decorate (en, s, ex) =
     let efl l e = case l of
-            Nothing -> ""
-            Just ens -> "\n" ++ intercalate "\n" (e:(map show ens))
+            [] -> ""
+            ens -> "\n" ++ intercalate "\n" (e:(map show ens))
         s' = case s of
             StateAny -> "Any"
             State sl -> sl

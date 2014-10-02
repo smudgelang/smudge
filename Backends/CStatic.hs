@@ -381,9 +381,9 @@ instance Backend CStaticOption where
                      ++ (if debug then [ExternalDeclaration $ Left $ stateNameFunction sm $ states g] else [])
                      ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug sm]
                      ++ [ExternalDeclaration $ Left $ transitionFunction sm EventEnter
-                         [s | (_, (Just (e:_), s, _)) <- labNodes g]]
+                         [s | (_, ((e:_), s, _)) <- labNodes g]]
                      ++ [ExternalDeclaration $ Left $ transitionFunction sm EventExit
-                         [s | (_, (_, s, Just (e:_))) <- labNodes g]]
+                         [s | (_, (_, s, (e:_))) <- labNodes g]]
                      ++ [ExternalDeclaration $ Left $ changeStateFunction sm]
                      ++ [ExternalDeclaration $ Left $ handleEventFunction debug sm e ss (states g \\ ss)
                          | (e, ss) <- toList $ events g]
@@ -398,8 +398,8 @@ instance Backend CStaticOption where
               events g = foldl insert_event empty [(h, s) | (n, (_, s, _)) <- labNodes g, (_, _, h) <- out g n]
               insert_event m ((Happening e@(Event _) _ _), s@(State _)) = insertWith (flip (++)) e [s] m
               insert_event m                                          _ = m
-              mb2e d me = maybe [] (\_ -> [d]) me
-              mb2h d me = maybe [] (\ss -> [Happening d ss [NoTransition]]) me
+              mb2e d me = if null me then [] else [d]
+              mb2h d me = if null me then [] else [Happening d me [NoTransition]]
               edgeLabel (_, _, l) = l
               eventOf (Happening e _ _) = e
               writeTranslationUnit u fp = (writeFile fp (renderPretty u)) >> (return fp)

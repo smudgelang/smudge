@@ -4,6 +4,8 @@ module Grammars.Smudge (
     State(..),
     Event(..),
     SideEffect(..),
+    EventHandler,
+    WholeState,
 ) where
 
 data Module = Module String [StateMachine]
@@ -19,3 +21,7 @@ data Event = Event String | EventAny | EventEnter | EventExit
 
 data SideEffect = FuncVoid String | FuncEvent String (StateMachine, Event) | FuncDefault (StateMachine, Event)
     deriving (Show, Eq, Ord)
+
+type EventHandler = (Event, [SideEffect], State)
+
+type WholeState = (State, [SideEffect], [EventHandler], [SideEffect])

@@ -83,19 +83,11 @@ processFile fileName = do
 
 --make_output :: String -> [Options] -> [Gr EnterExitState Happening] -> IO ()
 make_output fileName os gs = do
-    let filt o =
-            case o of
-                GraphVizOption a -> True
-                otherwise -> False
-    let gvos = map (\ (GraphVizOption a) -> a) $ filter filt os
+    let gvos = [a | GraphVizOption a <- os]
     outputNames <- generate gvos gs fileName
     mapM_ putStrLn $ do outputName <- outputNames
                         ["Wrote file \"" ++ outputName ++ "\""]
-    let filt' o =
-            case o of
-                CStaticOption a -> True
-                otherwise -> False
-    let csos = map (\ (CStaticOption a) -> a) $ filter filt' os
+    let csos = [a | CStaticOption a <- os]
     outputNames <- generate csos gs fileName
     mapM_ putStrLn $ do outputName <- outputNames
                         ["Wrote file \"" ++ outputName ++ "\""]

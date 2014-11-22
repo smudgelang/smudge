@@ -22,7 +22,9 @@ dist/build/smudge/smudge: config $(HSFILES)
 	cabal build
 
 TAGS: $(HSFILES)
-	hasktags `find . -iname \*\.hs | grep -v Setup.hs`
+	@if command -v hasktags >/dev/null 2>&1; then \
+		hasktags `find . -iname \*\.hs | grep -v Setup.hs`; \
+	fi
 
 clean:
 	rm -rf dist TAGS tags

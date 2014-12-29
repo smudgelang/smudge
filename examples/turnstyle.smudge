@@ -1,5 +1,5 @@
 turnstyle {
-    power-on -(@lightLEDs)-> locked,
+  * power-on -(@lightLEDs)-> locked,
 
     locked @lockedEnter [
         coin -(@flashLEDs, coinInspector.validate)-> waiting-to-unlock,

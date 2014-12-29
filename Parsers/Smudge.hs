@@ -3,7 +3,15 @@ module Parsers.Smudge (
     smudgle,
 ) where
 
-import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..), EventHandler, WholeState)
+import Grammars.Smudge (
+  StateMachine(..),
+  State(..),
+  Event(..),
+  SideEffect(..),
+  EventHandler,
+  StateFlag(..),
+  WholeState
+  )
 
 import Text.ParserCombinators.Parsec hiding (State)
 import Control.Applicative hiding ((<|>), empty, many)
@@ -22,10 +30,10 @@ state_list :: Parser [WholeState]
 state_list = sepBy (state <* empty) (char ',' >> empty)
 
 state :: Parser WholeState
-state = try ((,,,) <$> state_title <* empty <*> pure []
-                   <*> ((:[]) <$> ((\ (ses, s) -> (EventEnter, ses, s)) <$> to_state)) <*> pure [])
-         <|> (,,,) <$> state_title <* empty <*> enter_function <* empty
-                   <*> event_handler_spec <* empty <*> exit_function
+state = try (uncurry (,,,,) <$> state_title <* empty <*> pure []
+                            <*> ((\ (ses, s) -> [(EventEnter, ses, s)]) <$> to_state) <*> pure [])
+         <|> uncurry (,,,,) <$> state_title <* empty <*> enter_function <* empty
+                            <*> event_handler_spec <* empty <*> exit_function
 
 event_handler_spec :: Parser [EventHandler]
 event_handler_spec = (char '[' >> empty) *> event_handler_list <* (empty >> char ']')
@@ -78,8 +86,10 @@ qualified_event = try ((,) <$> state_machine_name <* (char '.') <*> event_name)
 function_call :: Parser String
 function_call = char '@' *> c_identifier
 
-state_title :: Parser State
-state_title = state_name <|> state_any
+state_title :: Parser (State, [StateFlag])
+state_title = (,) <$> state_name <*> pure []
+              <|> (,) <$> state_any <*> pure []
+              <|> (,) <$> (char '*' >> empty *> state_name) <*> pure [Initial]
 
 state_machine_name :: Parser StateMachine
 state_machine_name = StateMachine <$> identifier

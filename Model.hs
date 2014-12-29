@@ -25,8 +25,8 @@ smToGraph (sm, ss) =
     -- Graph.mkGraph :: [(Node, node)] -> [(Node, Node, edge)] -> gr node edge
     mkGraph [s | s <- zip [1..] (map getEeState ss)] es
     where
-        getEeState (s, en, _, ex) = (en, s, ex)
-        getState (s, _, _, _) = s
+        getEeState (s, _, en, _, ex) = (en, s, ex)
+        getState (s, _, _, _, _) = s
         sn :: Map State Node
         sn = fromList [s | s <- zip (map getState ss) [1..]]
         mkEdge :: State -> State -> Happening -> (Node, Node, Happening)
@@ -34,7 +34,7 @@ smToGraph (sm, ss) =
         es = [ese | ese <- concat $ map f ss]
             where
                 f :: WholeState -> [(Node, Node, Happening)]
-                f (s, _, es, _) = map g es
+                f (s, _, _, es, _) = map g es
                     where
                         g :: (Event, [SideEffect], State) -> (Node, Node, Happening)
                         g (e, ses, s') =

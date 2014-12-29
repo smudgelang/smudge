@@ -5,6 +5,7 @@ module Grammars.Smudge (
     Event(..),
     SideEffect(..),
     EventHandler,
+    StateFlag(..),
     WholeState,
 ) where
 
@@ -24,4 +25,7 @@ data SideEffect = FuncVoid String | FuncEvent String (StateMachine, Event) | Fun
 
 type EventHandler = (Event, [SideEffect], State)
 
-type WholeState = (State, [SideEffect], [EventHandler], [SideEffect])
+data StateFlag = Initial
+    deriving (Show, Eq, Ord)
+
+type WholeState = (State, [StateFlag], [SideEffect], [EventHandler], [SideEffect])

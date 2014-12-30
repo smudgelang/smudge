@@ -36,20 +36,18 @@ instance Labellable StateMachine where
 
 instance Labellable State where
     toLabelValue (State s) = toLabelValue s
-    toLabelValue s         = toLabelValue $ show s
+    toLabelValue StateAny  = toLabelValue "Any"
+    toLabelValue StateSame = toLabelValue "Same"
 
-decorate :: EnterExitState -> String
-decorate (en, s, ex) =
-    let efl l e = case l of
-            [] -> ""
-            ens -> "\n" ++ intercalate "\n" (e:(map show ens))
-        s' = case s of
-            StateAny -> "Any"
-            State sl -> sl
-    in s' ++ (efl en "Enter:") ++ (efl ex "Exit:")
+labelCrlf :: Label
+labelCrlf = toLabelValue "\n"
+
+instance Labellable EnterExitState where
+    toLabelValue (en, s, ex) = mconcat $ intersperse labelCrlf $ toLabelValue s : efl en "Enter:" ++ efl ex "Exit:"
+        where efl l e = (take 1 (l >> [toLabelValue e])) ++ map toLabelValue l
 
 instance Labellable QualifiedState where
-    toLabelValue (_, qs) = toLabelValue $ decorate qs
+    toLabelValue (_, qs) = toLabelValue qs
 
 instance Labellable Event where
     toLabelValue (Event e) = toLabelValue e
@@ -58,10 +56,10 @@ instance Labellable Event where
 instance Labellable SideEffect where
     toLabelValue (FuncVoid f) = toLabelValue f
     toLabelValue (FuncEvent f (s, e)) = toLabelValue e
-    toLabelValue (FuncDefault (s, e)) = mconcat $ toLabelValue s : [toLabelValue e]
+    toLabelValue (FuncDefault (s, e)) = mconcat [toLabelValue s, toLabelValue e]
 
 instance Labellable Happening where
-    toLabelValue (Happening e ses _) = mconcat $ intersperse (toLabelValue "\n") $ toLabelValue e : map toLabelValue ses
+    toLabelValue (Happening e ses _) = mconcat $ intersperse labelCrlf $ toLabelValue e : map toLabelValue ses
 
 smudgeParams sideEffects clusterBox title=
     defaultParams

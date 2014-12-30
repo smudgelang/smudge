@@ -77,7 +77,7 @@ smudgeParams sideEffects clusterBox title=
             clusterAttrs c = [GraphAttrs [toLabel c]]
             smToString (StateMachine s) = s
             keep (_, _, l) = [toLabel l, arrow l]
-            drop (start, end, ese@(Happening e _ _)) = [toLabel e, arrow ese]
+            drop (start, end, ese) = [toLabel (event ese), arrow ese]
             arrow (Happening _ _ [])                        = edgeEnds Forward
             arrow (Happening _ _ fs) | elem NoTransition fs = edgeEnds NoDir
 

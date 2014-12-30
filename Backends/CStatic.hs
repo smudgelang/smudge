@@ -106,12 +106,12 @@ handleStateEventFunction (StateMachine smName) (State s) h (State s') =
         smMangledName = mangleIdentifier smName
         sMangledName = mangleIdentifier s
         destStateMangledName = mangleIdentifier s'
-        evMangledName = case (case h of (Happening e _ _) -> e) of
+        evMangledName = case event h of
                             (Event evName) -> mangleIdentifier evName
                             (EventEnter) -> "enter"
                             (EventExit) -> "exit"
                             (EventAny) -> "any"
-        hasPs = case (case h of (Happening e _ _) -> e) of
+        hasPs = case event h of
                         (Event _) -> True
                         otherwise -> False
         f_name = smMangledName ++ "_" ++ sMangledName ++ "_" ++ evMangledName
@@ -377,7 +377,7 @@ instance Backend CStaticOption where
               tus = [[ExternalDeclaration $ Right $ stateEnum sm $ states g]
                      ++ [ExternalDeclaration $ Right $ stateVarDeclaration sm $ [s | s@(State _) <- (states g)] !! 0]
                      ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration sm s e
-                         | (n, (en, s@(State _), ex)) <- labNodes g, e <- (mb2e EventEnter en) ++ (map (eventOf . edgeLabel) $ out g n) ++ (mb2e EventExit ex)]
+                         | (n, (en, s@(State _), ex)) <- labNodes g, e <- (mb2e EventEnter en) ++ (map (event . edgeLabel) $ out g n) ++ (mb2e EventExit ex)]
                      ++ (if debug then [ExternalDeclaration $ Left $ stateNameFunction sm $ states g] else [])
                      ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug sm]
                      ++ [ExternalDeclaration $ Left $ transitionFunction sm EventEnter
@@ -401,7 +401,6 @@ instance Backend CStaticOption where
               mb2e d me = if null me then [] else [d]
               mb2h d me = if null me then [] else [Happening d me [NoTransition]]
               edgeLabel (_, _, l) = l
-              eventOf (Happening e _ _) = e
               writeTranslationUnit u fp = (writeFile fp (renderPretty u)) >> (return fp)
               getFirstOrDefault :: ([a] -> b) -> b -> [a] -> b
               getFirstOrDefault _ d     [] = d

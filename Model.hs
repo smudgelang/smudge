@@ -16,8 +16,11 @@ type EnterExitState = ([SideEffect], State, [SideEffect])
 data HappeningFlag = NoTransition
     deriving (Show, Eq, Ord)
 
-data Happening = Happening Event [SideEffect] [HappeningFlag]
-    deriving (Show, Eq, Ord)
+data Happening = Happening {
+        event       :: Event,
+        sideEffects :: [SideEffect],
+        flags       :: [HappeningFlag]
+    } deriving (Show, Eq, Ord)
 
 smToGraph :: (StateMachine, [WholeState]) ->
                  Gr EnterExitState Happening

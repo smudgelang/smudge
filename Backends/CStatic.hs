@@ -1,9 +1,11 @@
+{-# LANGUAGE NamedFieldPuns #-}
+
 module Backends.CStatic where
 
 import Backends.Backend (Backend(..))
 import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..))
 import Grammars.C89
-import Model (HappeningFlag(..), Happening(..))
+import Model (EnterExitState(..), HappeningFlag(..), Happening(..))
 import Trashcan.FilePath (relPath)
 import Unparsers.C89 (renderPretty)
 
@@ -377,25 +379,25 @@ instance Backend CStaticOption where
               tus = [[ExternalDeclaration $ Right $ stateEnum sm $ states g]
                      ++ [ExternalDeclaration $ Right $ stateVarDeclaration sm $ [s | s@(State _) <- (states g)] !! 0]
                      ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration sm s e
-                         | (n, (en, s@(State _), ex)) <- labNodes g, e <- (mb2e EventEnter en) ++ (map (event . edgeLabel) $ out g n) ++ (mb2e EventExit ex)]
+                         | (n, EnterExitState {en, st = s@(State _), ex}) <- labNodes g, e <- (mb2e EventEnter en) ++ (map (event . edgeLabel) $ out g n) ++ (mb2e EventExit ex)]
                      ++ (if debug then [ExternalDeclaration $ Left $ stateNameFunction sm $ states g] else [])
                      ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug sm]
                      ++ [ExternalDeclaration $ Left $ transitionFunction sm EventEnter
-                         [s | (_, ((e:_), s, _)) <- labNodes g]]
+                         [st | (_, EnterExitState {en = (_:_), st}) <- labNodes g]]
                      ++ [ExternalDeclaration $ Left $ transitionFunction sm EventExit
-                         [s | (_, (_, s, (e:_))) <- labNodes g]]
+                         [st | (_, EnterExitState {st, ex = (_:_)}) <- labNodes g]]
                      ++ [ExternalDeclaration $ Left $ changeStateFunction sm]
                      ++ [ExternalDeclaration $ Left $ handleEventFunction debug sm e ss (states g \\ ss)
                          | (e, ss) <- toList $ events g]
                      ++ [ExternalDeclaration $ Left $ handleStateEventFunction sm s h s
-                         | (n, (en, s@(State _), ex)) <- labNodes g, h <- mb2h EventEnter en]
+                         | (n, EnterExitState {en, st = s@(State _)}) <- labNodes g, h <- mb2h EventEnter en]
                      ++ [ExternalDeclaration $ Left $ handleStateEventFunction sm s h s'
-                         | (n, (_, s@(State _), _)) <- labNodes g, (_, n', h) <- out g n, (Just (_, s'@(State _), _)) <- [lab g n']]
+                         | (n, EnterExitState {st = s@(State _)}) <- labNodes g, (_, n', h) <- out g n, Just EnterExitState {st = s'@(State _)} <- [lab g n']]
                      ++ [ExternalDeclaration $ Left $ handleStateEventFunction sm s h s
-                         | (n, (en, s@(State _), ex)) <- labNodes g, h <- mb2h EventExit ex]
+                         | (n, EnterExitState {st = s@(State _), ex}) <- labNodes g, h <- mb2h EventExit ex]
                      | (sm, g) <- gs]
-              states g = [s | (_, (_, s, _)) <- labNodes g]
-              events g = foldl insert_event empty [(h, s) | (n, (_, s, _)) <- labNodes g, (_, _, h) <- out g n]
+              states g = [st ees | (_, ees) <- labNodes g]
+              events g = foldl insert_event empty [(h, st ees) | (n, ees) <- labNodes g, (_, _, h) <- out g n]
               insert_event m ((Happening e@(Event _) _ _), s@(State _)) = insertWith (flip (++)) e [s] m
               insert_event m                                          _ = m
               mb2e d me = if null me then [] else [d]

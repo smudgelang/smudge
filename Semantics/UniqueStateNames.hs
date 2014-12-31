@@ -3,6 +3,7 @@ module Semantics.UniqueStateNames (
 ) where
 
 import Grammars.Smudge (State)
+import Model (EnterExitState(..))
 import Semantics.Semantic (Passable(..))
 
 import Data.Foldable (toList)
@@ -17,5 +18,5 @@ instance Monoid UniqueStateNames where
         UniqueStateNames (mappend sl sl') (mappend ss ss')
 
 instance Passable UniqueStateNames where
-    accumulate (_, _, (_, s, _), _) (UniqueStateNames sl ss) = UniqueStateNames (s:sl) (insert s ss)
+    accumulate (_, _, ees, _) (UniqueStateNames sl ss) = UniqueStateNames (st ees:sl) (insert (st ees) ss)
     test (UniqueStateNames sl ss) = (sort sl) == (sort (toList ss))

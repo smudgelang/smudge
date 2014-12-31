@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Model (
     EnterExitState(..),
     HappeningFlag(..),
@@ -11,7 +13,11 @@ import Data.Graph.Inductive.Graph (mkGraph, Node)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Map (Map, fromList, (!))
 
-type EnterExitState = ([SideEffect], State, [SideEffect])
+data EnterExitState = EnterExitState {
+        en :: [SideEffect],
+        st :: State,
+        ex :: [SideEffect]
+    } deriving (Show, Eq, Ord)
 
 data HappeningFlag = NoTransition
     deriving (Show, Eq, Ord)
@@ -28,7 +34,7 @@ smToGraph (sm, ss) =
     -- Graph.mkGraph :: [(Node, node)] -> [(Node, Node, edge)] -> gr node edge
     mkGraph [s | s <- zip [1..] (map getEeState ss)] es
     where
-        getEeState (s, _, en, _, ex) = (en, s, ex)
+        getEeState (st, _, en, _, ex) = EnterExitState {..}
         getState (s, _, _, _, _) = s
         sn :: Map State Node
         sn = fromList [s | s <- zip (map getState ss) [1..]]

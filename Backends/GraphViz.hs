@@ -1,4 +1,6 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE NamedFieldPuns #-}
+
 module Backends.GraphViz where
 
 import Backends.Backend (Backend(..))
@@ -43,7 +45,7 @@ labelCrlf :: Label
 labelCrlf = toLabelValue "\n"
 
 instance Labellable EnterExitState where
-    toLabelValue (en, s, ex) = mconcat $ intersperse labelCrlf $ toLabelValue s : efl en "Enter:" ++ efl ex "Exit:"
+    toLabelValue EnterExitState {en, st, ex} = mconcat $ intersperse labelCrlf $ toLabelValue st : efl en "Enter:" ++ efl ex "Exit:"
         where efl l e = (take 1 (l >> [toLabelValue e])) ++ map toLabelValue l
 
 instance Labellable QualifiedState where

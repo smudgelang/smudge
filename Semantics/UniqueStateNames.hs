@@ -9,7 +9,7 @@ import Semantics.Semantic (Passable(..))
 import Data.Foldable (toList)
 import Data.List (sort)
 import Data.Monoid (Monoid(..))
-import Data.Set (Set, isSubsetOf, insert)
+import Data.Set (Set, singleton)
 
 data UniqueStateNames = UniqueStateNames [State] (Set State)
 instance Monoid UniqueStateNames where
@@ -18,5 +18,5 @@ instance Monoid UniqueStateNames where
         UniqueStateNames (mappend sl sl') (mappend ss ss')
 
 instance Passable UniqueStateNames where
-    accumulate (_, _, ees, _) (UniqueStateNames sl ss) = UniqueStateNames (st ees:sl) (insert (st ees) ss)
+    accumulate (_, _, ees, _) = mappend (UniqueStateNames [st ees] (singleton $ st ees))
     test (UniqueStateNames sl ss) = (sort sl) == (sort (toList ss))

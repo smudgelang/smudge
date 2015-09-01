@@ -14,7 +14,7 @@ data Module = Module String [StateMachine]
 data StateMachine = StateMachine String | StateMachineSame
     deriving (Show, Eq, Ord)
 
-data State = State String | StateAny | StateSame
+data State = State String | StateAny | StateSame | StateEntry
     deriving (Show, Eq, Ord)
 
 data Event = Event String | EventAny | EventEnter | EventExit

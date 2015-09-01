@@ -9,7 +9,7 @@ import Model (EnterExitState(..), HappeningFlag(..), Happening(..))
 import Trashcan.FilePath (relPath)
 import Unparsers.C89 (renderPretty)
 
-import Data.Graph.Inductive.Graph (labNodes, lab, out, context, nodes)
+import Data.Graph.Inductive.Graph (labNodes, lab, out, suc)
 import Data.List ((\\))
 import Data.Map (insertWith, empty, toList)
 import System.Console.GetOpt
@@ -26,7 +26,12 @@ transitionFunction :: StateMachine -> Event -> [State] -> FunctionDefinition
 transitionFunction (StateMachine smName) e ss =
     Function
     (Just $ fromList [A STATIC, B VOID])
-    (Declarator Nothing $ PDirectDeclarator (IDirectDeclarator $ f_name) LEFTPAREN Nothing RIGHTPAREN)
+    (Declarator Nothing
+        $ PDirectDeclarator
+          (IDirectDeclarator $ f_name)
+          LEFTPAREN
+          (Just $ Left $ ParameterTypeList (fromList [ParameterDeclaration (fromList [B VOID]) Nothing]) Nothing)
+          RIGHTPAREN)
     Nothing
     (CompoundStatement
     LEFTCURLY
@@ -84,6 +89,42 @@ changeStateFunction (StateMachine smName) =
         call_exit = (#:) (apply exit_f []) (:#)
         call_enter = (#:) (apply enter_f []) (:#)
 
+initializeFunction :: StateMachine -> FunctionDefinition
+initializeFunction (StateMachine smName) =
+    Function
+    (Just $ fromList [A STATIC, B VOID])
+    (Declarator Nothing
+        $ PDirectDeclarator
+          (IDirectDeclarator $ f_name)
+          LEFTPAREN
+          (Just $ Left $ ParameterTypeList (fromList [ParameterDeclaration (fromList [B VOID]) Nothing]) Nothing)
+          RIGHTPAREN)
+    Nothing
+    (CompoundStatement
+    LEFTCURLY
+        (Just $ fromList [Declaration
+                          (fromList [A STATIC, B (makeEnum "" [init_uninit, init_init])])
+                          (Just $ fromList [InitDeclarator (Declarator Nothing (IDirectDeclarator init_var)) (Just $ Pair EQUAL (AInitializer ((#:) init_uninit (:#))))])
+                           SEMICOLON])
+        (Just $ fromList [SStatement $ IF LEFTPAREN (fromList [init_check]) RIGHTPAREN (CStatement $ CompoundStatement
+                                       LEFTCURLY
+                                            Nothing
+                                            (Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [call_enter]) SEMICOLON,
+                                                              EStatement $ ExpressionStatement (Just $ fromList [init_set]) SEMICOLON])
+                                       RIGHTCURLY)
+                                       Nothing])
+    RIGHTCURLY)
+    where
+        smMangledName = mangleIdentifier smName
+        f_name = smMangledName ++ "_initialize"
+        init_var = "initialized"
+        init_init = "INITIALIZED"
+        init_uninit = "UNINITIALIZED"
+        enter_f = (#:) (smMangledName ++ "_enter") (:#)
+        call_enter = (#:) (apply enter_f []) (:#)
+        init_check = (#:) ((#:) init_init (:#) `NOTEQUAL` (#:) init_var (:#)) (:#)
+        init_set = (#:) init_var (:#) `ASSIGN` (#:) init_init (:#)
+
 handleStateEventFunction :: StateMachine -> State -> Happening -> State -> FunctionDefinition
 handleStateEventFunction (StateMachine smName) (State s) h (State s') =
     Function
@@ -92,11 +133,11 @@ handleStateEventFunction (StateMachine smName) (State s) h (State s') =
         $ PDirectDeclarator
           (IDirectDeclarator f_name)
           LEFTPAREN
-          (if not hasPs then Nothing else
-            (Just $ Left $ ParameterTypeList
-                           (fromList [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
-                                      (Just $ Left $ Declarator (Just $ POINTER Nothing Nothing) $ IDirectDeclarator event_var)])
-                           Nothing))
+          (Just $ Left $ ParameterTypeList
+                         (fromList (if not hasPs then [ParameterDeclaration (fromList [B VOID]) Nothing]
+                                    else [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
+                                          (Just $ Left $ Declarator (Just $ POINTER Nothing Nothing) $ IDirectDeclarator event_var)]))
+                         Nothing)
           RIGHTPAREN)
     Nothing
     (CompoundStatement
@@ -148,7 +189,8 @@ handleEventFunction debug (StateMachine smName) (Event evName) ss unss =
                                       (Just $ fromList [InitDeclarator (Declarator (Just $ POINTER Nothing Nothing) $ IDirectDeclarator name_var)
                                                         (Just $ Pair EQUAL $ AInitializer evname_e)])
                                       SEMICOLON]))
-        (Just $ fromList [SStatement $ SWITCH LEFTPAREN (fromList [state_var]) RIGHTPAREN $ CStatement $ CompoundStatement LEFTCURLY
+        (Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [call_initialize]) SEMICOLON,
+                          SStatement $ SWITCH LEFTPAREN (fromList [state_var]) RIGHTPAREN $ CStatement $ CompoundStatement LEFTCURLY
                                        Nothing
                                        (Just $ fromList $ concat ([[LStatement $ case_stmt s, JStatement $ BREAK SEMICOLON] | s <- ssMangled]
                                                                  ++ [[LStatement $ unhd_stmt s, JStatement $ BREAK SEMICOLON] | s <- unssMangled])
@@ -171,7 +213,9 @@ handleEventFunction debug (StateMachine smName) (Event evName) ss unss =
         evname_e = (#:) (show evName) (:#)
         state_var = (#:) (smMangledName ++ "_state") (:#)
         unhandled = (#:) (smMangledName ++ "_UNHANDLED_EVENT") (:#)
+        initialize = (#:) (smMangledName ++ "_initialize") (:#)
         call_unhandled = (#:) (apply unhandled (if debug then [name_ex] else [])) (:#)
+        call_initialize = (#:) (apply initialize []) (:#)
         unhd_stmt s = let state_case = (#:) s (:#) in
                         CASE state_case COLON $
                         EStatement $ ExpressionStatement (Just $ fromList [call_unhandled]) SEMICOLON
@@ -267,11 +311,11 @@ handleStateEventDeclaration (StateMachine smName) (State s) e =
     (Just $ fromList [InitDeclarator (Declarator Nothing (PDirectDeclarator
           (IDirectDeclarator f_name)
           LEFTPAREN
-          (if not hasPs then Nothing else
-            (Just $ Left $ ParameterTypeList
-                           (fromList [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
-                                      (Just $ Right $ AbstractDeclarator $ This $ POINTER Nothing Nothing)])
-                           Nothing))
+          (Just $ Left $ ParameterTypeList
+                         (fromList (if not hasPs then [ParameterDeclaration (fromList [B VOID]) Nothing]
+                                    else [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
+                                          (Just $ Right $ AbstractDeclarator $ This $ POINTER Nothing Nothing)]))
+                         Nothing)
           RIGHTPAREN)) Nothing])
     SEMICOLON
     where
@@ -334,7 +378,7 @@ stateEnum (StateMachine smName) ss =
 makeEnum :: Identifier -> [Identifier] -> TypeSpecifier
 makeEnum smName [] = ENUM (Left $ smName)
 makeEnum smName ss = 
-    ENUM (Right (Quad (Just $ smName)
+    ENUM (Right (Quad (if null smName then Nothing else Just $ smName)
     LEFTCURLY
     (fromList [Enumerator s Nothing | s <- ss])
     RIGHTCURLY))
@@ -377,7 +421,7 @@ instance Backend CStaticOption where
                          | (e, _) <- toList $ events g]
                      | (sm, g) <- gs]
               tus = [[ExternalDeclaration $ Right $ stateEnum sm $ states g]
-                     ++ [ExternalDeclaration $ Right $ stateVarDeclaration sm $ [s | s@(State _) <- (states g)] !! 0]
+                     ++ [ExternalDeclaration $ Right $ stateVarDeclaration sm $ initial g]
                      ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration sm s e
                          | (n, EnterExitState {en, st = s@(State _), ex}) <- labNodes g, e <- (mb2e EventEnter en) ++ (map (event . edgeLabel) $ out g n) ++ (mb2e EventExit ex)]
                      ++ (if debug then [ExternalDeclaration $ Left $ stateNameFunction sm $ states g] else [])
@@ -387,6 +431,7 @@ instance Backend CStaticOption where
                      ++ [ExternalDeclaration $ Left $ transitionFunction sm EventExit
                          [st | (_, EnterExitState {st, ex = (_:_)}) <- labNodes g]]
                      ++ [ExternalDeclaration $ Left $ changeStateFunction sm]
+                     ++ [ExternalDeclaration $ Left $ initializeFunction sm]
                      ++ [ExternalDeclaration $ Left $ handleEventFunction debug sm e ss (states g \\ ss)
                          | (e, ss) <- toList $ events g]
                      ++ [ExternalDeclaration $ Left $ handleStateEventFunction sm s h s
@@ -396,6 +441,7 @@ instance Backend CStaticOption where
                      ++ [ExternalDeclaration $ Left $ handleStateEventFunction sm s h s
                          | (n, EnterExitState {st = s@(State _), ex}) <- labNodes g, h <- mb2h EventExit ex]
                      | (sm, g) <- gs]
+              initial g = head [st ese | (n, EnterExitState {st = StateEntry}) <- labNodes g, n' <- suc g n, (Just ese) <- [lab g n']]
               states g = [st ees | (_, ees) <- labNodes g]
               events g = foldl insert_event empty [(h, st ees) | (n, ees) <- labNodes g, (_, _, h) <- out g n]
               insert_event m ((Happening e@(Event _) _ _), s@(State _)) = insertWith (flip (++)) e [s] m

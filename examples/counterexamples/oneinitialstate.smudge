@@ -1,0 +1,12 @@
+
+NoInitialState
+{
+    A [],
+    B []
+}
+
+TwoInitialStates
+{
+  * A [],
+  * B []
+}

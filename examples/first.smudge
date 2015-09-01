@@ -1,7 +1,7 @@
 // This is a comment. It goes to the end of the line.
 SM_NAME // This is the name of a state machine.
 {
-    FIRST_STATE // This is the name of a state in the SM_NAME state machine.
+  * FIRST_STATE // This is the name of a state in the SM_NAME state machine.
     @enterFirst // This optional function is called on entering FIRST_STATE.
     [ // Begin the list of event handlers.
 

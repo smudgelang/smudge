@@ -2,13 +2,13 @@
 
 SMA
 {
-    A [ dummy --> B, _ --> B ],
+  * A [ dummy --> B, _ --> B ],
     B [ _ --> A ]
 }
 
 SMB
 {
-    A [ dummy --> B, _ --> B ],
+  * A [ dummy --> B, _ --> B ],
     B [ _ --> C ],
     C [ _ --> D ],
     D [ _ --> A ]

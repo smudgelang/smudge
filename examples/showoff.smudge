@@ -14,7 +14,7 @@
         Stay -(@stayStill)-,
         Reenter --> B
     ] @exitB,
-    C
+  * C
     [
         Beedoo --> A,
         GoB -(@gob)-> B
@@ -23,14 +23,14 @@
 
 "State Machine 2!"
 {
-    A [_ --> B],
+  * A [_ --> B],
     B [_ --> A]
 }
 
 SM3
 {
     _ ["External" --> START],
-    START @startTimer
+  * START @startTimer
     [
         Tick --> READY,
         Reset -(@cancelTimer)-> START

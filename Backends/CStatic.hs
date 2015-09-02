@@ -233,11 +233,11 @@ unhandledEventFunction debug (StateMachine smName) =
         $ PDirectDeclarator
           (IDirectDeclarator f_name)
           LEFTPAREN
-          (if not debug then Nothing else
-            (Just $ Left $ ParameterTypeList
-                         (fromList [ParameterDeclaration (fromList [C CONST, B CHAR])
-                                    (Just $ Left $ Declarator (Just $ POINTER Nothing Nothing) $ IDirectDeclarator event_var)])
-                         Nothing))
+          (Just $ Left $ ParameterTypeList
+                         (fromList (if not debug then [ParameterDeclaration (fromList [B VOID]) Nothing]
+                                    else [ParameterDeclaration (fromList [C CONST, B CHAR])
+                                          (Just $ Left $ Declarator (Just $ POINTER Nothing Nothing) $ IDirectDeclarator event_var)]))
+                         Nothing)
           RIGHTPAREN)
     Nothing
     (CompoundStatement

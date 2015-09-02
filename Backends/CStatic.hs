@@ -12,8 +12,9 @@ import Unparsers.C89 (renderPretty)
 import Data.Graph.Inductive.Graph (labNodes, lab, out, suc)
 import Data.List ((\\))
 import Data.Map (insertWith, empty, toList)
+import Data.Text (replace)
 import System.Console.GetOpt
-import System.FilePath (FilePath, dropExtension, takeDirectory, (<.>))
+import System.FilePath (FilePath, dropExtension, takeDirectory, takeFileName, (<.>))
 
 data CStaticOption = OutFile FilePath | Header FilePath | NoDebug
     deriving (Show, Eq)
@@ -411,8 +412,8 @@ instance Backend CStaticOption where
                  "The name of the target header file if not derived from source file.",
                 Option [] ["no-debug"] (NoArg NoDebug)
                  "Don't generate debugging information"])
-    generate os gs inputName = sequence [writeTranslationUnit hdr $ headerName os,
-                                         writeTranslationUnit src $ outputName os]
+    generate os gs inputName = sequence [writeTranslationUnit renderHdr hdr (headerName os) [],
+                                         writeTranslationUnit renderSrc src (outputName os) [headerName os, extHdrName os]]
         where src = fromList $ concat tus
               hdr = fromList $ concat tuh
               tuh = [[ExternalDeclaration $ Right $ eventStruct sm e
@@ -450,7 +451,9 @@ instance Backend CStaticOption where
               mb2e d me = if null me then [] else [d]
               mb2h d me = if null me then [] else [Happening d me [NoTransition]]
               edgeLabel (_, _, l) = l
-              writeTranslationUnit u fp = (writeFile fp (renderPretty u)) >> (return fp)
+              writeTranslationUnit render u fp includes = (writeFile fp (render u includes fp)) >> (return fp)
+              renderHdr u includes fp = hdrLeader includes fp ++ renderPretty u ++ hdrTrailer
+              renderSrc u includes _ = srcLeader includes ++ renderPretty u ++ srcTrailer
               getFirstOrDefault :: ([a] -> b) -> b -> [a] -> b
               getFirstOrDefault _ d     [] = d
               getFirstOrDefault f _ (x:xs) = f xs
@@ -458,7 +461,15 @@ instance Backend CStaticOption where
               outputName xs = getFirstOrDefault outputName ((dropExtension inputName) <.> "c") xs
               headerName ((Header f):_) = f
               headerName xs = getFirstOrDefault headerName ((dropExtension inputName) <.> "h") xs
+              extHdrName xs = getFirstOrDefault extHdrName (((dropExtension inputName) ++ "_ext") <.> "h") xs
               headerIncludePath = relPath (takeDirectory $ outputName os) (headerName os)
               doDebug ((NoDebug):_) = False
               doDebug xs = getFirstOrDefault doDebug True xs
+              mkInclude f = concat ["#include \"", f, "\"\n"]
+              genIncludes includes = concat $ map mkInclude includes
+              srcLeader = genIncludes
+              srcTrailer = ""
+              reinclusionName fp = concat ["__", map (\a -> (if a == '.' then '_' else a)) (takeFileName fp), "__"]
+              hdrLeader includes fp = concat ["#ifndef ", reinclusionName fp, "\n", "#define ", reinclusionName fp, "\n", genIncludes includes]
+              hdrTrailer = "#endif\n"
               debug = doDebug os

@@ -427,7 +427,8 @@ instance Backend CStaticOption where
                      ++ (if debug then [ExternalDeclaration $ Left $ stateNameFunction sm $ states g] else [])
                      ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug sm]
                      ++ [ExternalDeclaration $ Left $ transitionFunction sm EventEnter
-                         [st | (_, EnterExitState {en = (_:_), st}) <- labNodes g]]
+                         $ [st | (_, EnterExitState {en = (_:_), st}) <- labNodes g]
+                         ++ [st | (n, EnterExitState {st}) <- labNodes g, (_, _, Happening EventEnter _ _) <- out g n]]
                      ++ [ExternalDeclaration $ Left $ transitionFunction sm EventExit
                          [st | (_, EnterExitState {st, ex = (_:_)}) <- labNodes g]]
                      ++ [ExternalDeclaration $ Left $ changeStateFunction sm]

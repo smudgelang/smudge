@@ -10,7 +10,7 @@ import Trashcan.FilePath (relPath)
 import Unparsers.C89 (renderPretty)
 
 import Data.Graph.Inductive.Graph (labNodes, lab, out, suc)
-import Data.List ((\\))
+import Data.List (intercalate, (\\))
 import Data.Map (insertWith, empty, toList)
 import Data.Text (replace)
 import System.Console.GetOpt
@@ -22,6 +22,9 @@ data CStaticOption = OutFile FilePath | Header FilePath | NoDebug
 apply :: PostfixExpression -> [AssignmentExpression] -> PostfixExpression
 apply f [] = APostfixExpression f LEFTPAREN Nothing RIGHTPAREN
 apply f ps = APostfixExpression f LEFTPAREN (Just $ fromList ps) RIGHTPAREN
+
+extendMangledIdentifier :: Identifier -> [String] -> Identifier
+extendMangledIdentifier s ss = intercalate "_" $ s : map mangleIdentifier ss
 
 transitionFunction :: StateMachine -> Event -> [State] -> FunctionDefinition
 transitionFunction (StateMachine smName) e ss =
@@ -169,8 +172,8 @@ handleStateEventFunction (StateMachine smName) (State s) h (State s') =
                           (Happening _ ses [])                        -> [(#:) (apply ((#:) se (:#)) (if hasPs then [event_ex] else [])) (:#) | (FuncVoid se) <- ses] ++ [call_change]
                           (Happening _ ses fs) | elem NoTransition fs -> [(#:) (apply ((#:) se (:#)) (if hasPs then [event_ex] else [])) (:#) | (FuncVoid se) <- ses]
 
-handleEventFunction :: Bool -> StateMachine -> Event -> [State] -> [State] -> FunctionDefinition
-handleEventFunction debug (StateMachine smName) (Event evName) ss unss =
+handleEventFunction :: Bool -> StateMachine -> Event -> [State] -> [State] -> [State] -> FunctionDefinition
+handleEventFunction debug (StateMachine smName) (Event evName) ss anys unss =
     Function
     (Just $ fromList [B VOID])
     (Declarator Nothing
@@ -193,7 +196,8 @@ handleEventFunction debug (StateMachine smName) (Event evName) ss unss =
         (Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [call_initialize]) SEMICOLON,
                           SStatement $ SWITCH LEFTPAREN (fromList [state_var]) RIGHTPAREN $ CStatement $ CompoundStatement LEFTCURLY
                                        Nothing
-                                       (Just $ fromList $ concat ([[LStatement $ case_stmt s, JStatement $ BREAK SEMICOLON] | s <- ssMangled]
+                                       (Just $ fromList $ concat ([[LStatement $ case_stmt s evName [event_ex], JStatement $ BREAK SEMICOLON] | s <- ssMangled]
+                                                                 ++ [[LStatement $ case_stmt s "any" [], JStatement $ BREAK SEMICOLON] | s <- anysMangled]
                                                                  ++ [[LStatement $ unhd_stmt s, JStatement $ BREAK SEMICOLON] | s <- unssMangled])
                                                                  ++ [LStatement $ DEFAULT COLON $
                                                                      EStatement $ ExpressionStatement (Just $ fromList [call_unhandled]) SEMICOLON,
@@ -203,6 +207,7 @@ handleEventFunction debug (StateMachine smName) (Event evName) ss unss =
     where
         smMangledName = mangleIdentifier smName
         ssMangled = [smMangledName ++ "_" ++ (mangleIdentifier s) | (State s) <- ss]
+        anysMangled = [extendMangledIdentifier smMangledName [s] | (State s) <- anys]
         unssMangled = [smMangledName ++ "_" ++ (mangleIdentifier s) | (State s) <- unss]
         evMangledName = mangleIdentifier evName
         f_name = smMangledName ++ "_" ++ evMangledName
@@ -220,9 +225,9 @@ handleEventFunction debug (StateMachine smName) (Event evName) ss unss =
         unhd_stmt s = let state_case = (#:) s (:#) in
                         CASE state_case COLON $
                         EStatement $ ExpressionStatement (Just $ fromList [call_unhandled]) SEMICOLON
-        case_stmt s = let state_case = (#:) s (:#)
-                          state_evt_handler = (#:) (s ++ "_" ++ evMangledName) (:#)
-                          call_state_evt_handler = (#:) (apply state_evt_handler [event_ex]) (:#) in
+        case_stmt s en es = let state_case = (#:) s (:#)
+                                state_evt_handler = (#:) (extendMangledIdentifier s [en]) (:#)
+                                call_state_evt_handler = (#:) (apply state_evt_handler es) (:#) in
                         CASE state_case COLON $
                         EStatement $ ExpressionStatement (Just $ fromList [call_state_evt_handler]) SEMICOLON
 
@@ -434,7 +439,7 @@ instance Backend CStaticOption where
                          [st | (_, EnterExitState {st, ex = (_:_)}) <- labNodes g]]
                      ++ [ExternalDeclaration $ Left $ changeStateFunction sm]
                      ++ [ExternalDeclaration $ Left $ initializeFunction sm]
-                     ++ [ExternalDeclaration $ Left $ handleEventFunction debug sm e ss (states g \\ ss)
+                     ++ [ExternalDeclaration $ Left $ handleEventFunction debug sm e ss (anys g \\ ss) ((states g \\ ss) \\ (anys g))
                          | (e, ss) <- toList $ events g]
                      ++ [ExternalDeclaration $ Left $ handleStateEventFunction sm s h s
                          | (n, EnterExitState {en, st = s@(State _)}) <- labNodes g, h <- mb2h EventEnter en]
@@ -445,6 +450,7 @@ instance Backend CStaticOption where
                      | (sm, g) <- gs]
               initial g = head [st ese | (n, EnterExitState {st = StateEntry}) <- labNodes g, n' <- suc g n, (Just ese) <- [lab g n']]
               states g = [st ees | (_, ees) <- labNodes g]
+              anys g = [st ees | (n, ees) <- labNodes g, (_, _, Happening {event = EventAny}) <- out g n]
               events g = foldl insert_event empty [(h, st ees) | (n, ees) <- labNodes g, (_, _, h) <- out g n]
               insert_event m ((Happening e@(Event _) _ _), s@(State _)) = insertWith (flip (++)) e [s] m
               insert_event m                                          _ = m

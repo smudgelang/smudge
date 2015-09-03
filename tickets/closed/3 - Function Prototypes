@@ -1,0 +1,10 @@
+Smudge generates a function called SM_UNHANDLED_EVENT for a state
+machine called SM. Its prototype is generated as
+
+static void SM_UNHANDLED_EVENT()
+
+but it should be
+
+static void SM_UNHANDLED_EVENT(void)
+
+My compiler complains.

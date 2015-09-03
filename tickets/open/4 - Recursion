@@ -1,0 +1,21 @@
+Smudge generates recursive calls to SM_enter() in transient states'
+enter functions. My platform doesn't support recursion. Right now I'm
+working around it in C by manually writing:
+
+static void StateMachine_TRANSIENT_enter(void)
+{
+    doStuff();
+
+#if 0 /* Replace this (recursive) code */
+    StateMachine_change_state(StateMachine_NEXT_STATE_NAME);
+#else /* with this (ugly and hard to maintain by hand) code. */
+    StateMachine_exit();
+    StateMachine_state = StateMachine_NEXT_STATE_NAME;
+    StateMachine_NEXT_STATE_NAME_enter();
+#endif
+}
+
+Ideally, I'd like to wrap this stuff up in an event that's (opaquely)
+sent through the system's event deliverer, but I'm not hacking that in
+by hand. Minimally, generated code that looks like what I hand wrote
+would suffice.

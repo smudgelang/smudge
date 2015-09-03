@@ -1,0 +1,7 @@
+Smudge state machines need externally visible entry points. Maybe the
+initialization function can be moved out to the public interface and
+removed from all the event handlers.
+
+Small example of why:
+
+SM { INIT -(@sideEffect)-> START, START [ event -- ] }

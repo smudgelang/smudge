@@ -417,8 +417,8 @@ instance Backend CStaticOption where
                  "The name of the target header file if not derived from source file.",
                 Option [] ["no-debug"] (NoArg NoDebug)
                  "Don't generate debugging information"])
-    generate os gs inputName = sequence [writeTranslationUnit renderHdr hdr (headerName os) [],
-                                         writeTranslationUnit renderSrc src (outputName os) [headerName os, extHdrName os]]
+    generate os gs inputName = sequence [writeTranslationUnit (renderHdr hdr []) (headerName os),
+                                         writeTranslationUnit (renderSrc src [headerName os, extHdrName os]) (outputName os)]
         where src = fromList $ concat tus
               hdr = fromList $ concat tuh
               tuh = [[ExternalDeclaration $ Right $ eventStruct sm e
@@ -457,7 +457,7 @@ instance Backend CStaticOption where
               mb2e d me = if null me then [] else [d]
               mb2h d me = if null me then [] else [Happening d me [NoTransition]]
               edgeLabel (_, _, l) = l
-              writeTranslationUnit render u fp includes = (writeFile fp (render u includes fp)) >> (return fp)
+              writeTranslationUnit render fp = (writeFile fp (render fp)) >> (return fp)
               renderHdr u includes fp = hdrLeader includes fp ++ renderPretty u ++ hdrTrailer
               renderSrc u includes _ = srcLeader includes ++ renderPretty u ++ srcTrailer
               getFirstOrDefault :: ([a] -> b) -> b -> [a] -> b

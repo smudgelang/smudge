@@ -1,4 +1,0 @@
-It would be good to be able to pass in a list of functions to call in
-an enter/exit function context. Proposed syntax:
-
-SM { STATE @foo, OtherSM:event, event, @baz [ event -(@quux)- ] }

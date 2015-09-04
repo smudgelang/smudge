@@ -1,3 +1,0 @@
-TRANSIENT -(@foo)-> NEXT
-
-generates incorrect C output. SM_TRANSIENT_enter is never called.

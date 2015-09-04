@@ -2,7 +2,7 @@ HSFILES=$(wildcard *.hs) $(wildcard Backends/*.hs) $(wildcard Grammars/*.hs) $(w
 
 .PHONY: tags clean build examples config
 
-all: build examples tags
+all: build examples TAGS
 
 tags: TAGS
 	echo ":ctags" | ghci -v0 `find . -iname \*\.hs | grep -v Setup.hs`

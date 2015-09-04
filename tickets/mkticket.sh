@@ -5,3 +5,5 @@ next=$(($prev + 1))
 fn="$next - $1"
 echo $fn
 touch "open/$fn"
+${FCEDIT:-${VISUAL:-${EDITOR:-vi}}} "open/$fn"
+hg add "open/$fn"

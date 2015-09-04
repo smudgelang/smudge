@@ -1,0 +1,61 @@
+@function return types (more on this later)
+enter/exit functions as side-effect lists
+line numbers in model
+allow commas after last elements in lists
+semantic pass failure error
+use line numbers in semantic pass
+check in initial state stuff
+generating boiler plate and header for user-written functions
+#includes in generated code
+allow unnecessary commas
+revisit event name mangling
+
+---------------------------------
+
+Fundamentally, Smudge has two kinds of events: events with
+payloads and events that can't have payloads. Our current model
+is that an @function is called, which sends an event with a
+payload somewhere:
+
+triggerEvent -(@sideEffect:OtherSM.event)-> WATEVER_STATE
+
+That event is interpreted by a line in OtherSM like this:
+
+event -(@interpretEvent)-
+
+where the interpretEvent function will generate one of several
+events for the state machine it's in. Smudge doesn't know about
+the payload, but the @functions both do. @interpretEvent currently looks lomething like this:
+
+
+void interpretEvent(struct OtherSM_event *event)
+{
+    if (event->val < LOWER_BOUND)
+        OtherSM_belowThreshold(NULL);
+    else if (event->val < MIDDLE_BOUND)
+        OtherSM_midRange(NULL);
+    else if (event->val < UPPER_BOUND)
+        OtherSM_upperRange(NULL);
+    else
+        OtherSM_tooHigh(NULL);
+}
+
+
+It would be pretty nice to have all these events that don't have
+any payloads (because the payloads can't be interpreted within
+smudge) glommed into an enum type that Smudge can check, so
+interpretEvent can look like this:
+
+OtherSM_InterpretedEvent_t interpretEvent(struct OtherSM_event *event)
+{
+    if (event->val < LOWER_BOUND)
+        return OtherSM_belowThreshold;
+    else if (event->val < MIDDLE_BOUND)
+        return OtherSM_midRange;
+    else if (event->val < UPPER_BOUND)
+        return OtherSM_upperRange;
+    else
+        return OtherSM_tooHigh;
+}
+
+and both smudge and C can check types.

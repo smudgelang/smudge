@@ -1,0 +1,19 @@
+Title: Inferred
+
+Some side effect functions (like those called in enter/exit function
+context) can't possibly take arguments. The prototypes for these
+should incorporate this information, and they should be generated as
+
+void sideEffectFunction(void)
+
+instead of having the event with which they're sometimes associated as
+the argument.
+
+This issue touches on a broader problem that currently this:
+
+SM { STATE @foo [ event -(@foo)- ] }
+
+is invalid, since the generated prototype for the first @foo has no
+arguments and the prototype for the second has an SM_event_t. Implicit
+in the beginning of this ticket is the assumption that we solve this
+without calling it invalid Smudge during a semantic pass.

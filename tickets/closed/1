@@ -1,0 +1,8 @@
+Title: Any
+
+The following code:
+
+BRICK [ _ -- ]
+
+generates a function called SM_BRICK_any, but it's never called in any
+of SM's event handlers.

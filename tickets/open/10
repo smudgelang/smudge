@@ -1,0 +1,29 @@
+Title: Foreign SM events not sent as side effects.
+
+SM1
+{
+    A
+    [
+        go -(SM2.doThing)-> B
+    ]
+    B
+    [
+        go --> A
+    ]
+}
+
+SM2
+{
+    FIRST
+    [
+        doThing --> SECOND
+    ],
+    SECOND
+    [
+        doThing --> FIRST
+    ]
+}
+
+-----------------------------------------
+
+No code is generated for the SM2.doThing side effect in SM1.

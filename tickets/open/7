@@ -1,4 +1,4 @@
-Title: Inferred
+Title: Inferred Voidness
 
 Some side effect functions (like those called in enter/exit function
 context) can't possibly take arguments. The prototypes for these

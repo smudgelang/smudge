@@ -1,4 +1,4 @@
-Title: Edit
+Title: Edit ticket description in make newticket and hg add tickets by default
 
 Running "make newticket title=..." should drop you into the default editor,
 allow you to edit the description, and then hg add the ticket for you.

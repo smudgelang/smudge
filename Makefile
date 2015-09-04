@@ -1,6 +1,6 @@
 HSFILES=$(wildcard *.hs) $(wildcard Backends/*.hs) $(wildcard Grammars/*.hs) $(wildcard Parsers/*.hs) $(wildcard Unparsers/*.hs) $(wildcard dist/build/autogen/*.hs)
 
-.PHONY: tags clean build examples config
+.PHONY: tags clean build examples config newticket
 
 all: build examples TAGS
 
@@ -25,6 +25,9 @@ TAGS: $(HSFILES)
 	@if command -v hasktags >/dev/null 2>&1; then \
 		hasktags `find . -iname \*\.hs | grep -v Setup.hs`; \
 	fi
+
+newticket:
+	cd tickets && ./mkticket.sh "$(title)"
 
 clean:
 	rm -rf dist TAGS tags

@@ -1,0 +1,36 @@
+Title: Events in "any" state not properly handled.
+
+This state machine:
+
+SM
+{
+   *A [ event --> B, weird --> B ],
+    B [ event --> A ],
+    _ [ weird --> A ]
+}
+
+
+generates this code:
+
+void SM_weird(const SM_weird_t *e)
+{
+    const char *event_name = "weird";
+
+    SM_initialize();
+    
+    switch(SM_state) {
+    case SM_A:
+        SM_A_weird(e);
+        break;
+        
+    case SM_B:
+        SM_UNHANDLED_EVENT(event_name);
+        break;
+        
+    default:
+        SM_UNHANDLED_EVENT(event_name);
+        break;
+    }
+}
+
+but I would expect case SM_B to cause a state transition to A.

@@ -40,9 +40,9 @@ SM3
         Go --> RUN,
         Reset --> START
     ],
-    RUN @startRun
+    RUN (@setRunGpios, @clearCache, "State Machine (the first)".GoB)
     [
         Reset --> START,
         Handle -(@handleEvent)-
-    ] @stopRun
+    ] (@clearRunGpios, @clearCache, "State Machine (the first)"."Goto A")
 }

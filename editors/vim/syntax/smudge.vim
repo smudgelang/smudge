@@ -12,8 +12,8 @@ endif
 let s:id = "\\v(\\\"[-_0-9A-Za-z \t!#$%&'()*+,./{|}~[\\\\\\]\\^`<>;]+\\\"|[-_0-9A-Za-z]+)"
 
 syn match smudgeComment "//.*$"
-syn match smudgeCommentAfterState "//.*$" contained contains=smudgeComment nextgroup=smudgeEventList,smudgeEnterFunction,smudgeArrow,smudgeCommentAfterState skipwhite skipempty
-execute 'syn match smudgeState "'.s:id.'" contained contains=NONE nextgroup=smudgeEventList,smudgeEnterFunction,smudgeArrow,smudgeCommentAfterState skipwhite skipempty'
+syn match smudgeCommentAfterState "//.*$" contained contains=smudgeComment nextgroup=smudgeEventList,smudgeEnterFunction,smudgeEnterEventName,smudgeEnterQualifiedEventName,smudgeEnterSideEffectList,smudgeArrow,smudgeCommentAfterState skipwhite skipempty
+execute 'syn match smudgeState "'.s:id.'" contained contains=NONE nextgroup=smudgeEventList,smudgeEnterFunction,smudgeEnterEventName,smudgeEnterQualifiedEventName,smudgeEnterSideEffectList,smudgeArrow,smudgeCommentAfterState skipwhite skipempty'
 execute 'syn match smudgeStateName "'.s:id.'" contained'
 syn match smudgeDash "-\((\_[^)]\{-})\)\?-" contained contains=smudgeSideEffectList
 syn match smudgeCommentAfterArrow "//.*$" contained contains=smudgeComment nextgroup=smudgeStateName,smudgeCommentAfterArrow skipwhite skipempty
@@ -23,12 +23,15 @@ execute 'syn match smudgeEvent "'.s:id.'" contained contains=NONE nextgroup=smud
 execute 'syn match smudgeEventName "'.s:id.'" contained'
 execute 'syn match smudgeQualifiedEventName "'.s:id.'\." contained nextgroup=smudgeEventName'
 syn match smudgeFunction "@[_A-Za-z][_0-9A-Za-z]*" contained
-syn match smudgeCommentAfterEnterFunction "//.*$" contained contains=smudgeComment nextgroup=smudgeEventList,smudgeCommentAfterEnterFunction skipwhite skipempty
-syn match smudgeEnterFunction "@[_A-Za-z][_0-9A-Za-z]*" contained contains=smudgeFunction nextgroup=smudgeEventList,smudgeCommentAfterEnterFunction skipwhite skipempty
+syn match smudgeCommentAfterEnterSideEffect "//.*$" contained contains=smudgeComment nextgroup=smudgeEventList,smudgeCommentAfterEnterSideEffect skipwhite skipempty
+syn match smudgeEnterFunction "@[_A-Za-z][_0-9A-Za-z]*" contained contains=smudgeFunction nextgroup=smudgeEventList,smudgeCommentAfterEnterSideEffect skipwhite skipempty
+execute 'syn match smudgeEnterEventName "'.s:id.'" contained contains=smudgeEventName nextgroup=smudgeEventList,smudgeCommentAfterEnterSideEffect skipwhite skipempty'
+execute 'syn match smudgeEnterQualifiedEventName "'.s:id.'\." contained nextgroup=smudgeEnterEventName contains=smudgeQualifiedEventName skipwhite skipempty'
 syn region smudgeStateList matchgroup=smudgeStateContainer start="{" end="}" fold contained contains=smudgeState,smudgeComment
 syn match smudgeCommentAfterEventList "//.*$" contained contains=smudgeComment nextgroup=smudgeFunction,smudgeCommentAfterEventList skipwhite skipempty
-syn region smudgeEventList matchgroup=smudgeEventContainer start="\[" end="]" fold contained contains=smudgeEvent,smudgeComment nextgroup=smudgeFunction,smudgeCommentAfterEventList skipwhite skipempty
+syn region smudgeEventList matchgroup=smudgeEventContainer start="\[" end="]" fold contained contains=smudgeEvent,smudgeComment nextgroup=smudgeFunction,smudgeEventName,smudgeQualifiedEventName,smudgeSideEffectList,smudgeCommentAfterEventList skipwhite skipempty
 syn region smudgeSideEffectList matchgroup=smudgeSideEffectContainer start="(" end=")" fold contained contains=smudgeFunction,smudgeEventName,smudgeQualifiedEventName,smudgeComment
+syn region smudgeEnterSideEffectList matchgroup=smudgeSideEffectContainer start="(" end=")" fold contained contains=smudgeFunction,smudgeEventName,smudgeQualifiedEventName,smudgeComment nextgroup=smudgeEventList,smudgeCommentAfterEnterSideEffect skipwhite skipempty
 syn match smudgeCommentAfterStateMachine "//.*$" contained contains=smudgeComment nextgroup=smudgeStateList,smudgeCommentAfterStateMachine skipwhite skipempty
 execute 'syn match smudgeStateMachine "'.s:id.'" nextgroup=smudgeStateList,smudgeCommentAfterStateMachine skipwhite skipempty'
 

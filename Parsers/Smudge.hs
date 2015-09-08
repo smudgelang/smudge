@@ -42,10 +42,10 @@ event_handler_list :: Parser [EventHandler]
 event_handler_list = sepBy (event_handler <* empty) (char ',' >> empty)
 
 enter_function :: Parser [SideEffect]
-enter_function = (fmap toList . optionMaybe) (function_call >>= \f -> return (FuncVoid f))
+enter_function = side_effect_container <|> (fmap toList . optionMaybe) (function_call >>= \f -> return (FuncVoid f))
 
 exit_function :: Parser [SideEffect]
-exit_function = (fmap toList . optionMaybe) (function_call >>= \f -> return (FuncVoid f))
+exit_function = side_effect_container <|> (fmap toList . optionMaybe) (function_call >>= \f -> return (FuncVoid f))
 
 side_effect_container :: Parser [SideEffect]
 side_effect_container = (char '(' >> empty) *> side_effect_list <* (empty >> char ')')

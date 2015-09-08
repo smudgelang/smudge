@@ -4,3 +4,10 @@ It would be good to be able to pass in a list of functions to call in
 an enter/exit function context. Proposed syntax:
 
 SM { STATE @foo, OtherSM:event, event, @baz [ event -(@quux)- ] }
+
+While this syntax works for enter events, it is complicated by exit events,
+which make it unclear which comma would delineate the exit functions and the
+next state to be defined:
+
+SM { STATE [ event -(@quux)- ] @foo, OtherSM:event, event, @baz,
+     OTHER [ event -- ] }

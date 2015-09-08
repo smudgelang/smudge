@@ -11,3 +11,13 @@ next state to be defined:
 
 SM { STATE [ event -(@quux)- ] @foo, OtherSM:event, event, @baz,
      OTHER [ event -- ] }
+
+I think that's still parseable, but it requires backtracking so how about this:
+
+SM
+{
+    STATE (@foo, OtherSM:event, event, @baz)
+    [
+        event -(@quux)-
+    ] (@exit1, @exit2)
+}

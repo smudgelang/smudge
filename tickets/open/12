@@ -1,0 +1,12 @@
+Title: Events that only exist in "any" state not handled.
+
+SM
+{
+   *A [ event --> B ],
+    B [ event --> A ],
+    _ [ different --> A ]
+}
+
+doesn't generate any code to handle the "different" event. I would
+expect a function called SM_different.
+

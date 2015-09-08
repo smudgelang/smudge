@@ -7,3 +7,4 @@ removed from all the event handlers.
 Small example of why:
 
 SM { INIT -(@sideEffect)-> START, START [ event -- ] }
+

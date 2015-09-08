@@ -21,3 +21,9 @@ SM
         event -(@quux)-
     ] (@exit1, @exit2)
 }
+
+In the single case, this could still fall back to an unparenthesized entry for simplicity:
+
+SM { STATE @foo [event -(@quux)- ] @exit1 }
+
+So, the grammar would be: [side-effect / side-effect-container]

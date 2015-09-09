@@ -34,3 +34,10 @@ void SM_weird(const SM_weird_t *e)
 }
 
 but I would expect case SM_B to cause a state transition to A.
+
+This issue is caused by the "any" state being unimplemented.
+
+The planned solution is to generate a per-event UNHANDLED_EVENT
+function that will, if the event is handled by the "any" event,
+perform the correct actions. This goes along with changing the dot
+backend to generate prettier output for "any" states.

@@ -27,3 +27,10 @@ In the single case, this could still fall back to an unparenthesized entry for s
 SM { STATE @foo [event -(@quux)- ] @exit1 }
 
 So, the grammar would be: [side-effect / side-effect-container]
+
+In practice this isn't so simple.  Transient states allow for the pathological:
+
+-- { -- -- [ -- -- ] --, * - --> -- }
+
+Now, the parser would handle this correctly, but it is offensive, thus forbidden.
+Instead, enter and exit events shall only allow the parenthesized syntax.

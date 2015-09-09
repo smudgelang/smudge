@@ -8,12 +8,12 @@
     [
         _ -(SM3."External")-> B
     ],
-    B @enterB
+    B (@enterB)
     [
         "Whee" --> C,
         Stay -(@stayStill)-,
         Reenter --> B
-    ] @exitB,
+    ] (@exitB),
   * C
     [
         Beedoo --> A,
@@ -30,7 +30,7 @@
 SM3
 {
     _ ["External" --> START],
-  * START @startTimer
+  * START (@startTimer)
     [
         Tick --> READY,
         Reset -(@cancelTimer)-> START

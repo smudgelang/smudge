@@ -2,7 +2,7 @@
 SM_NAME // This is the name of a state machine.
 {
   * FIRST_STATE // This is the name of a state in the SM_NAME state machine.
-    @enterFirst // This optional function is called on entering FIRST_STATE.
+    (@enterFirst) // This optional function is called on entering FIRST_STATE.
     [ // Begin the list of event handlers.
 
         // When event comes to FIRST_STATE, transition to SECOND_STATE.
@@ -15,7 +15,7 @@ SM_NAME // This is the name of a state machine.
         // state. That means enterFirst and exitFirst will be called.
         reenter --> FIRST_STATE
     ] // End the list of event handlers.
-    @exitFirst, // Optional function to call on leaving FIRST_STATE.
+    (@exitFirst), // Optional function to call on leaving FIRST_STATE.
 
     SECOND_STATE
     [

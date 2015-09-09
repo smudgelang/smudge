@@ -32,8 +32,8 @@ state_list = sepBy (state <* empty) (char ',' >> empty)
 state :: Parser WholeState
 state = try (uncurry (,,,,) <$> state_title <* empty <*> pure []
                             <*> ((\ (ses, s) -> [(EventEnter, ses, s)]) <$> to_state) <*> pure [])
-         <|> uncurry (,,,,) <$> state_title <* empty <*> enter_function <* empty
-                            <*> event_handler_spec <* empty <*> exit_function
+         <|> uncurry (,,,,) <$> state_title <* empty <*> enter_exit_function <* empty
+                            <*> event_handler_spec <* empty <*> enter_exit_function
 
 event_handler_spec :: Parser [EventHandler]
 event_handler_spec = (char '[' >> empty) *> event_handler_list <* (empty >> char ']')
@@ -41,11 +41,8 @@ event_handler_spec = (char '[' >> empty) *> event_handler_list <* (empty >> char
 event_handler_list :: Parser [EventHandler]
 event_handler_list = sepBy (event_handler <* empty) (char ',' >> empty)
 
-enter_function :: Parser [SideEffect]
-enter_function = side_effect_container <|> (fmap toList . optionMaybe) (function_call >>= \f -> return (FuncVoid f))
-
-exit_function :: Parser [SideEffect]
-exit_function = side_effect_container <|> (fmap toList . optionMaybe) (function_call >>= \f -> return (FuncVoid f))
+enter_exit_function :: Parser [SideEffect]
+enter_exit_function = option [] side_effect_container
 
 side_effect_container :: Parser [SideEffect]
 side_effect_container = (char '(' >> empty) *> side_effect_list <* (empty >> char ')')

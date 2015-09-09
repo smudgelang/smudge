@@ -1,10 +1,10 @@
 turnstyle {
   * power-on -(@lightLEDs)-> locked,
 
-    locked @lockedEnter [
+    locked (@lockedEnter) [
         coin -(@flashLEDs, coinInspector.validate)-> waiting-to-unlock,
         person -(@soundAlarm)-
-    ]@lockedExit,
+    ] (@lockedExit),
 
     waiting-to-unlock [
         person -(@soundAlarm)-,

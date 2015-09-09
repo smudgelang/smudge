@@ -1,6 +1,6 @@
 NoTransientStateCycles
 {
-    A  --> B,
+  * A  --> B,
     B  --> C,
     C  --> D,
     D  --> E,
@@ -49,5 +49,5 @@ NoTransientStateCycles
 
 NoTransientStateLoops
 {
-    A  --> A
+  * A  --> A
 }

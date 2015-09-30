@@ -369,7 +369,7 @@ instance Backend CStaticOption where
                 Option [] ["no-debug"] (NoArg NoDebug)
                  "Don't generate debugging information"])
     generate os gs inputName = sequence [writeTranslationUnit (renderHdr hdr []) (headerName os),
-                                         writeTranslationUnit (renderSrc src [headerName os, extHdrName os]) (outputName os)]
+                                         writeTranslationUnit (renderSrc src [extHdrName os, headerName os]) (outputName os)]
         where src = fromList $ concat tus
               hdr = fromList $ concat tuh
               tuh = [[ExternalDeclaration $ Right $ eventStruct sm e

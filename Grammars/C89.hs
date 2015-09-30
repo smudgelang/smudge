@@ -78,6 +78,7 @@ module Grammars.C89 (
     Declarator(..),
     DirectDeclarator(..),
     Pointer(..),
+    PointerList(..),
     TypeQualifierList,
     ParameterTypeList(..),
     ParameterList,
@@ -384,14 +385,16 @@ data Enumerator = Enumerator EnumerationConstant (Maybe (Pair EQUAL ConstantExpr
 
 data TypeQualifier = CONST | VOLATILE
 
-data Declarator = Declarator (Maybe Pointer) DirectDeclarator
+data Declarator = Declarator (Maybe PointerList) DirectDeclarator
 
 data DirectDeclarator = IDirectDeclarator Identifier
                       | DDirectDeclarator LEFTPAREN Declarator RIGHTPAREN
                       | CDirectDeclarator DirectDeclarator LEFTSQUARE (Maybe ConstantExpression) RIGHTSQUARE
                       | PDirectDeclarator DirectDeclarator LEFTPAREN (Maybe (Either ParameterTypeList IdentifierList)) RIGHTPAREN
 
-data Pointer = POINTER (Maybe TypeQualifierList) (Maybe Pointer)
+data Pointer = POINTER (Maybe TypeQualifierList)
+
+type PointerList = SimpleList Pointer
 
 type TypeQualifierList = SimpleList TypeQualifier
 
@@ -405,7 +408,7 @@ type IdentifierList = CommaList Identifier
 
 data TypeName = TypeName SpecifierQualifierList (Maybe AbstractDeclarator)
 
-data AbstractDeclarator = AbstractDeclarator (These Pointer DirectAbstractDeclarator)
+data AbstractDeclarator = AbstractDeclarator (These PointerList DirectAbstractDeclarator)
 
 data DirectAbstractDeclarator = ADirectAbstractDeclarator LEFTPAREN AbstractDeclarator RIGHTPAREN
                               | CDirectAbstractDeclarator (Maybe DirectAbstractDeclarator) LEFTSQUARE (Maybe ConstantExpression) RIGHTSQUARE

@@ -28,15 +28,7 @@ extendMangledIdentifier s ss = intercalate "_" $ s : map mangleIdentifier ss
 
 transitionFunction :: StateMachine -> Event -> [State] -> FunctionDefinition
 transitionFunction (StateMachine smName) e ss =
-    Function
-    (Just $ fromList [A STATIC, B VOID])
-    (Declarator Nothing
-        $ PDirectDeclarator
-          (IDirectDeclarator $ f_name)
-          LEFTPAREN
-          (Just $ Left $ ParameterTypeList (fromList [ParameterDeclaration (fromList [B VOID]) Nothing]) Nothing)
-          RIGHTPAREN)
-    Nothing
+    makeFunction (fromList [A STATIC, B VOID]) [] f_name [ParameterDeclaration (fromList [B VOID]) Nothing]
     (CompoundStatement
     LEFTCURLY
         Nothing
@@ -61,18 +53,8 @@ transitionFunction (StateMachine smName) e ss =
 
 changeStateFunction :: StateMachine -> FunctionDefinition
 changeStateFunction (StateMachine smName) =
-    Function
-    (Just $ fromList [A STATIC, B VOID])
-    (Declarator Nothing
-        $ PDirectDeclarator
-          (IDirectDeclarator $ f_name)
-          LEFTPAREN
-          (Just $ Left $ ParameterTypeList
-                         (fromList [ParameterDeclaration (fromList [B $ TypeSpecifier smEnum])
-                                    (Just $ Left $ Declarator Nothing $ IDirectDeclarator state_param)])
-                         Nothing)
-          RIGHTPAREN)
-    Nothing
+    makeFunction (fromList [A STATIC, B VOID]) [] f_name [ParameterDeclaration (fromList [B $ TypeSpecifier smEnum])
+                                                      (Just $ Left $ Declarator Nothing $ IDirectDeclarator state_param)]
     (CompoundStatement
     LEFTCURLY
         Nothing
@@ -95,15 +77,7 @@ changeStateFunction (StateMachine smName) =
 
 initializeFunction :: StateMachine -> FunctionDefinition
 initializeFunction (StateMachine smName) =
-    Function
-    (Just $ fromList [A STATIC, B VOID])
-    (Declarator Nothing
-        $ PDirectDeclarator
-          (IDirectDeclarator $ f_name)
-          LEFTPAREN
-          (Just $ Left $ ParameterTypeList (fromList [ParameterDeclaration (fromList [B VOID]) Nothing]) Nothing)
-          RIGHTPAREN)
-    Nothing
+    makeFunction (fromList [A STATIC, B VOID]) [] f_name [ParameterDeclaration (fromList [B VOID]) Nothing]
     (CompoundStatement
     LEFTCURLY
         (Just $ fromList [Declaration
@@ -131,19 +105,10 @@ initializeFunction (StateMachine smName) =
 
 handleStateEventFunction :: StateMachine -> State -> Happening -> State -> FunctionDefinition
 handleStateEventFunction (StateMachine smName) (State s) h (State s') =
-    Function
-    (Just $ fromList [A STATIC, B VOID])
-    (Declarator Nothing
-        $ PDirectDeclarator
-          (IDirectDeclarator f_name)
-          LEFTPAREN
-          (Just $ Left $ ParameterTypeList
-                         (fromList (if not hasPs then [ParameterDeclaration (fromList [B VOID]) Nothing]
+    makeFunction (fromList [A STATIC, B VOID]) [] f_name
+                                   (if not hasPs then [ParameterDeclaration (fromList [B VOID]) Nothing]
                                     else [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
-                                          (Just $ Left $ Declarator (Just $ POINTER Nothing Nothing) $ IDirectDeclarator event_var)]))
-                         Nothing)
-          RIGHTPAREN)
-    Nothing
+                                          (Just $ Left $ Declarator (Just $ fromList [POINTER Nothing]) $ IDirectDeclarator event_var)])
     (CompoundStatement
     LEFTCURLY
         Nothing
@@ -174,23 +139,13 @@ handleStateEventFunction (StateMachine smName) (State s) h (State s') =
 
 handleEventFunction :: Bool -> StateMachine -> Event -> [State] -> [State] -> [State] -> FunctionDefinition
 handleEventFunction debug (StateMachine smName) (Event evName) ss anys unss =
-    Function
-    (Just $ fromList [B VOID])
-    (Declarator Nothing
-        $ PDirectDeclarator
-          (IDirectDeclarator f_name)
-          LEFTPAREN
-          (Just $ Left $ ParameterTypeList
-                         (fromList [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
-                                    (Just $ Left $ Declarator (Just $ POINTER Nothing Nothing) $ IDirectDeclarator event_var)])
-                         Nothing)
-          RIGHTPAREN)
-    Nothing
+    makeFunction (fromList [B VOID]) [] f_name [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
+                                            (Just $ Left $ Declarator (Just $ fromList [POINTER Nothing]) $ IDirectDeclarator event_var)]
     (CompoundStatement
     LEFTCURLY
       (if not debug then Nothing else
         (Just $ fromList [Declaration (fromList [C CONST, B CHAR]) 
-                                      (Just $ fromList [InitDeclarator (Declarator (Just $ POINTER Nothing Nothing) $ IDirectDeclarator name_var)
+                                      (Just $ fromList [InitDeclarator (Declarator (Just $ fromList [POINTER Nothing]) $ IDirectDeclarator name_var)
                                                         (Just $ Pair EQUAL $ AInitializer evname_e)])
                                       SEMICOLON]))
         (Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [call_initialize]) SEMICOLON,
@@ -233,19 +188,10 @@ handleEventFunction debug (StateMachine smName) (Event evName) ss anys unss =
 
 unhandledEventFunction :: Bool -> StateMachine -> FunctionDefinition
 unhandledEventFunction debug (StateMachine smName) =
-    Function
-    (Just $ fromList [A STATIC, B VOID])
-    (Declarator Nothing
-        $ PDirectDeclarator
-          (IDirectDeclarator f_name)
-          LEFTPAREN
-          (Just $ Left $ ParameterTypeList
-                         (fromList (if not debug then [ParameterDeclaration (fromList [B VOID]) Nothing]
+    makeFunction (fromList [A STATIC, B VOID]) [] f_name
+                                   (if not debug then [ParameterDeclaration (fromList [B VOID]) Nothing]
                                     else [ParameterDeclaration (fromList [C CONST, B CHAR])
-                                          (Just $ Left $ Declarator (Just $ POINTER Nothing Nothing) $ IDirectDeclarator event_var)]))
-                         Nothing)
-          RIGHTPAREN)
-    Nothing
+                                          (Just $ Left $ Declarator (Just $ fromList [POINTER Nothing]) $ IDirectDeclarator event_var)])
     (CompoundStatement
     LEFTCURLY
         Nothing
@@ -265,22 +211,13 @@ unhandledEventFunction debug (StateMachine smName) =
 
 stateNameFunction :: StateMachine -> [State] -> FunctionDefinition
 stateNameFunction (StateMachine smName) ss =
-    Function
-    (Just $ fromList [A STATIC, C CONST, B CHAR])
-    (Declarator (Just $ POINTER Nothing Nothing)
-                $ PDirectDeclarator
-                  (IDirectDeclarator $ smMangledName ++ "_name")
-                  LEFTPAREN
-                  (Just $ Left $ ParameterTypeList
-                                 (fromList [ParameterDeclaration (fromList [B $ TypeSpecifier smMangledName])
-                                            (Just $ Left $ Declarator Nothing $ IDirectDeclarator state_var)])
-                                 Nothing)
-                  RIGHTPAREN)
-    Nothing
+    makeFunction (fromList [A STATIC, C CONST, B CHAR]) [POINTER Nothing] f_name
+                                           [ParameterDeclaration (fromList [B $ TypeSpecifier smMangledName])
+                                            (Just $ Left $ Declarator Nothing $ IDirectDeclarator state_var)] 
     (CompoundStatement
     LEFTCURLY
         (Just $ fromList [Declaration (fromList [C CONST, B CHAR]) 
-                                      (Just $ fromList [InitDeclarator (Declarator (Just $ POINTER Nothing Nothing) $
+                                      (Just $ fromList [InitDeclarator (Declarator (Just $ fromList [POINTER Nothing]) $
                                                                         CDirectDeclarator (IDirectDeclarator names_var) LEFTSQUARE Nothing RIGHTSQUARE)
                                                         (Just $ Pair EQUAL (LInitializer LEFTCURLY
                                                                                          (fromList [AInitializer ((#:) (show s) (:#)) | (State s) <- ss])
@@ -298,9 +235,10 @@ stateNameFunction (StateMachine smName) ss =
         count_var = "state_count"
         state_var = "s"
         names_var = "state_name"
+        f_name = smMangledName ++ "_name"
         names_size_e = (#:) (SIZEOF $ Right $ Trio LEFTPAREN (TypeName (fromList [Left $ TypeSpecifier names_var]) Nothing) RIGHTPAREN) (:#)
         ptr_size_e = (#:) (SIZEOF $ Right $ Trio LEFTPAREN (TypeName (fromList [Right CONST, Left CHAR])
-                                                                     (Just $ AbstractDeclarator $ This $ POINTER Nothing Nothing)) RIGHTPAREN) (:#)
+                                                                     (Just $ AbstractDeclarator $ This $ fromList [POINTER Nothing])) RIGHTPAREN) (:#)
         names_count_e = (#:) (names_size_e `DIV` ptr_size_e) (:#)
         count_var_e = (#:) count_var (:#)
         state_var_e = (#:) state_var (:#)
@@ -320,7 +258,7 @@ handleStateEventDeclaration (StateMachine smName) (State s) e =
           (Just $ Left $ ParameterTypeList
                          (fromList (if not hasPs then [ParameterDeclaration (fromList [B VOID]) Nothing]
                                     else [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
-                                          (Just $ Right $ AbstractDeclarator $ This $ POINTER Nothing Nothing)]))
+                                          (Just $ Right $ AbstractDeclarator $ This $ fromList [POINTER Nothing])]))
                          Nothing)
           RIGHTPAREN)) Nothing])
     SEMICOLON
@@ -347,7 +285,7 @@ handleEventDeclaration (StateMachine smName) (Event evName) =
           LEFTPAREN
           (Just $ Left $ ParameterTypeList
                          (fromList [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
-                                    (Just $ Right $ AbstractDeclarator $ This $ POINTER Nothing Nothing)])
+                                    (Just $ Right $ AbstractDeclarator $ This $ fromList [POINTER Nothing])])
                          Nothing)
           RIGHTPAREN)) Nothing])
     SEMICOLON
@@ -408,6 +346,19 @@ makeStruct smName ss =
     LEFTCURLY
     (fromList [StructDeclaration sqs (fromList [StructDeclarator $ This $ Declarator Nothing $ IDirectDeclarator id]) SEMICOLON | (sqs, id) <- ss])
     RIGHTCURLY))
+
+makeFunction :: DeclarationSpecifiers -> [Pointer] -> Identifier -> [ParameterDeclaration] -> CompoundStatement -> FunctionDefinition
+makeFunction dss ps f_name params body =
+    Function
+    (Just dss)
+    (Declarator (case ps of [] -> Nothing; _ -> Just $ fromList ps)
+        $ PDirectDeclarator
+          (IDirectDeclarator $ f_name)
+          LEFTPAREN
+          (Just $ Left $ ParameterTypeList (fromList params) Nothing)
+          RIGHTPAREN)
+    Nothing
+    body
 
 instance Backend CStaticOption where
     options = ("c",

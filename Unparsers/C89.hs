@@ -78,6 +78,7 @@ import Grammars.C89 (
     Declarator(..),
     DirectDeclarator(..),
     Pointer(..),
+    PointerList(..),
     TypeQualifierList,
     ParameterTypeList(..),
     ParameterList,
@@ -434,7 +435,10 @@ instance Prettyable DirectDeclarator where
     pretty (PDirectDeclarator dd l mptori r) = pretty dd <> pretty l <> pretty mptori <> pretty r
 
 instance Prettyable Pointer where
-    pretty (POINTER mtql mp) = char '*' <> (pretty mtql <+> pretty mp)
+    pretty (POINTER mtql) = char '*' <> pretty mtql
+
+instance Prettyable PointerList where
+    pretty (SimpleList x sl) = pretty x <+> pretty sl
 
 instance Prettyable TypeQualifierList where
     pretty (SimpleList x tql) = pretty x <+> pretty tql

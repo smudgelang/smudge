@@ -21,3 +21,8 @@ Ideally, I'd like to wrap this stuff up in an event that's (opaquely)
 sent through the system's event deliverer, but I'm not hacking that in
 by hand. Minimally, generated code that looks like what I hand wrote
 would suffice.
+
+It is required, then, to have a unique enter and exit event for each
+state, regardless of whether it does anything.  In the event that the
+state does nothing, the compiler will be happy to optimize this out,
+as it should be a static function.

@@ -51,30 +51,6 @@ transitionFunction (StateMachine smName) e ss =
                         CASE state_case COLON $
                         EStatement $ ExpressionStatement (Just $ fromList [call_state_evt_handler]) SEMICOLON
 
-changeStateFunction :: StateMachine -> FunctionDefinition
-changeStateFunction (StateMachine smName) =
-    makeFunction (fromList [A STATIC, B VOID]) [] f_name [ParameterDeclaration (fromList [B $ TypeSpecifier smEnum])
-                                                      (Just $ Left $ Declarator Nothing $ IDirectDeclarator state_param)]
-    (CompoundStatement
-    LEFTCURLY
-        Nothing
-        (Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [call_exit]) SEMICOLON,
-                          EStatement $ ExpressionStatement (Just $ fromList [assign_state]) SEMICOLON,
-                          EStatement $ ExpressionStatement (Just $ fromList [call_enter]) SEMICOLON])
-    RIGHTCURLY)
-    where
-        smMangledName = mangleIdentifier smName
-        smEnum = smMangledName ++ "_State"
-        f_name = smMangledName ++ "_change_state"
-        state_param = "s"
-        state_var = (#:) (smMangledName ++ "_state") (:#)
-        dest_state = (#:) state_param (:#)
-        assign_state = (state_var `ASSIGN` dest_state)
-        exit_f = (#:) (smMangledName ++ "_exit") (:#)
-        enter_f = (#:) (smMangledName ++ "_enter") (:#)
-        call_exit = (#:) (apply exit_f []) (:#)
-        call_enter = (#:) (apply enter_f []) (:#)
-
 initializeFunction :: StateMachine -> FunctionDefinition
 initializeFunction (StateMachine smName) =
     makeFunction (fromList [A STATIC, B VOID]) [] f_name [ParameterDeclaration (fromList [B VOID]) Nothing]
@@ -130,11 +106,15 @@ handleStateEventFunction (StateMachine smName) (State s) h (State s') =
         event_type = smMangledName ++ "_" ++ evMangledName ++ "_t"
         event_var = "e"
         event_ex = (#:) event_var (:#)
-        change_state = (#:) (smMangledName ++ "_change_state") (:#)
         dest_state = (#:) (smMangledName ++ "_" ++ destStateMangledName) (:#)
-        call_change = (#:) (apply change_state [dest_state]) (:#)
+        state_var = (#:) (smMangledName ++ "_state") (:#)
+        assign_state = (state_var `ASSIGN` dest_state)
+        exit_f = (#:) (smMangledName ++ "_exit") (:#)
+        enter_f = (#:) (smMangledName ++ "_enter") (:#)
+        call_exit = (#:) (apply exit_f []) (:#)
+        call_enter = (#:) (apply enter_f []) (:#)
         side_effects = case h of
-                          (Happening _ ses [])                        -> [(#:) (apply ((#:) se (:#)) (if hasPs then [event_ex] else [])) (:#) | (FuncVoid se) <- ses] ++ [call_change]
+                          (Happening _ ses [])                        -> [(#:) (apply ((#:) se (:#)) (if hasPs then [event_ex] else [])) (:#) | (FuncVoid se) <- ses] ++ [call_exit, assign_state, call_enter]
                           (Happening _ ses fs) | elem NoTransition fs -> [(#:) (apply ((#:) se (:#)) (if hasPs then [event_ex] else [])) (:#) | (FuncVoid se) <- ses]
 
 handleEventFunction :: Bool -> StateMachine -> Event -> [State] -> [State] -> [State] -> FunctionDefinition
@@ -351,7 +331,7 @@ makeFunction :: DeclarationSpecifiers -> [Pointer] -> Identifier -> [ParameterDe
 makeFunction dss ps f_name params body =
     Function
     (Just dss)
-    (Declarator (case ps of [] -> Nothing; _ -> Just $ fromList ps)
+    (Declarator (if null ps then Nothing else Just $ fromList ps)
         $ PDirectDeclarator
           (IDirectDeclarator $ f_name)
           LEFTPAREN
@@ -388,7 +368,6 @@ instance Backend CStaticOption where
                          ++ [st | (n, EnterExitState {st}) <- labNodes g, (_, _, Happening EventEnter _ _) <- out g n]]
                      ++ [ExternalDeclaration $ Left $ transitionFunction sm EventExit
                          [st | (_, EnterExitState {st, ex = (_:_)}) <- labNodes g]]
-                     ++ [ExternalDeclaration $ Left $ changeStateFunction sm]
                      ++ [ExternalDeclaration $ Left $ initializeFunction sm]
                      ++ [ExternalDeclaration $ Left $ handleEventFunction debug sm e ss (anys g \\ ss) ((states g \\ ss) \\ (anys g))
                          | (e, ss) <- toList $ events g]

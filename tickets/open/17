@@ -1,0 +1,5 @@
+Title: Exit functions are generated for terminal states.
+
+Smudge needs to determine that states are terminal so it can avoid
+generating code that's never called.
+

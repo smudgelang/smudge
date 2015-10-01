@@ -1,0 +1,7 @@
+Title: Generate header file for externally written functions.
+
+Right now, the generated foo.c generates a line to #include
+"foo_ext.h". Smudge has all the information needed to generate
+foo_ext.h, and should do so when given a command line switch. We
+should determine if we want this header to be generated every time or
+just once as boiler plate to be edited by the user.

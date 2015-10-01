@@ -1,0 +1,5 @@
+Title: Typed function calls not implemented.
+
+The syntax.ebnf's typed-function-call doesn't lead to any generated C
+code.
+

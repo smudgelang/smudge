@@ -9,7 +9,7 @@ import Model (EnterExitState(..), HappeningFlag(..), Happening(..))
 import Trashcan.FilePath (relPath)
 import Unparsers.C89 (renderPretty)
 
-import Data.Graph.Inductive.Graph (labNodes, lab, out, suc)
+import Data.Graph.Inductive.Graph (labNodes, lab, out, suc, insEdges, nodes, delNodes)
 import Data.List (intercalate, (\\))
 import Data.Map (insertWith, empty, toList)
 import Data.Text (replace)
@@ -26,33 +26,8 @@ apply f ps = APostfixExpression f LEFTPAREN (Just $ fromList ps) RIGHTPAREN
 extendMangledIdentifier :: Identifier -> [String] -> Identifier
 extendMangledIdentifier s ss = intercalate "_" $ s : map mangleIdentifier ss
 
-transitionFunction :: StateMachine -> Event -> [State] -> FunctionDefinition
-transitionFunction (StateMachine smName) e ss =
-    makeFunction (fromList [A STATIC, B VOID]) [] f_name [ParameterDeclaration (fromList [B VOID]) Nothing]
-    (CompoundStatement
-    LEFTCURLY
-        Nothing
-        (Just $ fromList [SStatement $ SWITCH LEFTPAREN (fromList [state_var]) RIGHTPAREN $ CStatement $ CompoundStatement LEFTCURLY
-                                       Nothing
-                                       (Just $ fromList $ concat ([[LStatement $ case_stmt s, JStatement $ BREAK SEMICOLON] | s <- ssMangled])
-                                                                 ++ [LStatement $ DEFAULT COLON $
-                                                                     JStatement $ BREAK SEMICOLON])
-                                       RIGHTCURLY])
-    RIGHTCURLY)
-    where
-        smMangledName = mangleIdentifier smName
-        tType = case e of EventEnter -> "enter"; EventExit -> "exit"
-        f_name = smMangledName ++ "_" ++ tType
-        state_var = (#:) (smMangledName ++ "_state") (:#)
-        ssMangled = [smMangledName ++ "_" ++ (mangleIdentifier s) | (State s) <- ss]
-        case_stmt s = let state_case = (#:) s (:#)
-                          state_evt_handler = (#:) (s ++ "_" ++ tType) (:#)
-                          call_state_evt_handler = (#:) (apply state_evt_handler []) (:#) in
-                        CASE state_case COLON $
-                        EStatement $ ExpressionStatement (Just $ fromList [call_state_evt_handler]) SEMICOLON
-
-initializeFunction :: StateMachine -> FunctionDefinition
-initializeFunction (StateMachine smName) =
+initializeFunction :: StateMachine -> State -> FunctionDefinition
+initializeFunction (StateMachine smName) (State s) =
     makeFunction (fromList [A STATIC, B VOID]) [] f_name [ParameterDeclaration (fromList [B VOID]) Nothing]
     (CompoundStatement
     LEFTCURLY
@@ -63,21 +38,24 @@ initializeFunction (StateMachine smName) =
         (Just $ fromList [SStatement $ IF LEFTPAREN (fromList [init_check]) RIGHTPAREN (CStatement $ CompoundStatement
                                        LEFTCURLY
                                             Nothing
-                                            (Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [call_enter]) SEMICOLON,
-                                                              EStatement $ ExpressionStatement (Just $ fromList [init_set]) SEMICOLON])
+                                            (Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [se]) SEMICOLON | se <- side_effects])
                                        RIGHTCURLY)
                                        Nothing])
     RIGHTCURLY)
     where
         smMangledName = mangleIdentifier smName
+        sMangled = smMangledName ++ "_" ++ (mangleIdentifier s)
+        state_var = smMangledName ++ "_state"
         f_name = smMangledName ++ "_initialize"
         init_var = "initialized"
         init_init = "INITIALIZED"
         init_uninit = "UNINITIALIZED"
-        enter_f = (#:) (smMangledName ++ "_enter") (:#)
+        assign_state = ((#:) state_var (:#)) `ASSIGN` ((#:) sMangled (:#))
+        enter_f = (#:) (sMangled ++ "_enter") (:#)
         call_enter = (#:) (apply enter_f []) (:#)
         init_check = (#:) ((#:) init_init (:#) `NOTEQUAL` (#:) init_var (:#)) (:#)
         init_set = (#:) init_var (:#) `ASSIGN` (#:) init_init (:#)
+        side_effects = [assign_state, call_enter, init_set]
 
 handleStateEventFunction :: StateMachine -> State -> Happening -> State -> FunctionDefinition
 handleStateEventFunction (StateMachine smName) (State s) h (State s') =
@@ -109,8 +87,8 @@ handleStateEventFunction (StateMachine smName) (State s) h (State s') =
         dest_state = (#:) (smMangledName ++ "_" ++ destStateMangledName) (:#)
         state_var = (#:) (smMangledName ++ "_state") (:#)
         assign_state = (state_var `ASSIGN` dest_state)
-        exit_f = (#:) (smMangledName ++ "_exit") (:#)
-        enter_f = (#:) (smMangledName ++ "_enter") (:#)
+        exit_f = (#:) (smMangledName ++ "_" ++ sMangledName ++ "_exit") (:#)
+        enter_f = (#:) (smMangledName ++ "_" ++ destStateMangledName ++ "_enter") (:#)
         call_exit = (#:) (apply exit_f []) (:#)
         call_enter = (#:) (apply enter_f []) (:#)
         side_effects = case h of
@@ -356,36 +334,31 @@ instance Backend CStaticOption where
                          | (e, _) <- toList $ events g]
                      ++ [ExternalDeclaration $ Right $ handleEventDeclaration sm e
                          | (e, _) <- toList $ events g]
-                     | (sm, g) <- gs]
+                     | (sm, g) <- gs'']
               tus = [[ExternalDeclaration $ Right $ stateEnum sm $ states g]
                      ++ [ExternalDeclaration $ Right $ stateVarDeclaration sm $ initial g]
                      ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration sm s e
-                         | (n, EnterExitState {en, st = s@(State _), ex}) <- labNodes g, e <- (mb2e EventEnter en) ++ (map (event . edgeLabel) $ out g n) ++ (mb2e EventExit ex)]
+                         | (n, EnterExitState {en, st = s@(State _), ex}) <- labNodes g, e <- (map (event . edgeLabel) $ out g n)]
                      ++ (if debug then [ExternalDeclaration $ Left $ stateNameFunction sm $ states g] else [])
                      ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug sm]
-                     ++ [ExternalDeclaration $ Left $ transitionFunction sm EventEnter
-                         $ [st | (_, EnterExitState {en = (_:_), st}) <- labNodes g]
-                         ++ [st | (n, EnterExitState {st}) <- labNodes g, (_, _, Happening EventEnter _ _) <- out g n]]
-                     ++ [ExternalDeclaration $ Left $ transitionFunction sm EventExit
-                         [st | (_, EnterExitState {st, ex = (_:_)}) <- labNodes g]]
-                     ++ [ExternalDeclaration $ Left $ initializeFunction sm]
+                     ++ [ExternalDeclaration $ Left $ initializeFunction sm $ initial g]
                      ++ [ExternalDeclaration $ Left $ handleEventFunction debug sm e ss (anys g \\ ss) ((states g \\ ss) \\ (anys g))
                          | (e, ss) <- toList $ events g]
-                     ++ [ExternalDeclaration $ Left $ handleStateEventFunction sm s h s
-                         | (n, EnterExitState {en, st = s@(State _)}) <- labNodes g, h <- mb2h EventEnter en]
                      ++ [ExternalDeclaration $ Left $ handleStateEventFunction sm s h s'
                          | (n, EnterExitState {st = s@(State _)}) <- labNodes g, (_, n', h) <- out g n, Just EnterExitState {st = s'@(State _)} <- [lab g n']]
-                     ++ [ExternalDeclaration $ Left $ handleStateEventFunction sm s h s
-                         | (n, EnterExitState {st = s@(State _), ex}) <- labNodes g, h <- mb2h EventExit ex]
-                     | (sm, g) <- gs]
+                     | (sm, g) <- gs'']
+              gs'' = [(sm, insEdges [(n, n, Happening EventEnter en [NoTransition])
+                                     | (n, EnterExitState {en, st = State _}) <- labNodes $ delNodes [n | n <- nodes g, (_, _, Happening EventEnter _ _) <- out g n] g] g)
+                      | (sm, g) <- gs']
+              gs'  = [(sm, insEdges [(n, n, Happening EventExit ex [NoTransition])
+                                     | (n, EnterExitState {st = State _, ex}) <- labNodes $ delNodes [n | n <- nodes g, (_, _, Happening EventExit _ _) <- out g n] g] g)
+                      | (sm, g) <- gs]
               initial g = head [st ese | (n, EnterExitState {st = StateEntry}) <- labNodes g, n' <- suc g n, (Just ese) <- [lab g n']]
               states g = [st ees | (_, ees) <- labNodes g]
               anys g = [st ees | (n, ees) <- labNodes g, (_, _, Happening {event = EventAny}) <- out g n]
               events g = foldl insert_event empty [(h, st ees) | (n, ees) <- labNodes g, (_, _, h) <- out g n]
               insert_event m ((Happening e@(Event _) _ _), s@(State _)) = insertWith (flip (++)) e [s] m
               insert_event m                                          _ = m
-              mb2e d me = if null me then [] else [d]
-              mb2h d me = if null me then [] else [Happening d me [NoTransition]]
               edgeLabel (_, _, l) = l
               writeTranslationUnit render fp = (writeFile fp (render fp)) >> (return fp)
               renderHdr u includes fp = hdrLeader includes fp ++ renderPretty u ++ hdrTrailer

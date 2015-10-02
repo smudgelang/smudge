@@ -8,15 +8,15 @@
   "Indent current line as Smudge code."
   (interactive)
   (beginning-of-line)
-  (if (bobp) ; Rule 1
+  (if (bobp)
       (indent-line-to 0)
 
     (let ((not-indented t) cur-indent)
       (if (looking-at "^[ \t]*$")
           (setq cur-indent 0)
         (if (or 
-             (looking-at "^[\t ]*}") ; Rule 5
-             (looking-at "^[\t ]*\]")) ; Rule 4
+             (looking-at "^[\t ]*}")
+             (looking-at "^[\t ]*\]"))
             (progn
               (save-excursion
                 (forward-line -1)
@@ -48,4 +48,4 @@
   (setq mode-name "Smudge")
   (setq indent-line-function 'smudge-indent-line))
 
-(provide 'smudge)
+(provide 'smudge-mode)

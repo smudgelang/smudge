@@ -91,9 +91,13 @@ handleStateEventFunction (StateMachine smName) (State s) h (State s') =
         enter_f = (#:) (smMangledName ++ "_" ++ destStateMangledName ++ "_enter") (:#)
         call_exit = (#:) (apply exit_f []) (:#)
         call_enter = (#:) (apply enter_f []) (:#)
+        apply_se (FuncVoid se) = (#:) (apply ((#:) se (:#)) (if hasPs then [event_ex] else [])) (:#)
+        apply_se (FuncDefault ((StateMachine sm), (Event e))) = (#:) (apply ((#:) ((mangleIdentifier sm) ++ "_" ++ (mangleIdentifier e)) (:#)) [(#:) "0" (:#)]) (:#)
+        apply_se (FuncDefault (StateMachineSame, (Event e))) = (#:) (apply ((#:) (smMangledName ++ "_" ++ (mangleIdentifier e)) (:#)) [(#:) "0" (:#)]) (:#)
+        apply_se (FuncEvent se _) = undefined -- See ticket #15, harder than it seems at first.
         side_effects = case h of
-                          (Happening _ ses [])                        -> [(#:) (apply ((#:) se (:#)) (if hasPs then [event_ex] else [])) (:#) | (FuncVoid se) <- ses] ++ [call_exit, assign_state, call_enter]
-                          (Happening _ ses fs) | elem NoTransition fs -> [(#:) (apply ((#:) se (:#)) (if hasPs then [event_ex] else [])) (:#) | (FuncVoid se) <- ses]
+                          (Happening _ ses [])                        -> [apply_se se | se <- ses] ++ [call_exit, assign_state, call_enter]
+                          (Happening _ ses fs) | elem NoTransition fs -> [apply_se se | se <- ses]
 
 handleEventFunction :: Bool -> StateMachine -> Event -> [State] -> [State] -> [State] -> FunctionDefinition
 handleEventFunction debug (StateMachine smName) (Event evName) ss anys unss =

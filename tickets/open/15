@@ -3,3 +3,7 @@ Title: Typed function calls not implemented.
 The syntax.ebnf's typed-function-call doesn't lead to any generated C
 code.
 
+We need to think about how we allocate space for the returned
+event. If it's on the stack, we'll need the events to not be opaque
+pointers. If it's in the caller, we'll have to figure out how to free
+them.

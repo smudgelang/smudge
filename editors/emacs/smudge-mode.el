@@ -11,33 +11,35 @@
   (if (bobp)
       (indent-line-to 0)
 
-    (let ((not-indented t) cur-indent)
-      (if (looking-at "^[ \t]*$")
+    (let ((not-indented t) (cur-indent 0))
+      (if (and (looking-at "^[ \t]*$") (not (= (current-indentation) 0)))
           (setq cur-indent 0)
-        (if (or 
-             (looking-at "^[\t ]*}")
-             (looking-at "^[\t ]*\]"))
-            (progn
-              (save-excursion
+        (progn
+          (if (or 
+               (looking-at "^[\t ]*}")
+               (looking-at "^[\t ]*\]"))
+              (progn
+                (save-excursion
+                  (forward-line -1)
+                  (setq cur-indent (- (current-indentation) default-tab-width))))
+            (save-excursion
+              (while not-indented
                 (forward-line -1)
-                (setq cur-indent (- (current-indentation) default-tab-width))))
-          (save-excursion
-            (while not-indented
-              (forward-line -1)
-              (if (or (looking-at "^[ \t]*]")
-                      (looking-at "^[ \t]*}"))
-                  (progn
-                    (setq cur-indent (current-indentation))
-                    (setq not-indented nil))
-                (if (or (looking-at "^[ \t]*{[ \t]*$")
-                        (looking-at "^[ \t]*[[]"))
+                (if (or (looking-at "^[ \t]*]")
+                        (looking-at "^[ \t]*}"))
                     (progn
-                      (setq cur-indent (+ (current-indentation) default-tab-width))
+                      (setq cur-indent (current-indentation))
                       (setq not-indented nil))
-                  (if (bobp)
-                      (setq not-indented nil))))))))
+                  (if (or (looking-at "^[ \t]*{[ \t]*$")
+                          (looking-at "^[ \t]*[[]"))
+                      (progn
+                        (setq cur-indent (+ (current-indentation) default-tab-width))
+                        (setq not-indented nil))
+                    (if (bobp)
+                        (setq not-indented nil)))))))))
       (if cur-indent
           (progn
+                                        ;(if (looking-at "^[\t ]*\*") (setq cur-indent (- cur-indent 1)))
             (if (< cur-indent 0)
                 (setq cur-indent 0))
             (indent-line-to cur-indent))

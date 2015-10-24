@@ -105,11 +105,7 @@ handleEventFunction debug (StateMachine smName) (Event evName) ss anys unss =
                                             (Just $ Left $ Declarator (Just $ fromList [POINTER Nothing]) $ IDirectDeclarator event_var)]
     (CompoundStatement
     LEFTCURLY
-      (if not debug then Nothing else
-        (Just $ fromList [Declaration (fromList [C CONST, B CHAR]) 
-                                      (Just $ fromList [InitDeclarator (Declarator (Just $ fromList [POINTER Nothing]) $ IDirectDeclarator name_var)
-                                                        (Just $ Pair EQUAL $ AInitializer evname_e)])
-                                      SEMICOLON]))
+        Nothing
         (Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [call_initialize]) SEMICOLON,
                           SStatement $ SWITCH LEFTPAREN (fromList [state_var]) RIGHTPAREN $ CStatement $ CompoundStatement LEFTCURLY
                                        Nothing
@@ -130,14 +126,11 @@ handleEventFunction debug (StateMachine smName) (Event evName) ss anys unss =
         f_name = smMangledName ++ "_" ++ evMangledName
         event_type = f_name ++ "_t"
         event_var = "e"
-        name_var = "event_name"
         event_ex = (#:) event_var (:#)
-        name_ex = (#:) name_var (:#)
-        evname_e = (#:) (show evName) (:#)
         state_var = (#:) (smMangledName ++ "_state") (:#)
-        unhandled = (#:) (smMangledName ++ "_UNHANDLED_EVENT") (:#)
+        unhandled = (#:) (smMangledName ++ "_UNHANDLED_EVENT_" ++ evMangledName) (:#)
         initialize = (#:) (smMangledName ++ "_initialize") (:#)
-        call_unhandled = (#:) (apply unhandled (if debug then [name_ex] else [])) (:#)
+        call_unhandled = (#:) (apply unhandled []) (:#)
         call_initialize = (#:) (apply initialize []) (:#)
         unhd_stmt s = let state_case = (#:) s (:#) in
                         CASE state_case COLON $
@@ -148,28 +141,31 @@ handleEventFunction debug (StateMachine smName) (Event evName) ss anys unss =
                         CASE state_case COLON $
                         EStatement $ ExpressionStatement (Just $ fromList [call_state_evt_handler]) SEMICOLON
 
-unhandledEventFunction :: Bool -> StateMachine -> FunctionDefinition
-unhandledEventFunction debug (StateMachine smName) =
-    makeFunction (fromList [A STATIC, B VOID]) [] f_name
-                                   (if not debug then [ParameterDeclaration (fromList [B VOID]) Nothing]
-                                    else [ParameterDeclaration (fromList [C CONST, B CHAR])
-                                          (Just $ Left $ Declarator (Just $ fromList [POINTER Nothing]) $ IDirectDeclarator event_var)])
+unhandledEventFunction :: Bool -> StateMachine -> Event -> FunctionDefinition
+unhandledEventFunction debug (StateMachine smName) (Event evName) =
+    makeFunction (fromList [A STATIC, B VOID]) [] f_name [ParameterDeclaration (fromList [B VOID]) Nothing]
     (CompoundStatement
     LEFTCURLY
-        Nothing
+        (if not debug then Nothing else
+          (Just $ fromList [Declaration (fromList [C CONST, B CHAR]) 
+                                        (Just $ fromList [InitDeclarator (Declarator (Just $ fromList [POINTER Nothing]) $ IDirectDeclarator name_var)
+                                                          (Just $ Pair EQUAL $ AInitializer evname_e)])
+                                        SEMICOLON]))
         (Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [call_assert_f]) SEMICOLON])
     RIGHTCURLY)
     where
-        event_var = "e"
+        name_var = "event_name"
+        name_ex = (#:) name_var (:#)
         smMangledName = mangleIdentifier smName
-        f_name = smMangledName ++ "_UNHANDLED_EVENT"
-        event_ex = (#:) event_var (:#)
+        evMangledName = mangleIdentifier evName
+        evname_e = (#:) (show evName) (:#)
+        f_name = smMangledName ++ "_UNHANDLED_EVENT_" ++ evMangledName
         assert_f = (#:) (if debug then "printf_assert" else "assert") (:#)
         assert_s = (#:) (show (smName ++ "[%s]: Unhandled event \"%s\"\n")) (:#)
         sname_f  = (#:) (smMangledName ++ "_State_name") (:#)
         state_var = (#:) (smMangledName ++ "_state") (:#)
         call_sname_f = (#:) (apply sname_f [state_var]) (:#)
-        call_assert_f = (#:) (apply assert_f (if debug then [assert_s, call_sname_f, event_ex] else [])) (:#)
+        call_assert_f = (#:) (apply assert_f (if debug then [assert_s, call_sname_f, name_ex] else [])) (:#)
 
 stateNameFunction :: StateMachine -> [State] -> FunctionDefinition
 stateNameFunction (StateMachine smName) ss =
@@ -344,7 +340,7 @@ instance Backend CStaticOption where
                      ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration sm s e
                          | (n, EnterExitState {en, st = s@(State _), ex}) <- labNodes g, e <- (map (event . edgeLabel) $ out g n)]
                      ++ (if debug then [ExternalDeclaration $ Left $ stateNameFunction sm $ states g] else [])
-                     ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug sm]
+                     ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug sm e | (e, _) <- toList $ events g]
                      ++ [ExternalDeclaration $ Left $ initializeFunction sm $ initial g]
                      ++ [ExternalDeclaration $ Left $ handleEventFunction debug sm e ss (anys g \\ ss) ((states g \\ ss) \\ (anys g))
                          | (e, ss) <- toList $ events g]

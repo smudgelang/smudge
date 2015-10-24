@@ -130,7 +130,7 @@ handleEventFunction debug (StateMachine smName) (Event evName) ss anys unss =
         state_var = (#:) (smMangledName ++ "_state") (:#)
         unhandled = (#:) (smMangledName ++ "_UNHANDLED_EVENT_" ++ evMangledName) (:#)
         initialize = (#:) (smMangledName ++ "_initialize") (:#)
-        call_unhandled = (#:) (apply unhandled []) (:#)
+        call_unhandled = (#:) (apply unhandled [event_ex]) (:#)
         call_initialize = (#:) (apply initialize []) (:#)
         unhd_stmt s = let state_case = (#:) s (:#) in
                         CASE state_case COLON $
@@ -143,7 +143,8 @@ handleEventFunction debug (StateMachine smName) (Event evName) ss anys unss =
 
 unhandledEventFunction :: Bool -> StateMachine -> Event -> FunctionDefinition
 unhandledEventFunction debug (StateMachine smName) (Event evName) =
-    makeFunction (fromList [A STATIC, B VOID]) [] f_name [ParameterDeclaration (fromList [B VOID]) Nothing]
+    makeFunction (fromList [A STATIC, B VOID]) [] f_name [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
+                                                          (Just $ Left $ Declarator (Just $ fromList [POINTER Nothing]) $ IDirectDeclarator event_var)]
     (CompoundStatement
     LEFTCURLY
         (if not debug then Nothing else
@@ -160,6 +161,8 @@ unhandledEventFunction debug (StateMachine smName) (Event evName) =
         evMangledName = mangleIdentifier evName
         evname_e = (#:) (show evName) (:#)
         f_name = smMangledName ++ "_UNHANDLED_EVENT_" ++ evMangledName
+        event_type = smMangledName ++ "_" ++ evMangledName ++ "_t"
+        event_var = "e"
         assert_f = (#:) (if debug then "printf_assert" else "assert") (:#)
         assert_s = (#:) (show (smName ++ "[%s]: Unhandled event \"%s\"\n")) (:#)
         sname_f  = (#:) (smMangledName ++ "_State_name") (:#)

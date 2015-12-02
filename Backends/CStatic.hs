@@ -210,7 +210,7 @@ stateNameFunction (StateMachine smName) ss =
         safe_array_index_e = (#:) (bounds_check_e `QUESTION` (Trio (fromList [array_index_e]) COLON default_state)) (:#)
 
 handleStateEventDeclaration :: StateMachine -> State -> Event -> Declaration
-handleStateEventDeclaration (StateMachine smName) (State s) e =
+handleStateEventDeclaration (StateMachine smName) st e =
     Declaration
     (fromList [A STATIC, B VOID])
     (Just $ fromList [InitDeclarator (Declarator Nothing (PDirectDeclarator
@@ -225,7 +225,9 @@ handleStateEventDeclaration (StateMachine smName) (State s) e =
     SEMICOLON
     where
         smMangledName = mangleIdentifier smName
-        sMangledName = mangleIdentifier s
+        sMangledName = case st of
+                          State s -> mangleIdentifier s
+                          StateAny -> "ANY_STATE"
         evMangledName = case e of
                             (Event evName) -> mangleIdentifier evName
                             (EventEnter) -> "enter"
@@ -341,7 +343,7 @@ instance Backend CStaticOption where
               tus = [[ExternalDeclaration $ Right $ stateEnum sm $ states g]
                      ++ [ExternalDeclaration $ Right $ stateVarDeclaration sm $ initial g]
                      ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration sm s e
-                         | (n, EnterExitState {en, st = s@(State _), ex}) <- labNodes g, e <- (map (event . edgeLabel) $ out g n)]
+                         | (n, EnterExitState {st = s}) <- labNodes g, e <- (map (event . edgeLabel) $ out g n), case s of State _ -> True; StateAny -> True; _ -> False]
                      ++ (if debug then [ExternalDeclaration $ Left $ stateNameFunction sm $ states g] else [])
                      ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug sm e | (e, _) <- toList $ events g]
                      ++ [ExternalDeclaration $ Left $ initializeFunction sm $ initial g]
@@ -361,6 +363,7 @@ instance Backend CStaticOption where
               anys g = [st ees | (n, ees) <- labNodes g, (_, _, Happening {event = EventAny}) <- out g n]
               events g = foldl insert_event empty [(h, st ees) | (n, ees) <- labNodes g, (_, _, h) <- out g n]
               insert_event m ((Happening e@(Event _) _ _), s@(State _)) = insertWith (flip (++)) e [s] m
+              insert_event m ((Happening e@(Event _) _ _), s@StateAny)  = insertWith (flip (++)) e [s] m
               insert_event m                                          _ = m
               edgeLabel (_, _, l) = l
               writeTranslationUnit render fp = (writeFile fp (render fp)) >> (return fp)

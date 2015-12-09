@@ -58,7 +58,7 @@ initializeFunction (StateMachine smName) (State s) =
         side_effects = [assign_state, call_enter, init_set]
 
 handleStateEventFunction :: StateMachine -> State -> Happening -> State -> FunctionDefinition
-handleStateEventFunction (StateMachine smName) (State s) h (State s') =
+handleStateEventFunction (StateMachine smName) st h (State s') =
     makeFunction (fromList [A STATIC, B VOID]) [] f_name
                                    (if not hasPs then [ParameterDeclaration (fromList [B VOID]) Nothing]
                                     else [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
@@ -70,7 +70,9 @@ handleStateEventFunction (StateMachine smName) (State s) h (State s') =
     RIGHTCURLY)
     where
         smMangledName = mangleIdentifier smName
-        sMangledName = mangleIdentifier s
+        sMangledName = case st of
+                          State s -> mangleIdentifier s
+                          StateAny -> "ANY_STATE"
         destStateMangledName = mangleIdentifier s'
         evMangledName = case event h of
                             (Event evName) -> mangleIdentifier evName
@@ -350,7 +352,7 @@ instance Backend CStaticOption where
                      ++ [ExternalDeclaration $ Left $ handleEventFunction debug sm e ss (anys g \\ ss) ((states g \\ ss) \\ (anys g))
                          | (e, ss) <- toList $ events g]
                      ++ [ExternalDeclaration $ Left $ handleStateEventFunction sm s h s'
-                         | (n, EnterExitState {st = s@(State _)}) <- labNodes g, (_, n', h) <- out g n, Just EnterExitState {st = s'@(State _)} <- [lab g n']]
+                         | (n, EnterExitState {st = s}) <- labNodes g, (_, n', h) <- out g n, Just EnterExitState {st = s'@(State _)} <- [lab g n'], case s of State _ -> True; StateAny -> True; _ -> False]
                      | (sm, g) <- gs'']
               gs'' = [(sm, insEdges [(n, n, Happening EventEnter en [NoTransition])
                                      | (n, EnterExitState {en, st = State _}) <- labNodes $ delNodes [n | n <- nodes g, (_, _, Happening EventEnter _ _) <- out g n] g] g)

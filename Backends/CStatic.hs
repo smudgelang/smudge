@@ -26,6 +26,47 @@ apply f ps = APostfixExpression f LEFTPAREN (Just $ fromList ps) RIGHTPAREN
 extendMangledIdentifier :: Identifier -> [String] -> Identifier
 extendMangledIdentifier s ss = intercalate "_" $ s : map mangleIdentifier ss
 
+transitionFunctionDeclaration :: StateMachine -> Event -> Declaration
+transitionFunctionDeclaration (StateMachine smName) e =
+    Declaration
+    (fromList [A STATIC, B VOID])
+    (Just $ fromList [InitDeclarator (Declarator Nothing (PDirectDeclarator
+          (IDirectDeclarator f_name)
+          LEFTPAREN
+          (Just $ Left $ ParameterTypeList (fromList $ [ParameterDeclaration (fromList [B VOID]) Nothing]) Nothing)
+          RIGHTPAREN)) Nothing])
+    SEMICOLON
+    where
+        smMangledName = mangleIdentifier smName
+        tType = "exit"
+        f_name = smMangledName ++ "_ANY_STATE_" ++ tType
+
+
+transitionFunction :: StateMachine -> Event -> [State] -> FunctionDefinition
+transitionFunction (StateMachine smName) EventExit ss =
+    makeFunction (fromList [A STATIC, B VOID]) [] f_name [ParameterDeclaration (fromList [B VOID]) Nothing]
+    (CompoundStatement
+    LEFTCURLY
+        Nothing
+        (Just $ fromList [SStatement $ SWITCH LEFTPAREN (fromList [state_var]) RIGHTPAREN $ CStatement $ CompoundStatement LEFTCURLY
+                                       Nothing
+                                       (Just $ fromList $ concat ([[LStatement $ case_stmt s, JStatement $ BREAK SEMICOLON] | s <- ssMangled])
+                                                                 ++ [LStatement $ DEFAULT COLON $
+                                                                     JStatement $ BREAK SEMICOLON])
+                                       RIGHTCURLY])
+    RIGHTCURLY)
+    where
+        smMangledName = mangleIdentifier smName
+        tType = "exit"
+        f_name = smMangledName ++ "_ANY_STATE_" ++ tType
+        state_var = (#:) (smMangledName ++ "_state") (:#)
+        ssMangled = [smMangledName ++ "_" ++ (mangleIdentifier s) | (State s) <- ss]
+        case_stmt s = let state_case = (#:) s (:#)
+                          state_evt_handler = (#:) (s ++ "_" ++ tType) (:#)
+                          call_state_evt_handler = (#:) (apply state_evt_handler []) (:#) in
+                        CASE state_case COLON $
+                        EStatement $ ExpressionStatement (Just $ fromList [call_state_evt_handler]) SEMICOLON
+
 initializeFunction :: StateMachine -> State -> FunctionDefinition
 initializeFunction (StateMachine smName) (State s) =
     makeFunction (fromList [A STATIC, B VOID]) [] f_name [ParameterDeclaration (fromList [B VOID]) Nothing]
@@ -346,9 +387,12 @@ instance Backend CStaticOption where
                      | (sm, g) <- gs'']
               tus = [[ExternalDeclaration $ Right $ stateEnum sm $ states g]
                      ++ [ExternalDeclaration $ Right $ stateVarDeclaration sm $ initial g]
+                     ++ [ExternalDeclaration $ Right $ transitionFunctionDeclaration sm EventExit | (_, EnterExitState {st = StateAny}) <- labNodes g]
                      ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration sm s e
                          | (n, EnterExitState {st = s}) <- labNodes g, e <- (map (event . edgeLabel) $ out g n), case s of State _ -> True; StateAny -> True; _ -> False]
                      ++ (if debug then [ExternalDeclaration $ Left $ stateNameFunction sm $ states g] else [])
+                     ++ [ExternalDeclaration $ Left $ transitionFunction sm EventExit
+                         $ [st | (_, EnterExitState {st, ex = (_:_)}) <- labNodes g] | (_, EnterExitState {st = StateAny}) <- labNodes g]
                      ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug (not $ null [st | st@StateAny <- states_handling e g]) sm e | (e, _) <- toList $ events g]
                      ++ [ExternalDeclaration $ Left $ initializeFunction sm $ initial g]
                      ++ [ExternalDeclaration $ Left $ handleEventFunction debug sm e ss (anys g \\ ss) ((states g \\ ss) \\ (anys g))

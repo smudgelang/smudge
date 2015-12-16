@@ -143,18 +143,18 @@ handleEventFunction debug (StateMachine smName) (Event evName) ss anys unss =
                         CASE state_case COLON $
                         EStatement $ ExpressionStatement (Just $ fromList [call_state_evt_handler]) SEMICOLON
 
-unhandledEventFunction :: Bool -> StateMachine -> Event -> FunctionDefinition
-unhandledEventFunction debug (StateMachine smName) (Event evName) =
+unhandledEventFunction :: Bool -> Bool -> StateMachine -> Event -> FunctionDefinition
+unhandledEventFunction debug any_handles (StateMachine smName) (Event evName) =
     makeFunction (fromList [A STATIC, B VOID]) [] f_name [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
                                                           (Just $ Left $ Declarator (Just $ fromList [POINTER Nothing]) $ IDirectDeclarator event_var)]
     (CompoundStatement
     LEFTCURLY
-        (if not debug then Nothing else
+        (if any_handles || not debug then Nothing else
           (Just $ fromList [Declaration (fromList [C CONST, B CHAR]) 
                                         (Just $ fromList [InitDeclarator (Declarator (Just $ fromList [POINTER Nothing]) $ IDirectDeclarator name_var)
                                                           (Just $ Pair EQUAL $ AInitializer evname_e)])
                                         SEMICOLON]))
-        (Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [call_assert_f]) SEMICOLON])
+        (Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [if any_handles then call_any_f else call_assert_f]) SEMICOLON])
     RIGHTCURLY)
     where
         name_var = "event_name"
@@ -171,6 +171,8 @@ unhandledEventFunction debug (StateMachine smName) (Event evName) =
         state_var = (#:) (smMangledName ++ "_state") (:#)
         call_sname_f = (#:) (apply sname_f [state_var]) (:#)
         call_assert_f = (#:) (apply assert_f (if debug then [assert_s, call_sname_f, name_ex] else [])) (:#)
+        any_f = (#:) (smMangledName ++ "_ANY_STATE_" ++ evMangledName) (:#)
+        call_any_f = (#:) (apply any_f [(#:) event_var (:#)]) (:#)
 
 stateNameFunction :: StateMachine -> [State] -> FunctionDefinition
 stateNameFunction (StateMachine smName) ss =
@@ -347,7 +349,7 @@ instance Backend CStaticOption where
                      ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration sm s e
                          | (n, EnterExitState {st = s}) <- labNodes g, e <- (map (event . edgeLabel) $ out g n), case s of State _ -> True; StateAny -> True; _ -> False]
                      ++ (if debug then [ExternalDeclaration $ Left $ stateNameFunction sm $ states g] else [])
-                     ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug sm e | (e, _) <- toList $ events g]
+                     ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug (not $ null [st | st@StateAny <- states_handling e g]) sm e | (e, _) <- toList $ events g]
                      ++ [ExternalDeclaration $ Left $ initializeFunction sm $ initial g]
                      ++ [ExternalDeclaration $ Left $ handleEventFunction debug sm e ss (anys g \\ ss) ((states g \\ ss) \\ (anys g))
                          | (e, ss) <- toList $ events g]
@@ -362,7 +364,8 @@ instance Backend CStaticOption where
                       | (sm, g) <- gs]
               initial g = head [st ese | (n, EnterExitState {st = StateEntry}) <- labNodes g, n' <- suc g n, (Just ese) <- [lab g n']]
               states g = [st ees | (_, ees) <- labNodes g]
-              anys g = [st ees | (n, ees) <- labNodes g, (_, _, Happening {event = EventAny}) <- out g n]
+              states_handling e g = [st ees | (n, ees) <- labNodes g, (_, _, Happening {event}) <- out g n, event == e]
+              anys g = states_handling EventAny g
               events g = foldl insert_event empty [(h, st ees) | (n, ees) <- labNodes g, (_, _, h) <- out g n]
               insert_event m ((Happening e@(Event _) _ _), s@(State _)) = insertWith (flip (++)) e [s] m
               insert_event m ((Happening e@(Event _) _ _), s@StateAny)  = insertWith (flip (++)) e [s] m

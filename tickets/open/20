@@ -1,0 +1,18 @@
+Title: Refactor C backend to simplify.
+
+Reading "A Nanopass Framework for Compiler Education" helped me understand
+precisely how the C backend was misdesigned, and how to improve it.  It needs
+to be broken down into at least two passes, possibly more.
+
+For now, it is structured as one pass:
+ - graph to C syntax tree.
+
+As two passes, this could be instead structured:
+ - graph to flat representation, and
+ - flat to C syntax tree (whereby "flat" I mean a representation that
+   can be traversed linearly instead of through graph operations).
+
+Further decomposition could include:
+ - graph to mangle-named graph, and mangled to flat, or
+ - graph to object, and object to flat, or
+ - flat to high-level C, and high-level C to C syntax tree

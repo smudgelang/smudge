@@ -1,0 +1,22 @@
+Title: Refactor passes to add structure.
+
+I think we both know that the design of smudge is a little fraught.  After
+reading this paper (A Nanopass Framework for Compiler Education, 2004), I think
+I’ve realized where we went wrong, and how to improve things:
+
+http://www.cs.indiana.edu/~dyb/pubs/nano-jfp.pdf
+
+Sections 2.1 and 2.3 talk about the structure of languages and passes as types.
+Although “nanopass” may not be the right structure for smudge, and “framework”
+is almost certainly over-engineering, I think we do need to break things down a
+bit in order to make progress.
+
+Thus, I propose to restructure main such that processFile and make_output are
+instead replaced by a list of passes that have an input language and an output
+language, and are given as a sequence of compositions of series and parallel
+passes, where passes in series accept the output language of their predecessor,
+and produce the input language of their successor, and passes in parallel all
+accept the same input language and produce the same output language.
+
+An example of a series relationship would be parse -> smToGraph.
+A parallel relationship would be the semantic passes or the backend passes.

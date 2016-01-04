@@ -9,7 +9,7 @@ For now, it is structured as one pass:
 
 As two passes, this could be instead structured:
  - graph to flat representation, and
- - flat to C syntax tree (whereby "flat" I mean a representation that
+ - flat to C syntax tree (where by "flat" I mean a representation that
    can be traversed linearly instead of through graph operations).
 
 Further decomposition could include:

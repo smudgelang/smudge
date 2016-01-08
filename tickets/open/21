@@ -1,0 +1,11 @@
+Title: Reject event cycles.
+
+This program provably doesn't terminate:
+
+sm { *st [ a -( b )-, b -( a )-] }
+
+This should be rejected, because we can.
+
+Also, rejecting that program would reject exit side effects that cause the
+state to exit again, in the event that we decide that exit side effects take
+place before having exited that state.

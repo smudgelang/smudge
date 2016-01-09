@@ -26,8 +26,8 @@ apply f ps = APostfixExpression f LEFTPAREN (Just $ fromList ps) RIGHTPAREN
 (+-+) :: Identifier -> Identifier -> Identifier
 a +-+ b = a ++ "_" ++ b
 
-extendMangledIdentifier :: Identifier -> [String] -> Identifier
-extendMangledIdentifier s ss = intercalate "_" $ s : map mangleIdentifier ss
+extendMangle :: Identifier -> String -> Identifier
+extendMangle s s' = s +-+ mangleIdentifier s'
 
 transitionFunctionDeclaration :: StateMachine -> Event -> Declaration
 transitionFunctionDeclaration (StateMachine smName) e =
@@ -168,7 +168,7 @@ handleEventFunction debug (StateMachine smName) (Event evName) ss anys unss =
     where
         smMangledName = mangleIdentifier smName
         ssMangled = [smMangledName +-+ mangleIdentifier s | (State s) <- ss]
-        anysMangled = [extendMangledIdentifier smMangledName [s] | (State s) <- anys]
+        anysMangled = [extendMangle smMangledName s | (State s) <- anys]
         unssMangled = [smMangledName +-+ mangleIdentifier s | (State s) <- unss]
         evMangledName = mangleIdentifier evName
         f_name = smMangledName +-+ evMangledName
@@ -184,7 +184,7 @@ handleEventFunction debug (StateMachine smName) (Event evName) ss anys unss =
                         CASE state_case COLON $
                         EStatement $ ExpressionStatement (Just $ fromList [call_unhandled]) SEMICOLON
         case_stmt s en es = let state_case = (#:) s (:#)
-                                state_evt_handler = (#:) (extendMangledIdentifier s [en]) (:#)
+                                state_evt_handler = (#:) (extendMangle s en) (:#)
                                 call_state_evt_handler = (#:) (apply state_evt_handler es) (:#) in
                         CASE state_case COLON $
                         EStatement $ ExpressionStatement (Just $ fromList [call_state_evt_handler]) SEMICOLON

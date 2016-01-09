@@ -23,6 +23,9 @@ apply :: PostfixExpression -> [AssignmentExpression] -> PostfixExpression
 apply f [] = APostfixExpression f LEFTPAREN Nothing RIGHTPAREN
 apply f ps = APostfixExpression f LEFTPAREN (Just $ fromList ps) RIGHTPAREN
 
+(+-+) :: Identifier -> Identifier -> Identifier
+a +-+ b = a ++ "_" ++ b
+
 extendMangledIdentifier :: Identifier -> [String] -> Identifier
 extendMangledIdentifier s ss = intercalate "_" $ s : map mangleIdentifier ss
 
@@ -39,7 +42,7 @@ transitionFunctionDeclaration (StateMachine smName) e =
     where
         smMangledName = mangleIdentifier smName
         tType = "exit"
-        f_name = smMangledName ++ "_ANY_STATE_" ++ tType
+        f_name = smMangledName +-+ "ANY_STATE" +-+ tType
 
 
 transitionFunction :: StateMachine -> Event -> [State] -> FunctionDefinition
@@ -58,11 +61,11 @@ transitionFunction (StateMachine smName) EventExit ss =
     where
         smMangledName = mangleIdentifier smName
         tType = "exit"
-        f_name = smMangledName ++ "_ANY_STATE_" ++ tType
-        state_var = (#:) (smMangledName ++ "_state") (:#)
-        ssMangled = [smMangledName ++ "_" ++ (mangleIdentifier s) | (State s) <- ss]
+        f_name = smMangledName +-+ "ANY_STATE" +-+ tType
+        state_var = (#:) (smMangledName +-+ "state") (:#)
+        ssMangled = [smMangledName +-+ mangleIdentifier s | (State s) <- ss]
         case_stmt s = let state_case = (#:) s (:#)
-                          state_evt_handler = (#:) (s ++ "_" ++ tType) (:#)
+                          state_evt_handler = (#:) (s +-+ tType) (:#)
                           call_state_evt_handler = (#:) (apply state_evt_handler []) (:#) in
                         CASE state_case COLON $
                         EStatement $ ExpressionStatement (Just $ fromList [call_state_evt_handler]) SEMICOLON
@@ -85,14 +88,14 @@ initializeFunction (StateMachine smName) (State s) =
     RIGHTCURLY)
     where
         smMangledName = mangleIdentifier smName
-        sMangled = smMangledName ++ "_" ++ (mangleIdentifier s)
-        state_var = smMangledName ++ "_state"
-        f_name = smMangledName ++ "_initialize"
+        sMangled = smMangledName +-+ mangleIdentifier s
+        state_var = smMangledName +-+ "state"
+        f_name = smMangledName +-+ "initialize"
         init_var = "initialized"
         init_init = "INITIALIZED"
         init_uninit = "UNINITIALIZED"
         assign_state = ((#:) state_var (:#)) `ASSIGN` ((#:) sMangled (:#))
-        enter_f = (#:) (sMangled ++ "_enter") (:#)
+        enter_f = (#:) (sMangled +-+ "enter") (:#)
         call_enter = (#:) (apply enter_f []) (:#)
         init_check = (#:) ((#:) init_init (:#) `NOTEQUAL` (#:) init_var (:#)) (:#)
         init_set = (#:) init_var (:#) `ASSIGN` (#:) init_init (:#)
@@ -125,20 +128,20 @@ handleStateEventFunction (StateMachine smName) st h st' =
         hasPs = case event h of
                         (Event _) -> True
                         otherwise -> False
-        f_name = smMangledName ++ "_" ++ sMangledName ++ "_" ++ evMangledName
-        event_type = smMangledName ++ "_" ++ evMangledName ++ "_t"
+        f_name = smMangledName +-+ sMangledName +-+ evMangledName
+        event_type = smMangledName +-+ evMangledName +-+ "t"
         event_var = "e"
         event_ex = (#:) event_var (:#)
-        dest_state = (#:) (smMangledName ++ "_" ++ destStateMangledName) (:#)
-        state_var = (#:) (smMangledName ++ "_state") (:#)
+        dest_state = (#:) (smMangledName +-+ destStateMangledName) (:#)
+        state_var = (#:) (smMangledName +-+ "state") (:#)
         assign_state = (state_var `ASSIGN` dest_state)
-        exit_f = (#:) (smMangledName ++ "_" ++ sMangledName ++ "_exit") (:#)
-        enter_f = (#:) (smMangledName ++ "_" ++ destStateMangledName ++ "_enter") (:#)
+        exit_f = (#:) (smMangledName +-+ sMangledName +-+ "exit") (:#)
+        enter_f = (#:) (smMangledName +-+ destStateMangledName +-+ "enter") (:#)
         call_exit = (#:) (apply exit_f []) (:#)
         call_enter = (#:) (apply enter_f []) (:#)
         apply_se (FuncVoid se) = (#:) (apply ((#:) se (:#)) (if hasPs then [event_ex] else [])) (:#)
-        apply_se (FuncDefault ((StateMachine sm), (Event e))) = (#:) (apply ((#:) ((mangleIdentifier sm) ++ "_" ++ (mangleIdentifier e)) (:#)) [(#:) "0" (:#)]) (:#)
-        apply_se (FuncDefault (StateMachineSame, (Event e))) = (#:) (apply ((#:) (smMangledName ++ "_" ++ (mangleIdentifier e)) (:#)) [(#:) "0" (:#)]) (:#)
+        apply_se (FuncDefault ((StateMachine sm), (Event e))) = (#:) (apply ((#:) (mangleIdentifier sm +-+ mangleIdentifier e) (:#)) [(#:) "0" (:#)]) (:#)
+        apply_se (FuncDefault (StateMachineSame, (Event e))) = (#:) (apply ((#:) (smMangledName +-+ mangleIdentifier e) (:#)) [(#:) "0" (:#)]) (:#)
         apply_se (FuncEvent se _) = undefined -- See ticket #15, harder than it seems at first.
         side_effects = case h of
                           (Happening _ ses [])                        -> [apply_se se | se <- ses] ++ [call_exit, assign_state, call_enter]
@@ -164,17 +167,17 @@ handleEventFunction debug (StateMachine smName) (Event evName) ss anys unss =
     RIGHTCURLY)
     where
         smMangledName = mangleIdentifier smName
-        ssMangled = [smMangledName ++ "_" ++ (mangleIdentifier s) | (State s) <- ss]
+        ssMangled = [smMangledName +-+ mangleIdentifier s | (State s) <- ss]
         anysMangled = [extendMangledIdentifier smMangledName [s] | (State s) <- anys]
-        unssMangled = [smMangledName ++ "_" ++ (mangleIdentifier s) | (State s) <- unss]
+        unssMangled = [smMangledName +-+ mangleIdentifier s | (State s) <- unss]
         evMangledName = mangleIdentifier evName
-        f_name = smMangledName ++ "_" ++ evMangledName
-        event_type = f_name ++ "_t"
+        f_name = smMangledName +-+ evMangledName
+        event_type = f_name +-+ "t"
         event_var = "e"
         event_ex = (#:) event_var (:#)
-        state_var = (#:) (smMangledName ++ "_state") (:#)
-        unhandled = (#:) (smMangledName ++ "_UNHANDLED_EVENT_" ++ evMangledName) (:#)
-        initialize = (#:) (smMangledName ++ "_initialize") (:#)
+        state_var = (#:) (smMangledName +-+ "state") (:#)
+        unhandled = (#:) (smMangledName +-+ "UNHANDLED_EVENT" +-+ evMangledName) (:#)
+        initialize = (#:) (smMangledName +-+ "initialize") (:#)
         call_unhandled = (#:) (apply unhandled [event_ex]) (:#)
         call_initialize = (#:) (apply initialize []) (:#)
         unhd_stmt s = let state_case = (#:) s (:#) in
@@ -205,16 +208,16 @@ unhandledEventFunction debug any_handles (StateMachine smName) (Event evName) =
         smMangledName = mangleIdentifier smName
         evMangledName = mangleIdentifier evName
         evname_e = (#:) (show evName) (:#)
-        f_name = smMangledName ++ "_UNHANDLED_EVENT_" ++ evMangledName
-        event_type = smMangledName ++ "_" ++ evMangledName ++ "_t"
+        f_name = smMangledName +-+ "UNHANDLED_EVENT" +-+ evMangledName
+        event_type = smMangledName +-+ evMangledName +-+ "t"
         event_var = "e"
         assert_f = (#:) (if debug then "printf_assert" else "assert") (:#)
         assert_s = (#:) (show (smName ++ "[%s]: Unhandled event \"%s\"\n")) (:#)
-        sname_f  = (#:) (smMangledName ++ "_State_name") (:#)
-        state_var = (#:) (smMangledName ++ "_state") (:#)
+        sname_f  = (#:) (smMangledName +-+ "State_name") (:#)
+        state_var = (#:) (smMangledName +-+ "state") (:#)
         call_sname_f = (#:) (apply sname_f [state_var]) (:#)
         call_assert_f = (#:) (apply assert_f (if debug then [assert_s, call_sname_f, name_ex] else [])) (:#)
-        any_f = (#:) (smMangledName ++ "_ANY_STATE_" ++ evMangledName) (:#)
+        any_f = (#:) (smMangledName +-+ "ANY_STATE" +-+ evMangledName) (:#)
         call_any_f = (#:) (apply any_f [(#:) event_var (:#)]) (:#)
 
 stateNameFunction :: StateMachine -> [State] -> FunctionDefinition
@@ -239,11 +242,11 @@ stateNameFunction (StateMachine smName) ss =
         (Just $ fromList [JStatement $ RETURN (Just $ fromList [safe_array_index_e]) SEMICOLON])
     RIGHTCURLY)
     where
-        smMangledName = mangleIdentifier smName ++ "_State"
+        smMangledName = mangleIdentifier smName +-+ "State"
         count_var = "state_count"
         state_var = "s"
         names_var = "state_name"
-        f_name = smMangledName ++ "_name"
+        f_name = smMangledName +-+ "name"
         names_size_e = (#:) (SIZEOF $ Right $ Trio LEFTPAREN (TypeName (fromList [Left $ TypeSpecifier names_var]) Nothing) RIGHTPAREN) (:#)
         ptr_size_e = (#:) (SIZEOF $ Right $ Trio LEFTPAREN (TypeName (fromList [Right CONST, Left CHAR])
                                                                      (Just $ AbstractDeclarator $ This $ fromList [POINTER Nothing])) RIGHTPAREN) (:#)
@@ -283,8 +286,8 @@ handleStateEventDeclaration (StateMachine smName) st e =
         hasPs = case e of
                         (Event _) -> True
                         otherwise -> False
-        f_name = smMangledName ++ "_" ++ sMangledName ++ "_" ++ evMangledName
-        event_type = smMangledName ++ "_" ++ evMangledName ++ "_t"
+        f_name = smMangledName +-+ sMangledName +-+ evMangledName
+        event_type = smMangledName +-+ evMangledName +-+ "t"
 
 handleEventDeclaration :: StateMachine -> Event -> Declaration
 handleEventDeclaration (StateMachine smName) (Event evName) =
@@ -302,8 +305,8 @@ handleEventDeclaration (StateMachine smName) (Event evName) =
     where
         smMangledName = mangleIdentifier smName
         evMangledName = mangleIdentifier evName
-        f_name = smMangledName ++ "_" ++ evMangledName
-        event_type = smMangledName ++ "_" ++ evMangledName ++ "_t"
+        f_name = smMangledName +-+ evMangledName
+        event_type = smMangledName +-+ evMangledName +-+ "t"
 
 stateVarDeclaration :: StateMachine -> State -> Declaration
 stateVarDeclaration (StateMachine smName) (State s) =
@@ -314,9 +317,9 @@ stateVarDeclaration (StateMachine smName) (State s) =
     SEMICOLON
     where
         smMangledName = mangleIdentifier smName
-        smEnum = smMangledName ++ "_State"
-        sMangled = smMangledName ++ "_" ++ (mangleIdentifier s)
-        state_var = smMangledName ++ "_state"
+        smEnum = smMangledName +-+ "State"
+        sMangled = smMangledName +-+ mangleIdentifier s
+        state_var = smMangledName +-+ "state"
 
 stateEnum :: StateMachine -> [State] -> Declaration
 stateEnum (StateMachine smName) ss =
@@ -326,8 +329,8 @@ stateEnum (StateMachine smName) ss =
     (Just $ fromList [InitDeclarator (Declarator Nothing (IDirectDeclarator smMangledName)) Nothing])
     SEMICOLON
     where
-        smMangledName = mangleIdentifier smName ++ "_State"
-        ssMangled = [(mangleIdentifier smName) ++ "_" ++ (mangleIdentifier s) | (State s) <- ss]
+        smMangledName = mangleIdentifier smName +-+ "State"
+        ssMangled = [mangleIdentifier smName +-+ mangleIdentifier s | (State s) <- ss]
 
 makeEnum :: Identifier -> [Identifier] -> TypeSpecifier
 makeEnum smName [] = ENUM (Left $ smName)
@@ -347,7 +350,7 @@ eventStruct (StateMachine smName) (Event evName) =
     where
         smMangledName = mangleIdentifier smName
         evMangledName = mangleIdentifier evName
-        event_type = smMangledName ++ "_" ++ evMangledName ++ "_t"
+        event_type = smMangledName +-+ evMangledName +-+ "t"
 
 makeStruct :: Identifier -> [(SpecifierQualifierList, Identifier)] -> TypeSpecifier
 makeStruct smName [] = STRUCT (Left $ smName)

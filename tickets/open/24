@@ -1,0 +1,10 @@
+Title: Handle unresolved symbol bindings.
+
+Some possible solutions:
+
+1. Optionally warn about unresolved symbols, and let the C compiler resolve it.
+2. Introduce "import" syntax to smudge, and fail on unresolved symbols.
+3. Introduce smudgle-level qualified names, and auto-import.
+4. Try to guess where a symbol is located based on the state machine name.
+5. Separate compilation and generation; compilation produces an intermediate
+   representation on disk, which is used to "link" to generate actual code.

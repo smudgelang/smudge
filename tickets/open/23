@@ -1,0 +1,19 @@
+Title: Optional semantic pass to strictly reject conflicting side effects
+
+By default, side effects with conflicting types should simplify to a common
+compatible signature:
+
+sm { st (@twofer) [a -(@twofer)-] }
+
+This should not reject twofer for having conflicting types:
+
+void twofer(const sm_a_t *);
+void twofer(void);
+
+But should instead infer the simpler signature:
+
+void twofer(void);
+
+HOWEVER, this is not always desireable.  In order to allow the user to choose
+their own adventure, an optional semantic pass should be provided that will
+reject this state machine.

@@ -1,0 +1,5 @@
+Title: Semantic pass to reject conflicting side effect return types
+
+This should fail a semantic pass because bad cannot return both b and c:
+
+sm { *st [a -(@bad:b, @bad:c)-, b --, c --] }

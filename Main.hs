@@ -4,7 +4,7 @@ import PackageInfo (packageInfo, author, synopsis)
 import Backends.Backend (options, generate)
 import Backends.GraphViz (GraphVizOption(..))
 import Backends.CStatic (CStaticOption(..))
-import Model (smToGraph)
+import Model (passWholeStateToGraph, passGraphWithSymbols, passUniqueSymbols)
 import Parsers.Smudge (state_machine, smudgle)
 import Semantics (make_passes)
 import Trashcan.Graph
@@ -59,7 +59,7 @@ printVersion :: IO ()
 printVersion = putStrLn (app_name ++ " version: " ++
                          (showVersion $ packageVersion packageInfo))
 
---processFile :: String -> IO [Gr EnterExitState Happening]
+--processFile :: String -> IO ([(StateMachine, Gr EnterExitState Happening)], SymbolTable)
 processFile fileName = do
     compilationUnit <-
         if fileName == "-"
@@ -70,10 +70,14 @@ processFile fileName = do
         Right sms -> m sms
     where
         m sms = do
-            let gs = zip (map fst sms) (map smToGraph sms)
+            let gs = passWholeStateToGraph sms
             case and $ map (make_passes . snd) gs of
                 False -> report_failure
-                _ -> return gs
+                _ -> do
+                    let gswst = passGraphWithSymbols gs
+                    case True of
+                        False -> report_failure
+                        _ -> return $ passUniqueSymbols gswst
         report_failure =
             print_exit "Semantic check failed."
         print_exit e = do
@@ -81,14 +85,14 @@ processFile fileName = do
             exitFailure
             return mempty
 
---make_output :: String -> [Options] -> [Gr EnterExitState Happening] -> IO ()
-make_output fileName os gs = do
+--make_output :: String -> [Options] -> ([(StateMachine, Gr EnterExitState Happening)], SymbolTable) -> IO ()
+make_output fileName os gswust = do
     let gvos = [a | GraphVizOption a <- os]
-    outputNames <- generate gvos gs fileName
+    outputNames <- generate gvos gswust fileName
     mapM_ putStrLn $ do outputName <- outputNames
                         ["Wrote file \"" ++ outputName ++ "\""]
     let csos = [a | CStaticOption a <- os]
-    outputNames <- generate csos gs fileName
+    outputNames <- generate csos gswust fileName
     mapM_ putStrLn $ do outputName <- outputNames
                         ["Wrote file \"" ++ outputName ++ "\""]
 

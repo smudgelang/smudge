@@ -5,13 +5,14 @@ module Backends.CStatic where
 import Backends.Backend (Backend(..))
 import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..))
 import Grammars.C89
-import Model (EnterExitState(..), HappeningFlag(..), Happening(..))
+import Model (EnterExitState(..), HappeningFlag(..), Happening(..), QualifiedName(..), mangleWith, SymbolType(..), Binding(..),SymbolTable, qName)
 import Trashcan.FilePath (relPath)
 import Unparsers.C89 (renderPretty)
 
 import Data.Graph.Inductive.Graph (labNodes, lab, out, suc, insEdges, nodes, delNodes)
 import Data.List (intercalate, (\\))
-import Data.Map (insertWith, empty, toList)
+import Data.Map (insertWith, empty, toList, (!))
+import qualified Data.Map (null)
 import Data.Text (replace)
 import System.Console.GetOpt
 import System.FilePath (FilePath, dropExtension, takeDirectory, takeFileName, (<.>))
@@ -28,6 +29,12 @@ a +-+ b = a ++ "_" ++ b
 
 extendMangle :: Identifier -> String -> Identifier
 extendMangle s s' = s +-+ mangleIdentifier s'
+
+mangleQName :: QualifiedName -> Identifier
+mangleQName q = mangleWith (+-+) mangleIdentifier q
+
+mangleQEventName :: QualifiedName -> Identifier
+mangleQEventName qn = if null $ mangleQName qn then "" else mangleQName qn +-+ "t"
 
 transitionFunctionDeclaration :: StateMachine -> Event -> Declaration
 transitionFunctionDeclaration (StateMachine smName) e =
@@ -101,8 +108,8 @@ initializeFunction (StateMachine smName) (State s) =
         init_set = (#:) init_var (:#) `ASSIGN` (#:) init_init (:#)
         side_effects = [assign_state, call_enter, init_set]
 
-handleStateEventFunction :: StateMachine -> State -> Happening -> State -> FunctionDefinition
-handleStateEventFunction (StateMachine smName) st h st' =
+handleStateEventFunction :: StateMachine -> State -> Happening -> State -> SymbolTable -> FunctionDefinition
+handleStateEventFunction sm@(StateMachine smName) st h st' syms =
     makeFunction (fromList [A STATIC, B VOID]) [] f_name
                                    (if not hasPs then [ParameterDeclaration (fromList [B VOID]) Nothing]
                                     else [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
@@ -139,10 +146,12 @@ handleStateEventFunction (StateMachine smName) st h st' =
         enter_f = (#:) (smMangledName +-+ destStateMangledName +-+ "enter") (:#)
         call_exit = (#:) (apply exit_f []) (:#)
         call_enter = (#:) (apply enter_f []) (:#)
-        apply_se (FuncVoid se) = (#:) (apply ((#:) se (:#)) (if hasPs then [event_ex] else [])) (:#)
-        apply_se (FuncDefault ((StateMachine sm), (Event e))) = (#:) (apply ((#:) (mangleIdentifier sm +-+ mangleIdentifier e) (:#)) [(#:) "0" (:#)]) (:#)
-        apply_se (FuncDefault (StateMachineSame, (Event e))) = (#:) (apply ((#:) (smMangledName +-+ mangleIdentifier e) (:#)) [(#:) "0" (:#)]) (:#)
+
+        psOf (_, FunctionSym p _) | mangleQEventName p == event_type = [event_ex]
+        psOf (_, FunctionSym (QualifiedName (_:_)) _)                = [(#:) "0" (:#)]
+        psOf _                                                       = []
         apply_se (FuncEvent se _) = undefined -- See ticket #15, harder than it seems at first.
+        apply_se se = (#:) (apply ((#:) (mangleQName (qName sm se)) (:#)) (psOf (syms ! (qName sm se)))) (:#)
         side_effects = case h of
                           (Happening _ ses [])                        -> [apply_se se | se <- ses] ++ [call_exit, assign_state, call_enter]
                           (Happening _ ses fs) | elem NoTransition fs -> [apply_se se | se <- ses]
@@ -360,16 +369,37 @@ makeStruct smName ss =
     (fromList [StructDeclaration sqs (fromList [StructDeclarator $ This $ Declarator Nothing $ IDirectDeclarator id]) SEMICOLON | (sqs, id) <- ss])
     RIGHTCURLY))
 
+makeFunctionDeclarator :: [Pointer] -> Identifier -> [ParameterDeclaration] -> Declarator
+makeFunctionDeclarator ps f_name params =
+    Declarator (if null ps then Nothing else Just $ fromList ps)
+        $ PDirectDeclarator
+          (IDirectDeclarator f_name)
+          LEFTPAREN
+          (Just $ Left $ ParameterTypeList (fromList params) Nothing)
+          RIGHTPAREN
+
+makeFunctionDeclaration :: QualifiedName -> SymbolType -> Declaration
+makeFunctionDeclaration q (FunctionSym p r) =
+    Declaration
+    (fromList [A EXTERN, B $ result ])
+    (Just $ fromList [InitDeclarator (makeFunctionDeclarator ps f_name params) Nothing])
+    SEMICOLON
+    where
+        r_name = mangleQEventName r
+        p_name = mangleQEventName p
+        result = case r_name of "" -> VOID; t -> TypeSpecifier t
+        ps = case r_name of "" -> []; _ -> [POINTER Nothing]
+        f_name = mangleQName q
+        params = case p_name of
+                    "" -> [ParameterDeclaration (fromList [B VOID]) Nothing]
+                    t -> [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier t])
+                          (Just $ Right $ AbstractDeclarator (This $ fromList [POINTER Nothing]))]
+
 makeFunction :: DeclarationSpecifiers -> [Pointer] -> Identifier -> [ParameterDeclaration] -> CompoundStatement -> FunctionDefinition
 makeFunction dss ps f_name params body =
     Function
     (Just dss)
-    (Declarator (if null ps then Nothing else Just $ fromList ps)
-        $ PDirectDeclarator
-          (IDirectDeclarator $ f_name)
-          LEFTPAREN
-          (Just $ Left $ ParameterTypeList (fromList params) Nothing)
-          RIGHTPAREN)
+    (makeFunctionDeclarator ps f_name params)
     Nothing
     body
 
@@ -381,15 +411,18 @@ instance Backend CStaticOption where
                  "The name of the target header file if not derived from source file.",
                 Option [] ["no-debug"] (NoArg NoDebug)
                  "Don't generate debugging information"])
-    generate os gs inputName = sequence [writeTranslationUnit (renderHdr hdr []) (headerName os),
+    generate os gswust inputName = sequence $ [writeTranslationUnit (renderHdr hdr []) (headerName os),
                                          writeTranslationUnit (renderSrc src [extHdrName os, headerName os]) (outputName os)]
+                                         ++ [writeTranslationUnit (renderHdr ext [headerName os]) (extHdrName os) | not $ null tue]
         where src = fromList $ concat tus
+              ext = fromList tue
               hdr = fromList $ concat tuh
               tuh = [[ExternalDeclaration $ Right $ eventStruct sm e
                          | (e, _) <- toList $ events g]
                      ++ [ExternalDeclaration $ Right $ handleEventDeclaration sm e
                          | (e, _) <- toList $ events g]
                      | (sm, g) <- gs'']
+              tue = [ExternalDeclaration $ Right $ makeFunctionDeclaration name ftype | (name, (External, ftype)) <- toList syms]
               tus = [[ExternalDeclaration $ Right $ stateEnum sm $ states g]
                      ++ [ExternalDeclaration $ Right $ stateVarDeclaration sm $ initial g]
                      ++ [ExternalDeclaration $ Right $ transitionFunctionDeclaration sm EventExit | (_, EnterExitState {st = StateAny}) <- labNodes g]
@@ -402,7 +435,7 @@ instance Backend CStaticOption where
                      ++ [ExternalDeclaration $ Left $ initializeFunction sm $ initial g]
                      ++ [ExternalDeclaration $ Left $ handleEventFunction debug sm e ss (anys g \\ ss) ((states g \\ ss) \\ (anys g))
                          | (e, ss) <- toList $ events g]
-                     ++ [ExternalDeclaration $ Left $ handleStateEventFunction sm s h s'
+                     ++ [ExternalDeclaration $ Left $ handleStateEventFunction sm s h s' syms
                          | (n, EnterExitState {st = s}) <- labNodes g, (_, n', h) <- out g n, Just EnterExitState {st = s'} <- [lab g n'], case s of State _ -> True; StateAny -> True; _ -> False, case s' of State _ -> True; StateAny -> True; _ -> False]
                      | (sm, g) <- gs'']
               gs'' = [(sm, insEdges [(n, n, Happening EventEnter en [NoTransition])
@@ -411,6 +444,8 @@ instance Backend CStaticOption where
               gs'  = [(sm, insEdges [(n, n, Happening EventExit ex [NoTransition])
                                      | (n, EnterExitState {st = State _, ex}) <- labNodes $ delNodes [n | n <- nodes g, (_, _, Happening EventExit _ _) <- out g n] g] g)
                       | (sm, g) <- gs]
+              gs = fst gswust
+              syms = snd gswust
               initial g = head [st ese | (n, EnterExitState {st = StateEntry}) <- labNodes g, n' <- suc g n, (Just ese) <- [lab g n']]
               states g = [st ees | (_, ees) <- labNodes g]
               states_handling e g = [st ees | (n, ees) <- labNodes g, (_, _, Happening {event}) <- out g n, event == e]

@@ -1,0 +1,4 @@
+Title: Resolve conflict between QualifiedName [] and QualifiedName [""]
+
+Technically these both translate to "" when cooked and served, which is
+a possible source of bugs.

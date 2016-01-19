@@ -1,4 +1,6 @@
+{-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+
 module Trashcan.Graph (
     cycles
 ) where

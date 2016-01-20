@@ -1,16 +1,4 @@
-@function return types (more on this later)
-enter/exit functions as side-effect lists
-line numbers in model
-allow commas after last elements in lists
-semantic pass failure error
-use line numbers in semantic pass
-check in initial state stuff
-generating boiler plate and header for user-written functions
-#includes in generated code
-allow unnecessary commas
-revisit event name mangling
-
----------------------------------
+Title: @function return types
 
 Fundamentally, Smudge has two kinds of events: events with
 payloads and events that can't have payloads. Our current model

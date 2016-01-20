@@ -1,0 +1,8 @@
+Title: Allow commas after last elements in lists
+
+This is a simple update to the syntax to allow things like this:
+
+STATE [ a --> B, c --> D, ],
+
+because it's a nuisance and Smudge should be able to do what I meant.
+

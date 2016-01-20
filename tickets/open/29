@@ -1,0 +1,18 @@
+Title: Problems with assert and special functions.
+
+When there's an unhandled event, a call to "assert()" is
+generated. First, I dislike the name of this function. Assertions
+should assert that expressions are true and cause panics if they're
+not. I'd much rather this function be called something like "panic()"
+or, to prevent any namespace collisions, "SMUDGE_panic()" or something
+like it.
+
+Second, the generated smname_ext.h file does not include a prototype
+for this function.
+
+I assume this also applies to printf_assert.
+
+I propose a new thing: Smudge-required symbols that are not
+particularly associated with any state machine. These have the prefix
+SMUDGE_ which we disallow as a state machine name. We can just dump
+that list into the generated _ext.h file.

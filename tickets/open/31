@@ -1,0 +1,11 @@
+Title: Expose a way to get internal state?
+
+A Smudge user wants to expose the state machine's internal state to
+TAP for development tests, and the only way to really do that right
+now is to add an enter function to every state that duplicates the
+state machine's state in the user code.
+
+I propose that we generate a way to get the result of
+SM_State_name(SM_state) when --c-no-debug is not turned on. It can
+return a string, so we don't have to worry about inconsistent results
+on recompiling.

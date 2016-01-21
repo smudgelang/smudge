@@ -1,0 +1,6 @@
+Title: Comparison between signed and unsigned
+
+If Smudge is run without --c-no-debug, it emits incorrect code. The
+State_Name function compares the state enum type to a signed
+integer. This generates a warning in some compilers.
+

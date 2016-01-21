@@ -237,7 +237,7 @@ stateNameFunction (StateMachine smName) ss =
                                             (Just $ Left $ Declarator Nothing $ IDirectDeclarator state_var)] 
     (CompoundStatement
     LEFTCURLY
-        (Just $ fromList [Declaration (fromList [C CONST, B CHAR]) 
+        (Just $ fromList [Declaration (fromList [A STATIC, C CONST, B CHAR]) 
                                       (Just $ fromList [InitDeclarator (Declarator (Just $ fromList [POINTER Nothing]) $
                                                                         CDirectDeclarator (IDirectDeclarator names_var) LEFTSQUARE Nothing RIGHTSQUARE)
                                                         (Just $ Pair EQUAL (LInitializer LEFTCURLY
@@ -245,7 +245,7 @@ stateNameFunction (StateMachine smName) ss =
                                                                                          Nothing
                                                                                          RIGHTCURLY))])
                                       SEMICOLON,
-                          Declaration (fromList [C CONST, B INT])
+                          Declaration (fromList [A STATIC, C CONST, B UNSIGNED, B INT])
                                       (Just $ fromList [InitDeclarator (Declarator Nothing (IDirectDeclarator count_var))
                                                         (Just $ Pair EQUAL (AInitializer names_count_e ))])
                                       SEMICOLON])

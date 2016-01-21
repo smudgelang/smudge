@@ -1,5 +1,6 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Backends.GraphViz where
 

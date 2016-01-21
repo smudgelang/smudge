@@ -2,7 +2,7 @@ module Main where
 
 import PackageInfo (packageInfo, author, synopsis)
 import Backends.Backend (options, generate)
-import Backends.GraphViz (GraphVizOption(..))
+--import Backends.GraphViz (GraphVizOption(..))
 import Backends.CStatic (CStaticOption(..))
 import Model (passWholeStateToGraph, passGraphWithSymbols, passUniqueSymbols)
 import Parsers.Smudge (state_machine, smudgle)
@@ -44,13 +44,13 @@ sysopts :: [OptDescr SystemOption]
 sysopts = [Option ['v'] ["version"] (NoArg Version) "Version information.",
            Option ['h'] ["help"] (NoArg Help) "Print this message."]
 
-data Options = SystemOption SystemOption | GraphVizOption GraphVizOption | CStaticOption CStaticOption
+data Options = SystemOption SystemOption | {-GraphVizOption GraphVizOption |-} CStaticOption CStaticOption
     deriving (Show, Eq)
 
 all_opts :: [OptDescr Options]
 all_opts = concat [subcommand "" SystemOption sysopts,
-                   (subcommand <$> fst <*> return CStaticOption <*> snd) options,
-                   (subcommand <$> fst <*> return GraphVizOption <*> snd) options]
+                   (subcommand <$> fst <*> return CStaticOption <*> snd) options{-,
+                   (subcommand <$> fst <*> return GraphVizOption <*> snd) options-}]
 
 printUsage :: IO ()
 printUsage = putStr $ usageInfo header all_opts
@@ -87,10 +87,10 @@ processFile fileName = do
 
 --make_output :: String -> [Options] -> ([(StateMachine, Gr EnterExitState Happening)], SymbolTable) -> IO ()
 make_output fileName os gswust = do
-    let gvos = [a | GraphVizOption a <- os]
+{-    let gvos = [a | GraphVizOption a <- os]
     outputNames <- generate gvos gswust fileName
     mapM_ putStrLn $ do outputName <- outputNames
-                        ["Wrote file \"" ++ outputName ++ "\""]
+                        ["Wrote file \"" ++ outputName ++ "\""]-}
     let csos = [a | CStaticOption a <- os]
     outputNames <- generate csos gswust fileName
     mapM_ putStrLn $ do outputName <- outputNames

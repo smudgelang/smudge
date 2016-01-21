@@ -1,4 +1,5 @@
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Backends.CStatic where
 

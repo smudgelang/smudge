@@ -27,7 +27,7 @@ state_machine_spec :: Parser [WholeState]
 state_machine_spec = (char '{' >> empty) *> state_list <* (empty >> char '}')
 
 state_list :: Parser [WholeState]
-state_list = sepBy (state <* empty) (char ',' >> empty)
+state_list = sepEndBy (state <* empty) (char ',' >> empty)
 
 state :: Parser WholeState
 state = try (uncurry (,,,,) <$> state_title <* empty <*> pure []
@@ -39,7 +39,7 @@ event_handler_spec :: Parser [EventHandler]
 event_handler_spec = (char '[' >> empty) *> event_handler_list <* (empty >> char ']')
 
 event_handler_list :: Parser [EventHandler]
-event_handler_list = sepBy (event_handler <* empty) (char ',' >> empty)
+event_handler_list = sepEndBy (event_handler <* empty) (char ',' >> empty)
 
 enter_exit_function :: Parser [SideEffect]
 enter_exit_function = option [] side_effect_container
@@ -65,7 +65,7 @@ event_handler =
         <?> "state transition for event \"" ++ show ev ++ "\""
 
 side_effect_list :: Parser [SideEffect]
-side_effect_list = sepBy (side_effect <* empty) (char ',' >> empty)
+side_effect_list = sepEndBy (side_effect <* empty) (char ',' >> empty)
 
 side_effect :: Parser SideEffect
 side_effect = try typed_function_call

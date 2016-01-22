@@ -10,13 +10,14 @@ import Model (HappeningFlag(..), Happening(..), EnterExitState(..))
 import Trashcan.Graph
 
 import Data.GraphViz
+import Data.GraphViz.Commands
 import Data.GraphViz.Attributes.Complete (Label(..))
 import qualified Data.Graph.Inductive.Graph as G
 import qualified Data.Map as M
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.List (intercalate, intersperse)
 import Data.Monoid
-import Data.Text.Lazy.Internal (Text(..))
+import Data.Text.Internal.Lazy (Text(..))
 import System.Console.GetOpt
 import System.FilePath (FilePath, dropExtension)
 
@@ -91,7 +92,9 @@ data GraphVizOption = Format GraphvizOutput | OutFile FilePath | SuppressSideEff
     deriving (Show, Eq)
 
 outputFormats :: [GraphvizOutput]
-outputFormats = [minBound..maxBound]
+outputFormats = [Eps, Bmp, Canon, DotOutput, Eps, Fig, Gd, Gd2, Gif, Ico,
+                 Imap, Cmapx, ImapNP, CmapxNP, Jpeg, Pdf, Plain, Png,
+                 Ps, Ps2, Svg, SvgZ, Tiff, Vml, VmlZ, Vrml, WBmp]
 
 gfold :: [(StateMachine, UnqualifiedGraph)] -> QualifiedGraph
 gfold = mconcat . (map qualify)

@@ -1,7 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
 module Grammars.C89 (
@@ -218,7 +217,7 @@ data PostfixExpression = PPostfixExpression PrimaryExpression
                        | UPostfixExpression PostfixExpression UnaryCrement
 instance Expr PostfixExpression PrimaryExpression where
     def = PPostfixExpression
-instance (Expr PrimaryExpression x) => Expr PostfixExpression x where
+instance {-# OVERLAPPING #-} (Expr PrimaryExpression x) => Expr PostfixExpression x where
     def = PPostfixExpression . def
 
 type ArgumentExpressionList = CommaList AssignmentExpression
@@ -229,7 +228,7 @@ data UnaryExpression = PUnaryExpression PostfixExpression
                      | SIZEOF (Either UnaryExpression (Trio LEFTPAREN TypeName RIGHTPAREN))
 instance Expr UnaryExpression PostfixExpression where
     def = PUnaryExpression
-instance (Expr PostfixExpression x) => Expr UnaryExpression x where
+instance {-# OVERLAPPING #-} (Expr PostfixExpression x) => Expr UnaryExpression x where
     def = PUnaryExpression . def
 
 data UnaryCrement =  INCREMENT | DECREMENT
@@ -240,7 +239,7 @@ data CastExpression = UCastExpression UnaryExpression
                     | TCastExpression LEFTPAREN TypeName RIGHTPAREN CastExpression
 instance Expr CastExpression UnaryExpression where
     def = UCastExpression
-instance (Expr UnaryExpression x) => Expr CastExpression x where
+instance {-# OVERLAPPING #-} (Expr UnaryExpression x) => Expr CastExpression x where
     def = UCastExpression . def
 
 data MultiplicativeExpression = MultiplicativeExpression CastExpression
@@ -249,7 +248,7 @@ data MultiplicativeExpression = MultiplicativeExpression CastExpression
                               | MultiplicativeExpression `MOD` CastExpression
 instance Expr MultiplicativeExpression CastExpression where
     def = MultiplicativeExpression
-instance (Expr CastExpression x) => Expr MultiplicativeExpression x where
+instance {-# OVERLAPPING #-} (Expr CastExpression x) => Expr MultiplicativeExpression x where
     def = MultiplicativeExpression . def
 
 data AdditiveExpression = AdditiveExpression MultiplicativeExpression
@@ -257,7 +256,7 @@ data AdditiveExpression = AdditiveExpression MultiplicativeExpression
                         | AdditiveExpression `MINUS` MultiplicativeExpression
 instance Expr AdditiveExpression MultiplicativeExpression where
     def = AdditiveExpression
-instance (Expr MultiplicativeExpression x) => Expr AdditiveExpression x where
+instance {-# OVERLAPPING #-} (Expr MultiplicativeExpression x) => Expr AdditiveExpression x where
     def = AdditiveExpression . def
 
 data ShiftExpression = ShiftExpression AdditiveExpression
@@ -265,7 +264,7 @@ data ShiftExpression = ShiftExpression AdditiveExpression
                      | ShiftExpression `RSHIFT` AdditiveExpression
 instance Expr ShiftExpression AdditiveExpression where
     def = ShiftExpression
-instance (Expr AdditiveExpression x) => Expr ShiftExpression x where
+instance {-# OVERLAPPING #-} (Expr AdditiveExpression x) => Expr ShiftExpression x where
     def = ShiftExpression . def
 
 data RelationalExpression = RelationalExpression ShiftExpression
@@ -275,7 +274,7 @@ data RelationalExpression = RelationalExpression ShiftExpression
                           | RelationalExpression `GREATER_EQUAL` ShiftExpression
 instance Expr RelationalExpression ShiftExpression where
     def = RelationalExpression
-instance (Expr ShiftExpression x) => Expr RelationalExpression x where
+instance {-# OVERLAPPING #-} (Expr ShiftExpression x) => Expr RelationalExpression x where
     def = RelationalExpression . def
 
 data EqualityExpression = EqualityExpression RelationalExpression
@@ -283,7 +282,7 @@ data EqualityExpression = EqualityExpression RelationalExpression
                         | EqualityExpression `NOTEQUAL` RelationalExpression
 instance Expr EqualityExpression RelationalExpression where
     def = EqualityExpression
-instance (Expr RelationalExpression x) => Expr EqualityExpression x where
+instance {-# OVERLAPPING #-} (Expr RelationalExpression x) => Expr EqualityExpression x where
     def = EqualityExpression . def
 
 
@@ -291,42 +290,42 @@ data ANDExpression = ANDExpression EqualityExpression
                    | ANDExpression `BITWISE_AND` EqualityExpression
 instance Expr ANDExpression EqualityExpression where
     def = ANDExpression
-instance (Expr EqualityExpression x) => Expr ANDExpression x where
+instance {-# OVERLAPPING #-} (Expr EqualityExpression x) => Expr ANDExpression x where
     def = ANDExpression . def
 
 data ExclusiveORExpression = ExclusiveORExpression ANDExpression
                            | ExclusiveORExpression `BITWISE_XOR` ANDExpression
 instance Expr ExclusiveORExpression ANDExpression where
     def = ExclusiveORExpression
-instance (Expr ANDExpression x) => Expr ExclusiveORExpression x where
+instance {-# OVERLAPPING #-} (Expr ANDExpression x) => Expr ExclusiveORExpression x where
     def = ExclusiveORExpression . def
 
 data InclusiveORExpression = InclusiveORExpression ExclusiveORExpression
                            | InclusiveORExpression `BITWISE_OR` ExclusiveORExpression
 instance Expr InclusiveORExpression ExclusiveORExpression where
     def = InclusiveORExpression
-instance (Expr ExclusiveORExpression x) => Expr InclusiveORExpression x where
+instance {-# OVERLAPPING #-} (Expr ExclusiveORExpression x) => Expr InclusiveORExpression x where
     def = InclusiveORExpression . def
 
 data LogicalANDExpression = LogicalANDExpression InclusiveORExpression
                           | LogicalANDExpression `LOGICAL_AND` InclusiveORExpression
 instance Expr LogicalANDExpression InclusiveORExpression where
     def = LogicalANDExpression
-instance (Expr InclusiveORExpression x) => Expr LogicalANDExpression x where
+instance {-# OVERLAPPING #-} (Expr InclusiveORExpression x) => Expr LogicalANDExpression x where
     def = LogicalANDExpression . def
 
 data LogicalORExpression = LogicalORExpression LogicalANDExpression
                          | LogicalORExpression `LOGICAL_OR` LogicalANDExpression
 instance Expr LogicalORExpression LogicalANDExpression where
     def = LogicalORExpression
-instance (Expr LogicalANDExpression x) => Expr LogicalORExpression x where
+instance {-# OVERLAPPING #-} (Expr LogicalANDExpression x) => Expr LogicalORExpression x where
     def = LogicalORExpression . def
 
 data ConditionalExpression = ConditionalExpression LogicalORExpression
                            | LogicalORExpression `QUESTION` (Trio Expression COLON ConditionalExpression)
 instance Expr ConditionalExpression LogicalORExpression where
     def = ConditionalExpression
-instance (Expr LogicalORExpression x) => Expr ConditionalExpression x where
+instance {-# OVERLAPPING #-} (Expr LogicalORExpression x) => Expr ConditionalExpression x where
     def = ConditionalExpression . def
 
 data AssignmentExpression = AssignmentExpression ConditionalExpression
@@ -343,7 +342,7 @@ data AssignmentExpression = AssignmentExpression ConditionalExpression
                           | UnaryExpression `OR_EQUAL` AssignmentExpression
 instance Expr AssignmentExpression ConditionalExpression where
     def = AssignmentExpression
-instance (Expr ConditionalExpression x) => Expr AssignmentExpression x where
+instance {-# OVERLAPPING #-} (Expr ConditionalExpression x) => Expr AssignmentExpression x where
     def = AssignmentExpression . def
 
 type Expression = CommaList AssignmentExpression

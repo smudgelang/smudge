@@ -1,4 +1,3 @@
-{-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 
 module Trashcan.Graph (
@@ -27,7 +26,7 @@ import Data.Graph.Inductive.Graph (
 import Data.Map ((!), fromList)
 import Data.Monoid (Monoid(..))
 
-instance DynGraph gr => Monoid (gr a b) where
+instance {-# OVERLAPS #-} DynGraph gr => Monoid (gr a b) where
     mempty = empty
     mappend = grMerge
 

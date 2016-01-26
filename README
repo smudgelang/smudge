@@ -8,5 +8,8 @@ comments to describe what it's doing.
 
 -- Revision History --
 
+v0.2: Broader release for some limited use. Generates working C code
+      for simple state machines.
+
 v0.1: First release for early testing. Generates basic dot output for
       a single state machine. Configurable via command line options.

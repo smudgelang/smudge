@@ -7,6 +7,7 @@ module Model (
     Happening(..),
     Identifier,
     cookWith,
+    insertExternalSymbol,
     QualifiedName(..),
     mangleWith,
     SymbolType(..),
@@ -23,7 +24,7 @@ import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..), 
 import Prelude hiding (foldr1)
 import Data.Graph.Inductive.Graph (mkGraph, Node, labNodes, labEdges)
 import Data.Graph.Inductive.PatriciaTree (Gr)
-import Data.Map (Map, fromList, fromListWith, unionsWith, (!))
+import Data.Map (Map, fromList, fromListWith, unionsWith, (!), insertWith)
 import qualified Data.Map (map)
 import Data.Set (Set, union, singleton)
 import qualified Data.Set (map)
@@ -76,6 +77,15 @@ data Binding = External | Unresolved | Resolved
 type UnfilteredSymbolTable = Map QualifiedName (Set (Binding, SymbolType))
 
 type SymbolTable = Map QualifiedName (Binding, SymbolType)
+
+-- Old table, Name, args, return type, new table
+insertExternalSymbol :: SymbolTable -> String -> [String] -> String -> SymbolTable
+insertExternalSymbol table fname args returnType = Data.Map.insertWith
+    simplifyDefinitely
+    (QualifiedName [CookedId fname])
+    (External, FunctionSym (QualifiedName (map CookedId args))
+                           (QualifiedName [CookedId returnType]))
+    table
 
 smToGraph :: (StateMachine, [WholeState]) ->
                  Gr EnterExitState Happening
@@ -163,9 +173,13 @@ simplifyFunc :: Maybe (Binding, SymbolType) -> Maybe (Binding, SymbolType) -> Ma
 simplifyFunc (Just (ab, FunctionSym ap ar)) (Just (bb, FunctionSym bp br)) = liftM ((,) $ resolveBinding ab bb) (liftM (FunctionSym (simplifyParam ap bp)) (simplifyReturn ar br))
 simplifyFunc _                              _                              = Nothing
 
+simplifyDefinitely :: (Binding, SymbolType) -> (Binding, SymbolType) -> (Binding, SymbolType)
+simplifyDefinitely a b = fromJust (simplifyFunc (Just a) (Just b))
+
 mapJust :: Ord a => Set a -> Set (Maybe a)
 mapJust = Data.Set.map Just
 
 passUniqueSymbols :: ([(StateMachine, Gr EnterExitState Happening)], UnfilteredSymbolTable) ->
                         ([(StateMachine, Gr EnterExitState Happening)], SymbolTable)
 passUniqueSymbols (sms, ust) = (sms, Data.Map.map (fromJust . foldr1 simplifyFunc . mapJust) ust)
+

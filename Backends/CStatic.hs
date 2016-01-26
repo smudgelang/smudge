@@ -6,7 +6,7 @@ module Backends.CStatic where
 import Backends.Backend (Backend(..))
 import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..))
 import Grammars.C89
-import Model (EnterExitState(..), HappeningFlag(..), Happening(..), QualifiedName(..), mangleWith, SymbolType(..), Binding(..),SymbolTable, qName)
+import Model (EnterExitState(..), HappeningFlag(..), Happening(..), QualifiedName(..), mangleWith, SymbolType(..), Binding(..),SymbolTable, qName, insertExternalSymbol)
 import Trashcan.FilePath (relPath)
 import Unparsers.C89 (renderPretty)
 
@@ -446,7 +446,8 @@ instance Backend CStaticOption where
                                      | (n, EnterExitState {st = State _, ex}) <- labNodes $ delNodes [n | n <- nodes g, (_, _, Happening EventExit _ _) <- out g n] g] g)
                       | (sm, g) <- gs]
               gs = fst gswust
-              syms = snd gswust
+              syms :: SymbolTable
+              syms = insertExternalSymbol (snd gswust) "assert" [] ""
               initial g = head [st ese | (n, EnterExitState {st = StateEntry}) <- labNodes g, n' <- suc g n, (Just ese) <- [lab g n']]
               states g = [st ees | (_, ees) <- labNodes g]
               states_handling e g = [st ees | (n, ees) <- labNodes g, (_, _, Happening {event}) <- out g n, event == e]

@@ -16,3 +16,7 @@ I propose a new thing: Smudge-required symbols that are not
 particularly associated with any state machine. These have the prefix
 SMUDGE_ which we disallow as a state machine name. We can just dump
 that list into the generated _ext.h file.
+
+Update: There's code now that crams the assert symbol into the symbol
+table so it gets generated. It works around this when --c-no-debug is
+set, but this ticket should still get addressed.

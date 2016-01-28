@@ -1,0 +1,7 @@
+Title: Transient state @function prototypes
+
+This state machine:
+
+foo { a -(@PROBLEM)-> b, b [ e -(@PROBLEM)-> c ], c -- }
+
+has a problem. Smudge will generate two conflicting prototypes for PROBLEM.

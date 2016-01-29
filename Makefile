@@ -3,8 +3,10 @@ HSFILES=$(wildcard *.hs) $(wildcard Backends/*.hs) $(wildcard Grammars/*.hs) $(w
 OSTYPE=$(shell uname -o)
 ifeq ($(OSTYPE), Cygwin)
 SMUDGE_EXE=smudge.exe
+PLATFORM=windows
 else
 SMUDGE_EXE=smudge
+PLATFORM=linux
 endif
 SMUDGE_TARGET=dist/build/smudge/$(SMUDGE_EXE)
 
@@ -50,7 +52,7 @@ release: build
 	cd docs/tutorial && make tutorial.pdf
 	cp docs/tutorial/tutorial.pdf dist/release/tutorial
 	cp README dist/release
-	./tar-up-release.sh $(SMUDGE_TARGET)
+	./tar-up-release.sh $(SMUDGE_TARGET) $(PLATFORM)
 
 
 clean:

@@ -1,0 +1,15 @@
+turnstyle
+{
+   *power-on -(@lightLEDs)-> locked,
+
+    locked (@lockedEnter)
+    [
+        coin -(@flashLEDs)-> unlocked,
+        person -(@soundAlarm)-
+    ] (@lockedExit),
+
+    unlocked (@unlockedEnter)
+    [
+        person -(@soundOkay)-> locked
+    ]
+}

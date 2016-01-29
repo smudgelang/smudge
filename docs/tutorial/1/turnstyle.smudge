@@ -1,0 +1,12 @@
+turnstyle
+{
+   *locked // The * means it's the initial state.
+    [
+        coin --> unlocked
+    ],
+
+    unlocked
+    [
+        person --> locked
+    ]
+}

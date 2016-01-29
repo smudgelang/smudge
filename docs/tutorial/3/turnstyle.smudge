@@ -1,0 +1,12 @@
+turnstyle
+{
+   *locked // The * means it's the initial state.
+    [
+        coin -(@flashLEDs)-> unlocked
+    ],
+
+    unlocked
+    [
+        person -(@soundOkay)-> locked
+    ]
+}

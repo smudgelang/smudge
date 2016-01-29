@@ -1,30 +1,38 @@
-turnstyle {
-  * power-on -(@lightLEDs)-> locked,
+turnstyle
+{
+   *power-on -(@lightLEDs)-> locked,
 
-    locked (@lockedEnter) [
+    locked (@lockedEnter)
+    [
         coin -(@flashLEDs, coinInspector.validate)-> waiting-to-unlock,
         person -(@soundAlarm)-,
         tilt -(@soundAlarm)-,
         _ -(@soundError)-
     ] (@lockedExit),
 
-    waiting-to-unlock [
+    waiting-to-unlock
+    [
         person -(@soundAlarm)-,
         coin-valid --> unlocked,
-        coin-invalid --> locked,
+        coin-invalid --> locked
     ],
 
-    unlocked (@unlockedEnter) [
-        person -(@soundOkay)-> locked
+    unlocked (@unlockedEnter)
+    [
+        person -(@soundOkay)-> locked,
+        tilt -(@soundAlarm)-> locked
     ],
 
-    _ [
+    _
+    [
         tilt -(@soundAlarm)-> locked
     ]
 }
 
-coinInspector {
-  * ready [
+coinInspector
+{
+   *ready
+    [
         validate -(@validateCoin)-,
         valid -(turnstyle.coin-valid)->ready,
         invalid -(turnstyle.coin-invalid)->ready

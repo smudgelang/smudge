@@ -1,6 +1,7 @@
 HSFILES=$(wildcard *.hs) $(wildcard Backends/*.hs) $(wildcard Grammars/*.hs) $(wildcard Parsers/*.hs) $(wildcard Unparsers/*.hs) $(wildcard dist/build/autogen/*.hs)
+SMUDGE_TARGET=dist/build/smudge/smudge
 
-.PHONY: tags clean build examples config newticket
+.PHONY: tags clean build examples config newticket release
 
 all: build examples TAGS
 
@@ -9,7 +10,7 @@ tags: TAGS
 
 config: dist/setup-config
 
-build: dist/build/smudge/smudge
+build: $(SMUDGE_TARGET)
 
 examples: build
 	cd examples && $(MAKE) all
@@ -18,7 +19,7 @@ examples: build
 dist/setup-config: smudge.cabal
 	cabal configure
 
-dist/build/smudge/smudge: config $(HSFILES)
+$(SMUDGE_TARGET): config $(HSFILES)
 	cabal build
 
 TAGS: $(HSFILES)
@@ -28,6 +29,22 @@ TAGS: $(HSFILES)
 
 newticket:
 	cd tickets && ./mkticket.sh "$(title)"
+
+release: build
+	rm -rf dist/release # Make sure it's a clean new release build.
+	mkdir dist/release
+	cp $(SMUDGE_TARGET) dist/release
+	cd examples && $(MAKE) clean
+	cp -r examples dist/release
+	./clean-tutorial.sh
+	cp -r docs/tutorial dist/release
+    # There should be a way to to just copy the subdirectories, not the files.
+	rm dist/release/tutorial/Makefile dist/release/tutorial/tutorial.rst
+	cd docs/tutorial && make tutorial.pdf
+	cp docs/tutorial/tutorial.pdf dist/release/tutorial
+	cp README dist/release
+	./tar-up-release.sh $(SMUDGE_TARGET)
+
 
 clean:
 	rm -rf dist TAGS tags

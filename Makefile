@@ -13,7 +13,6 @@ SMUDGE_TARGET=dist/build/smudge/$(SMUDGE_EXE)
 all: build examples TAGS
 
 tags: TAGS
-	echo $(SMUDGE_EXE)
 	echo ":ctags" | ghci -v0 `find . -iname \*\.hs | grep -v Setup.hs`
 
 config: dist/setup-config

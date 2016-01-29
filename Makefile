@@ -1,11 +1,19 @@
 HSFILES=$(wildcard *.hs) $(wildcard Backends/*.hs) $(wildcard Grammars/*.hs) $(wildcard Parsers/*.hs) $(wildcard Unparsers/*.hs) $(wildcard dist/build/autogen/*.hs)
-SMUDGE_TARGET=dist/build/smudge/smudge
+
+OSTYPE=$(shell uname -o)
+ifeq ($(OSTYPE), Cygwin)
+SMUDGE_EXE=smudge.exe
+else
+SMUDGE_EXE=smudge
+endif
+SMUDGE_TARGET=dist/build/smudge/$(SMUDGE_EXE)
 
 .PHONY: tags clean build examples config newticket release
 
 all: build examples TAGS
 
 tags: TAGS
+	echo $(SMUDGE_EXE)
 	echo ":ctags" | ghci -v0 `find . -iname \*\.hs | grep -v Setup.hs`
 
 config: dist/setup-config

@@ -1,0 +1,7 @@
+Title: _ [ _ -- ]
+
+If an any-state has an any-event handler, Smudge will generate a
+function called sm_ANY_STATE_any but never call it.
+
+
+

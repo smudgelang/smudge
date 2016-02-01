@@ -1,0 +1,5 @@
+Title: Clean up release target.
+
+The release target in the top level Makefile copies all the files from
+the tutorial then deletes some that it doesn't need. It would be
+better to just copy the files and directories it wants.

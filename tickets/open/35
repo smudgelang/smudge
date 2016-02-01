@@ -1,0 +1,4 @@
+Title: Separate object directories
+
+Smudge currently plops its output files right next to its inputs. It
+would be convenient if the destination directory were configurable.

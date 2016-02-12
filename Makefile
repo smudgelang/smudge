@@ -10,7 +10,7 @@ PLATFORM=linux
 endif
 SMUDGE_TARGET=dist/build/smudge/$(SMUDGE_EXE)
 
-.PHONY: tags clean build examples config newticket release
+.PHONY: tags clean build examples config newticket release todo
 
 all: build examples TAGS
 
@@ -54,6 +54,8 @@ release: build
 	cp README dist/release
 	./tar-up-release.sh $(SMUDGE_TARGET) $(PLATFORM)
 
+todo:
+	@find roadmap/$V | while read -r fn; do find -L tickets/ -xdev -samefile $$fn; done
 
 clean:
 	rm -rf dist TAGS tags

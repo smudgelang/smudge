@@ -1,0 +1,13 @@
+Title: Option to disable no-transition events in dot output
+
+Dot output gets really ugly if you have a lot of these:
+
+[
+    a -(@whatever)-,
+    b -(@foo)-,
+    c -(@bar)-
+]
+
+We could make this better by adding an option --dot-only-transitions
+that only puts transitioning edges in the dot output.
+

@@ -1,0 +1,4 @@
+Title: Add comment header warning about code being generated.
+
+In case someone comes across the code and thinks to edit it manually, we should
+warn them away with a big comment block talking about how it is generated code.

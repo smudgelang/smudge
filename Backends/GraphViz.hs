@@ -65,7 +65,7 @@ instance Labellable SideEffect where
 instance Labellable Happening where
     toLabelValue (Happening e ses _) = mconcat $ intersperse labelCrlf $ toLabelValue e : map toLabelValue ses
 
-smudgeParams sideEffects clusterBox title entryNodes =
+smudgeParams sideEffects noTransitions clusterBox title entryNodes =
     defaultParams
         { globalAttributes =
                 [GraphAttrs [toLabel title]]
@@ -86,9 +86,9 @@ smudgeParams sideEffects clusterBox title entryNodes =
             drop (n, _, ese) = [filtEntry n (toLabel $ event ese), arrow ese]
             filtEntry n l = if n `elem` entryNodes then toLabel "" else l
             arrow (Happening _ _ [])                        = edgeEnds Forward
-            arrow (Happening _ _ fs) | elem NoTransition fs = edgeEnds NoDir
+            arrow (Happening _ _ fs) | elem NoTransition fs = if noTransitions then edgeEnds NoDir else style invis
 
-data GraphVizOption = Format GraphvizOutput | OutFile FilePath | SuppressSideEffects
+data GraphVizOption = Format GraphvizOutput | OutFile FilePath | SuppressSideEffects | SuppressNoTransition
     deriving (Show, Eq)
 
 outputFormats :: [GraphvizOutput]
@@ -110,14 +110,17 @@ instance Backend GraphVizOption where
                 Option [] ["o"] (ReqArg OutFile "FILE")
                  "The name of the target file if not derived from source file.",
                 Option [] ["no-se"] (NoArg SuppressSideEffects)
-                 "Suppress side effects from output"])
+                 "Suppress side effects from output",
+                Option [] ["suppress-nontransition"] (NoArg SuppressNoTransition)
+                 "Suppress non-transitioning events from output."])
 
     generate os gswust inputName = sequence [(runner os) (runGraphviz d) (format os) (outputName os)]
-        where d = (graphToDot (smudgeParams suppressSE (length gs > 1) inputName entryNodes) g') {graphID = Just (toGraphID " ")}
+        where d = (graphToDot (smudgeParams renderSE renderNT (length gs > 1) inputName entryNodes) g') {graphID = Just (toGraphID " ")}
               g' = gfold gs
               gs = fst gswust
               entryNodes = [n | (n, (_, EnterExitState {st = StateEntry})) <- G.labNodes g']
-              suppressSE = not $ SuppressSideEffects `elem` os
+              renderSE = not $ SuppressSideEffects `elem` os
+              renderNT = not $ SuppressNoTransition `elem` os
 
               getFirstOrDefault :: ([a] -> b) -> b -> [a] -> b
               getFirstOrDefault _ d     [] = d

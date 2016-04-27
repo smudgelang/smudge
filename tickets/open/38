@@ -1,0 +1,10 @@
+Title: Event logging for debugging
+
+It would be nice to have a switch to turn on event logging through
+some local print mechanism to make debugging easier. It should also
+have a way to turn off the printing for certain events in case they're
+spammy.
+
+Likewise, the ability to print something every time we enter a state
+would be good. This would go well with 31 in a debugging support
+release.

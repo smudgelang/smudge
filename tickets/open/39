@@ -1,0 +1,9 @@
+Title: States must have at least one event.
+
+Currently, this should be disallowed by the syntax:
+
+$ smudge - <<< "sm { *st [] }"
+Wrote file "-.dot"
+smudge: Listish values cannot be empty.
+
+It is worth discussing whether this construct has value.

@@ -269,6 +269,21 @@ stateNameFunction (StateMachine smName) ss =
         array_index_e = (#:) (EPostfixExpression names_var_e LEFTSQUARE (fromList [(#:) state_var_e (:#)]) RIGHTSQUARE) (:#)
         safe_array_index_e = (#:) (bounds_check_e `QUESTION` (Trio (fromList [array_index_e]) COLON default_state)) (:#)
 
+currentStateNameFunction :: Bool -> StateMachine -> FunctionDefinition
+currentStateNameFunction debug (StateMachine smName) = 
+    makeFunction (fromList [C CONST, B CHAR]) [POINTER Nothing] f_name [ParameterDeclaration (fromList [B VOID]) Nothing]
+    (CompoundStatement
+    LEFTCURLY
+        Nothing
+        (Just $ fromList [JStatement $ RETURN (Just $ fromList [if debug then call_sname_f else ((#:) (show "") (:#))]) SEMICOLON])
+    RIGHTCURLY)
+    where
+        smMangledName = mangleIdentifier smName
+        f_name = smMangledName +-+ "Current_state_name"
+        sname_f  = (#:) (smMangledName +-+ "State_name") (:#)
+        state_var = (#:) (smMangledName +-+ "state") (:#)
+        call_sname_f = (#:) (apply sname_f [state_var]) (:#)
+
 handleStateEventDeclaration :: StateMachine -> State -> Event -> Declaration
 handleStateEventDeclaration (StateMachine smName) st e =
     Declaration
@@ -430,6 +445,7 @@ instance Backend CStaticOption where
                      ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration sm s e
                          | (n, EnterExitState {st = s}) <- labNodes g, e <- (map (event . edgeLabel) $ out g n), case s of State _ -> True; StateAny -> True; _ -> False]
                      ++ (if debug then [ExternalDeclaration $ Left $ stateNameFunction sm $ states g] else [])
+                     ++ [ExternalDeclaration $ Left $ currentStateNameFunction debug sm]
                      ++ [ExternalDeclaration $ Left $ transitionFunction sm EventExit
                          $ [st | (_, EnterExitState {st, ex = (_:_)}) <- labNodes g] | (_, EnterExitState {st = StateAny}) <- labNodes g]
                      ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug (not $ null [st | st@StateAny <- states_handling e g]) sm e | (e, _) <- toList $ events g]

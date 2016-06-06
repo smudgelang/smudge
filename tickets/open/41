@@ -1,0 +1,11 @@
+Title: Debug code takes up global memory.
+
+The `state_name` array is declared as
+
+    static const char *state_name[]
+
+but that takes up global space. It should instead be
+
+    static const char * const state_name[]
+
+so that everything is constant.

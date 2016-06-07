@@ -9,7 +9,7 @@ elseif exists("b:current_syntax")
   finish
 endif
 
-let s:id = "\\v(\\\"[-_0-9A-Za-z \t!#$%&'()*+,./{|}~[\\\\\\]\\^`<>;]+\\\"|[-_0-9A-Za-z]+)"
+let s:id = "\\v(\\\"[-_0-9A-Za-z \t!#$%&'()*+,./{|}~[\\\\\\]\\^`<>;=]+\\\"|[-_0-9A-Za-z]+)"
 
 syn match smudgeComment "//.*$"
 syn match smudgeCommentAfterState "//.*$" contained contains=smudgeComment nextgroup=smudgeArrow,smudgeEventList,smudgeEnterSideEffectList,smudgeCommentAfterState skipwhite skipempty

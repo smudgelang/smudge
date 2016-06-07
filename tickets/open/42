@@ -1,0 +1,11 @@
+Title: Add full unicode support for quoted identifiers.
+
+Right now, the set of valid quoted identifier characters is exclusive rather
+than inclusive; as such, valid unicode characters are excluded from the set.
+
+They don't make pretty mangled C identifiers, but unicode characters are
+supported as source characters in many targets, including graphviz.
+
+Also, while our parser currently accepts unicode characters in comments, this
+is not reflected in our syntax documentation, which reflects the same character
+set restriction as quoted identifiers.

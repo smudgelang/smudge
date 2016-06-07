@@ -118,7 +118,7 @@ sep :: Parser Char
 sep = oneOf "-_"
 
 symbol :: Parser Char
-symbol = oneOf "!#$%&'()*+,./{|}~[\\]^`<>;"
+symbol = oneOf "!#$%&'()*+,./{|}~[\\]^`<>;="
 
 id_char :: Parser Char
 id_char = (alphaNum <|> sep)

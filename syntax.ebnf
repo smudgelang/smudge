@@ -25,7 +25,7 @@ comment = "/" "/" *non-newline eol
 identifier = 1*(ALPHA / DIGIT / "-") / 2*(ALPHA / DIGIT / sep) / quoted
 c-identifier = nondigit *(nondigit / DIGIT)
 sep = "-" / "_"
-symbol = "!" / "#" / "$" / "%" / "&" / "'" / "(" / ")" / "*" / "+" / "," / "." / "/" / "{" / "|" / "}" / "~" / "[" / "\" / "]" / "^" / "`" / "<" / ">" / ";"
+symbol = "!" / "#" / "$" / "%" / "&" / "'" / "(" / ")" / "*" / "+" / "," / "." / "/" / "{" / "|" / "}" / "~" / "[" / "\" / "]" / "^" / "`" / "<" / ">" / ";" / "="
 eol = LF
 lwsp = *(WSP / eol)
 empty = comment / lwsp

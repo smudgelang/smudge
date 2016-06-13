@@ -238,7 +238,7 @@ stateNameFunction (StateMachine smName) ss =
     (CompoundStatement
     LEFTCURLY
         (Just $ fromList [Declaration (fromList [A STATIC, C CONST, B CHAR]) 
-                                      (Just $ fromList [InitDeclarator (Declarator (Just $ fromList [POINTER Nothing]) $
+                                      (Just $ fromList [InitDeclarator (Declarator (Just $ fromList [POINTER $ Just $ fromList [CONST]]) $
                                                                         CDirectDeclarator (IDirectDeclarator names_var) LEFTSQUARE Nothing RIGHTSQUARE)
                                                         (Just $ Pair EQUAL (LInitializer LEFTCURLY
                                                                                          (fromList [AInitializer ((#:) (show s) (:#)) | (State s) <- ss])

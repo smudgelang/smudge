@@ -426,6 +426,11 @@ instance Prettyable TypeQualifier where
     pretty VOLATILE = zeroWidthText "volatile"
 
 instance Prettyable Declarator where
+    pretty (Declarator (Just p) dd) | last p = pretty p <+> pretty dd
+        where
+            last (SimpleList (POINTER (Just _)) Nothing) = True
+            last (SimpleList _ Nothing) = False
+            last (SimpleList x (Just sl)) = last sl
     pretty (Declarator mp dd) = pretty mp <> pretty dd
 
 instance Prettyable DirectDeclarator where

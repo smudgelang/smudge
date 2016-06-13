@@ -1,0 +1,6 @@
+Title: A single state can't handle an event two different ways.
+
+Smudge is supposed to produce deterministic state machines, but accepts this
+input, which would be nondeterministic (really, it just doesn't compile):
+
+sm { *st [ ev --, ev --> st ] }

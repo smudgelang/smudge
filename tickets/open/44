@@ -1,0 +1,19 @@
+Title: GraphViz - concatenate parallel edges.
+
+In a case where there are multiple edges going from one state to another that
+run in parallel, e.g.,
+
+sm { *s1 [ e1 --> s2, e2 --> s2], s2[] }
+
+I want to be able to concatenate these edges automatically, and lay them out
+with only a single edge, and all the labels.
+
+I have found three ways NOT to do this: the 'Concentrate' attribute, which
+doesn't work on labeled edges, making the graph 'strict', which throws away
+all but one of the labels, and negating the 'Splines' attribute, which makes
+some things angular, and thus overlapping, but overlays edges that point in
+opposing directions, and does not seem to operate on edges that go from a
+node to itself.
+
+I believe the only way for us to do this is to do it by manually concatenating
+labels, making sure that events and side effects are clearly distinguishable.

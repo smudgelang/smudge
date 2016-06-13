@@ -11,7 +11,7 @@ import Trashcan.Graph
 
 import Data.GraphViz
 import Data.GraphViz.Commands
-import Data.GraphViz.Attributes.Complete (Label(..))
+import Data.GraphViz.Attributes.Complete (Label(..), Attribute(Concentrate))
 import qualified Data.Graph.Inductive.Graph as G
 import qualified Data.Map as M
 import Data.Graph.Inductive.PatriciaTree (Gr)
@@ -68,7 +68,7 @@ instance Labellable Happening where
 smudgeParams sideEffects noTransitions clusterBox title entryNodes =
     defaultParams
         { globalAttributes =
-                [GraphAttrs [toLabel title]]
+                [GraphAttrs [toLabel title, Concentrate True]]
         , clusterBy = cluster
         , isDotCluster = const clusterBox
         , clusterID = toGraphID
@@ -78,7 +78,7 @@ smudgeParams sideEffects noTransitions clusterBox title entryNodes =
         }
         where
             cluster (n, nl@(sm, _)) = C (smToString sm) (N (n, nl))
-            clusterAttrs c = [GraphAttrs [toLabel c]]
+            clusterAttrs c = [GraphAttrs [toLabel c, Concentrate True]]
             smToString (StateMachine s) = s
             fmtNode (_, (_, EnterExitState {st = StateEntry})) = [shape Circle, style filled, fillColor Black, toLabel ""]
             fmtNode (_, l) = [toLabel l]

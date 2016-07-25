@@ -4,7 +4,7 @@
 module Backends.CStatic where
 
 import Backends.Backend (Backend(..))
-import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..))
+import Grammars.Smudge (StateMachineDeclarator(..), Annotated(..), State(..), Event(..), SideEffect(..))
 import Grammars.C89
 import Model (EnterExitState(..), HappeningFlag(..), Happening(..), QualifiedName(..), mangleWith, SymbolType(..), Binding(..),SymbolTable, qName, insertExternalSymbol)
 import Trashcan.FilePath (relPath)
@@ -37,8 +37,8 @@ mangleQName q = mangleWith (+-+) mangleIdentifier q
 mangleQEventName :: QualifiedName -> Identifier
 mangleQEventName qn = if null $ mangleQName qn then "" else mangleQName qn +-+ "t"
 
-transitionFunctionDeclaration :: StateMachine -> Event -> Declaration
-transitionFunctionDeclaration (StateMachine smName) e =
+transitionFunctionDeclaration :: StateMachineDeclarator -> Event -> Declaration
+transitionFunctionDeclaration (StateMachineDeclarator smName) e =
     Declaration
     (fromList [A STATIC, B VOID])
     (Just $ fromList [InitDeclarator (Declarator Nothing (PDirectDeclarator
@@ -53,8 +53,8 @@ transitionFunctionDeclaration (StateMachine smName) e =
         f_name = smMangledName +-+ "ANY_STATE" +-+ tType
 
 
-transitionFunction :: StateMachine -> Event -> [State] -> FunctionDefinition
-transitionFunction (StateMachine smName) EventExit ss =
+transitionFunction :: StateMachineDeclarator -> Event -> [State] -> FunctionDefinition
+transitionFunction (StateMachineDeclarator smName) EventExit ss =
     makeFunction (fromList [A STATIC, B VOID]) [] f_name [ParameterDeclaration (fromList [B VOID]) Nothing]
     (CompoundStatement
     LEFTCURLY
@@ -78,8 +78,8 @@ transitionFunction (StateMachine smName) EventExit ss =
                         CASE state_case COLON $
                         EStatement $ ExpressionStatement (Just $ fromList [call_state_evt_handler]) SEMICOLON
 
-initializeFunction :: StateMachine -> State -> FunctionDefinition
-initializeFunction (StateMachine smName) (State s) =
+initializeFunction :: StateMachineDeclarator -> State -> FunctionDefinition
+initializeFunction (StateMachineDeclarator smName) (State s) =
     makeFunction (fromList [A STATIC, B VOID]) [] f_name [ParameterDeclaration (fromList [B VOID]) Nothing]
     (CompoundStatement
     LEFTCURLY
@@ -109,8 +109,8 @@ initializeFunction (StateMachine smName) (State s) =
         init_set = (#:) init_var (:#) `ASSIGN` (#:) init_init (:#)
         side_effects = [assign_state, call_enter, init_set]
 
-handleStateEventFunction :: StateMachine -> State -> Happening -> State -> SymbolTable -> FunctionDefinition
-handleStateEventFunction sm@(StateMachine smName) st h st' syms =
+handleStateEventFunction :: StateMachineDeclarator -> State -> Happening -> State -> SymbolTable -> FunctionDefinition
+handleStateEventFunction sm@(StateMachineDeclarator smName) st h st' syms =
     makeFunction (fromList [A STATIC, B VOID]) [] f_name
                                    (if not hasPs then [ParameterDeclaration (fromList [B VOID]) Nothing]
                                     else [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
@@ -157,8 +157,8 @@ handleStateEventFunction sm@(StateMachine smName) st h st' syms =
                           (Happening _ ses [])                        -> [apply_se se | se <- ses] ++ [call_exit, assign_state, call_enter]
                           (Happening _ ses fs) | elem NoTransition fs -> [apply_se se | se <- ses]
 
-handleEventFunction :: Bool -> StateMachine -> Event -> [State] -> [State] -> [State] -> FunctionDefinition
-handleEventFunction debug (StateMachine smName) (Event evName) ss anys unss =
+handleEventFunction :: Bool -> StateMachineDeclarator -> Event -> [State] -> [State] -> [State] -> FunctionDefinition
+handleEventFunction debug (StateMachineDeclarator smName) (Event evName) ss anys unss =
     makeFunction (fromList [B VOID]) [] f_name [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
                                             (Just $ Left $ Declarator (Just $ fromList [POINTER Nothing]) $ IDirectDeclarator event_var)]
     (CompoundStatement
@@ -199,8 +199,8 @@ handleEventFunction debug (StateMachine smName) (Event evName) ss anys unss =
                         CASE state_case COLON $
                         EStatement $ ExpressionStatement (Just $ fromList [call_state_evt_handler]) SEMICOLON
 
-unhandledEventFunction :: Bool -> Bool -> StateMachine -> Event -> FunctionDefinition
-unhandledEventFunction debug any_handles (StateMachine smName) (Event evName) =
+unhandledEventFunction :: Bool -> Bool -> StateMachineDeclarator -> Event -> FunctionDefinition
+unhandledEventFunction debug any_handles (StateMachineDeclarator smName) (Event evName) =
     makeFunction (fromList [A STATIC, B VOID]) [] f_name [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
                                                           (Just $ Left $ Declarator (Just $ fromList [POINTER Nothing]) $ IDirectDeclarator event_var)]
     (CompoundStatement
@@ -230,8 +230,8 @@ unhandledEventFunction debug any_handles (StateMachine smName) (Event evName) =
         any_f = (#:) (smMangledName +-+ "ANY_STATE" +-+ evMangledName) (:#)
         call_any_f = (#:) (apply any_f [(#:) event_var (:#)]) (:#)
 
-stateNameFunction :: StateMachine -> [State] -> FunctionDefinition
-stateNameFunction (StateMachine smName) ss =
+stateNameFunction :: StateMachineDeclarator -> [State] -> FunctionDefinition
+stateNameFunction (StateMachineDeclarator smName) ss =
     makeFunction (fromList [A STATIC, C CONST, B CHAR]) [POINTER Nothing] f_name
                                            [ParameterDeclaration (fromList [B $ TypeSpecifier smMangledName])
                                             (Just $ Left $ Declarator Nothing $ IDirectDeclarator state_var)] 
@@ -269,8 +269,8 @@ stateNameFunction (StateMachine smName) ss =
         array_index_e = (#:) (EPostfixExpression names_var_e LEFTSQUARE (fromList [(#:) state_var_e (:#)]) RIGHTSQUARE) (:#)
         safe_array_index_e = (#:) (bounds_check_e `QUESTION` (Trio (fromList [array_index_e]) COLON default_state)) (:#)
 
-currentStateNameFunction :: Bool -> StateMachine -> FunctionDefinition
-currentStateNameFunction debug (StateMachine smName) = 
+currentStateNameFunction :: Bool -> StateMachineDeclarator -> FunctionDefinition
+currentStateNameFunction debug (StateMachineDeclarator smName) = 
     makeFunction (fromList [C CONST, B CHAR]) [POINTER Nothing] f_name [ParameterDeclaration (fromList [B VOID]) Nothing]
     (CompoundStatement
     LEFTCURLY
@@ -284,8 +284,8 @@ currentStateNameFunction debug (StateMachine smName) =
         state_var = (#:) (smMangledName +-+ "state") (:#)
         call_sname_f = (#:) (apply sname_f [state_var]) (:#)
 
-handleStateEventDeclaration :: StateMachine -> State -> Event -> Declaration
-handleStateEventDeclaration (StateMachine smName) st e =
+handleStateEventDeclaration :: StateMachineDeclarator -> State -> Event -> Declaration
+handleStateEventDeclaration (StateMachineDeclarator smName) st e =
     Declaration
     (fromList [A STATIC, B VOID])
     (Just $ fromList [InitDeclarator (Declarator Nothing (PDirectDeclarator
@@ -314,8 +314,8 @@ handleStateEventDeclaration (StateMachine smName) st e =
         f_name = smMangledName +-+ sMangledName +-+ evMangledName
         event_type = smMangledName +-+ evMangledName +-+ "t"
 
-handleEventDeclaration :: StateMachine -> Event -> Declaration
-handleEventDeclaration (StateMachine smName) (Event evName) =
+handleEventDeclaration :: StateMachineDeclarator -> Event -> Declaration
+handleEventDeclaration (StateMachineDeclarator smName) (Event evName) =
     Declaration
     (fromList [B VOID])
     (Just $ fromList [InitDeclarator (Declarator Nothing (PDirectDeclarator
@@ -333,8 +333,8 @@ handleEventDeclaration (StateMachine smName) (Event evName) =
         f_name = smMangledName +-+ evMangledName
         event_type = smMangledName +-+ evMangledName +-+ "t"
 
-stateVarDeclaration :: StateMachine -> State -> Declaration
-stateVarDeclaration (StateMachine smName) (State s) =
+stateVarDeclaration :: StateMachineDeclarator -> State -> Declaration
+stateVarDeclaration (StateMachineDeclarator smName) (State s) =
     Declaration
     (fromList [A STATIC, B $ TypeSpecifier smEnum])
     (Just $ fromList [InitDeclarator (Declarator Nothing (IDirectDeclarator state_var)) 
@@ -346,8 +346,8 @@ stateVarDeclaration (StateMachine smName) (State s) =
         sMangled = smMangledName +-+ mangleIdentifier s
         state_var = smMangledName +-+ "state"
 
-stateEnum :: StateMachine -> [State] -> Declaration
-stateEnum (StateMachine smName) ss =
+stateEnum :: StateMachineDeclarator -> [State] -> Declaration
+stateEnum (StateMachineDeclarator smName) ss =
     Declaration
     (fromList [A TYPEDEF,
                B (makeEnum smMangledName ssMangled)])
@@ -365,8 +365,8 @@ makeEnum smName ss =
     (fromList [Enumerator s Nothing | s <- ss])
     RIGHTCURLY))
 
-eventStruct :: StateMachine -> Event -> Declaration
-eventStruct (StateMachine smName) (Event evName) =
+eventStruct :: StateMachineDeclarator -> Event -> Declaration
+eventStruct (StateMachineDeclarator smName) (Event evName) =
     Declaration
     (fromList [A TYPEDEF,
                B (makeStruct event_type [])])
@@ -461,7 +461,7 @@ instance Backend CStaticOption where
               gs'  = [(sm, insEdges [(n, n, Happening EventExit ex [NoTransition])
                                      | (n, EnterExitState {st = State _, ex}) <- labNodes $ delNodes [n | n <- nodes g, (_, _, Happening EventExit _ _) <- out g n] g] g)
                       | (sm, g) <- gs]
-              gs = fst gswust
+              gs = [(smd, g) | (Annotated _ smd, g) <- fst gswust]
               syms :: SymbolTable
               syms = insertExternalSymbol (snd gswust) "assert" [] ""
               initial g = head [st ese | (n, EnterExitState {st = StateEntry}) <- labNodes g, n' <- suc g n, (Just ese) <- [lab g n']]

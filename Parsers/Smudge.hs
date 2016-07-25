@@ -4,7 +4,9 @@ module Parsers.Smudge (
 ) where
 
 import Grammars.Smudge (
+  Annotated(..),
   StateMachine(..),
+  StateMachineDeclarator(..),
   State(..),
   Event(..),
   SideEffect(..),
@@ -21,7 +23,7 @@ smudgle :: Parser [(StateMachine, [WholeState])]
 smudgle = many1 state_machine
 
 state_machine :: Parser (StateMachine, [WholeState])
-state_machine = (,) <$> (empty *> state_machine_name <* empty) <*> state_machine_spec <* empty
+state_machine = (,) <$> (empty *> sm_name_plus_pos <* empty) <*> state_machine_spec <* empty
 
 state_machine_spec :: Parser [WholeState]
 state_machine_spec = (char '{' >> empty) *> state_list <* (empty >> char '}')
@@ -76,7 +78,7 @@ side_effect = try typed_function_call
 typed_function_call :: Parser SideEffect
 typed_function_call = FuncEvent <$> function_call <* (empty >> char ':' >> empty) <*> qualified_event
 
-qualified_event :: Parser (StateMachine, Event)
+qualified_event :: Parser (StateMachineDeclarator, Event)
 qualified_event = try ((,) <$> state_machine_name <* (char '.') <*> event_name)
                    <|> (,) <$> return StateMachineSame <*> event_name
 
@@ -88,8 +90,13 @@ state_title = (,) <$> state_name <*> pure []
               <|> (,) <$> state_any <*> pure []
               <|> (,) <$> (char '*' >> empty *> state_name) <*> pure [Initial]
 
-state_machine_name :: Parser StateMachine
-state_machine_name = StateMachine <$> identifier
+state_machine_name :: Parser StateMachineDeclarator
+state_machine_name = StateMachineDeclarator <$> identifier
+
+sm_name_plus_pos :: Parser StateMachine
+sm_name_plus_pos = do pos <- getPosition
+                      sm <- state_machine_name
+                      return (Annotated pos sm)
 
 state_name :: Parser State
 state_name = State <$> identifier

@@ -19,7 +19,7 @@ module Model (
     passUniqueSymbols,
 ) where
 
-import Grammars.Smudge (StateMachine(..), State(..), Event(..), SideEffect(..), StateFlag(..), WholeState)
+import Grammars.Smudge (StateMachine(..), StateMachineDeclarator(..), Annotated(..), State(..), Event(..), SideEffect(..), StateFlag(..), WholeState)
 
 import Prelude hiding (foldr1)
 import Data.Graph.Inductive.Graph (mkGraph, Node, labNodes, labEdges)
@@ -116,18 +116,18 @@ passWholeStateToGraph :: [(StateMachine, [WholeState])] ->
                             [(StateMachine, Gr EnterExitState Happening)]
 passWholeStateToGraph sms = zip (map fst sms) (map smToGraph sms)
 
-smName :: StateMachine -> StateMachine -> String
-smName _ (StateMachine n) = n
-smName (StateMachine n) _ = n
+smName :: StateMachineDeclarator -> StateMachineDeclarator -> String
+smName _ (StateMachineDeclarator n) = n
+smName (StateMachineDeclarator n) _ = n
 smName StateMachineSame _ = undefined
 
-qName :: StateMachine -> SideEffect -> QualifiedName
+qName :: StateMachineDeclarator -> SideEffect -> QualifiedName
 qName _  (FuncVoid s)                 = QualifiedName [CookedId s]
 qName _  (FuncEvent s _)              = QualifiedName [CookedId s]
 qName sm (FuncDefault (sm', Event e)) = QualifiedName [RawId $ smName sm sm', RawId $ e]
 
 symbols :: (StateMachine, Gr EnterExitState Happening) -> UnfilteredSymbolTable
-symbols (sm, gr) =
+symbols (Annotated _ sm, gr) =
     fromListWith union $ [(qName sm se, singleton $ (bnd se, FunctionSym (param (event h) se) (result se)))
                           | (_, _, h) <- labEdges gr, se <- sideEffects h]
                          ++ [(qName sm se, singleton $ (bnd se, FunctionSym (tparam se) (result se)))

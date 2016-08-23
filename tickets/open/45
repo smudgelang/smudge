@@ -1,0 +1,13 @@
+Title: Event handler redeclaration
+
+If you redeclare an event handler within a state, Smudge doesn't complain.
+
+STATE [
+    event_a --,
+    event_a --> STATEB
+    ]
+
+Smudge doesn't give an error for this, and it could be caught in a semantic
+pass check.
+
+

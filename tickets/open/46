@@ -1,0 +1,62 @@
+Title: Submachines
+
+After attending a presentation about the QP state machine tool, we decided that
+it would be helpful to allow for sub-state machines, which can not only improve
+a machine's modularity but also guarantee the impossibility of undesirable
+state changes, as well as allow the possibility of minor code reuse.
+
+The proposed syntax follows:
+
+M {
+  _ [ ... ],
+ *A [ ... ],
+  B [ ... ],
+  C [
+    a --> A,
+    b --> B,
+    d ~(M')~> D
+  ],
+  D [ ... ],
+
+  M' {
+   *A' [ b --> B' ],
+    B' [
+       a --> A',
+       d ~~>
+    ],
+    _  [ ... ]
+  }
+}
+
+The key syntax additions are: 1) to permit state machine declarators as peers
+to state declarators, 2) the ~(...)~> arrow operator (alt. syntax ~...~>),
+which invokes a submachine, and 3) the ~~> arrow operator, which marks an
+accepting state and a return to the proximate state of the supermachine.
+
+The semantics allow for submachine access only from supermachines; no peer
+access nor supermachine access is permitted.  A submachine is equivalent to a
+transformer on its supermachine's type, so any cross-machine access would be
+equivalent to a type error.  The submachine can only accept the events of its
+supermachine, and can declare no additional events.  This makes the submachine
+an isolated subgraph connected to the overall state graph, while restricting
+the behavior inside.  As such, the submachine does not require additional RAM
+to store its current state, as it can be stored as the supermachine's current
+state.
+
+There is a tradeoff with multi-use submachines.  Because of the deterministic
+nature, while multiple source events can enter the same submachine, their
+supermachine destination states must be stored somewhere.  There are two
+alternative implementations: a word of RAM for each submachine (unneeded for a
+single instance), or total code duplication for every use.  Both of these
+preserve the semantics, so in general simpler is better - the tradeoff comes
+from the use of CSR 8670, which has 1024 words of code for every word of RAM.
+As such, from a resource tradeoff standpoint it actually makes more sense to
+duplicate the code until more than 1024 words are used, at which point RAM
+would be preferred.  As a data point, two example state machines consume the
+following amount of resources:
+
+160 code words for simplest (8 states x 7 events)
+719 code words for largest (18 states x 20 events)
+
+As such, the first could be used 6 times before it would make sense to use RAM
+instead, whereas the second could be used twice before RAM would be better.

@@ -1,4 +1,6 @@
-.PHONY: clean
+.PHONY: all clean
+
+all: tutorial.pdf
 
 tutorial.pdf: tutorial.rst 1/tutorial.png
 	rst2pdf $<

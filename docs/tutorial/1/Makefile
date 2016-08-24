@@ -1,4 +1,4 @@
-SMUDGE ?= smudge
+SMUDGE ?= ../../../dist/build/smudge/smudge
 SMUDGE_OPTIONS=--c-no-debug --dot-fmt=Png
 
 CC=gcc

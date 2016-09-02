@@ -1,0 +1,5 @@
+Title: Error granularity finer than SM
+
+Right now, errors are only reported on the SM where they appear.  While useful,
+many cases would benefit from state-, event-, or side-effect-level errors
+(e.g., two states with the same name, or two functions with conflicting types).

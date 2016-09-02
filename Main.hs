@@ -6,6 +6,7 @@ import Backends.GraphViz (GraphVizOption(..))
 import Backends.CStatic (CStaticOption(..))
 import Model (passWholeStateToGraph, passGraphWithSymbols, passUniqueSymbols)
 import Parsers.Smudge (state_machine, smudgle)
+import Semantics.Semantic (Severity(..), Fault(..))
 import Semantics (make_passes)
 import Trashcan.Graph
 
@@ -71,15 +72,18 @@ processFile fileName = do
     where
         m sms = do
             let gs = passWholeStateToGraph sms
-            case and $ map (make_passes . snd) gs of
-                False -> report_failure
-                _ -> do
+            let fs = concat $ map make_passes gs
+            mapM (putStrLn . show) fs
+            case [f | f@(Fault ERROR _ _) <- fs] ++
+                 [f | f@(Fault BUG _ _) <- fs] of
+                [] -> do
                     let gswst = passGraphWithSymbols gs
                     case True of
-                        False -> report_failure
+                        False -> report_failure 0
                         _ -> return $ passUniqueSymbols gswst
-        report_failure =
-            print_exit "Semantic check failed."
+                _  -> report_failure $ length fs
+        report_failure n =
+            print_exit ("Exiting with " ++ show n ++ " error" ++ (if n == 1 then "" else "s"))
         print_exit e = do
             putStrLn e
             exitFailure

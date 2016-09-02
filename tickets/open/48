@@ -1,0 +1,3 @@
+Title: Map.!: given key is not an element in the map
+
+Pull this out into a semantic check, and add a better error message.

@@ -2,14 +2,15 @@ module Semantics.NoTransientStateCycles (
     NoTransientStateCycles
 ) where
 
-import Grammars.Smudge (State, Event(EventEnter))
-import Model (EnterExitState, Happening(..))
-import Semantics.Semantic (Passable(..))
+import Grammars.Smudge (State(..), Event(EventEnter), Annotated(..), StateMachineDeclarator(..))
+import Model (EnterExitState(..), Happening(..))
+import Semantics.Semantic (Passable(..), Severity(..), Fault(..))
 import Trashcan.Graph (cycles)
 
-import Data.Graph.Inductive.Graph (Context, (&))
+import Data.Graph.Inductive.Graph (Context, (&), lab)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Monoid (Monoid(..))
+import Data.List (intercalate)
 
 data NoTransientStateCycles = NoTransientStateCycles (Gr EnterExitState Happening)
 instance Monoid NoTransientStateCycles where
@@ -18,7 +19,11 @@ instance Monoid NoTransientStateCycles where
 
 instance Passable NoTransientStateCycles where
     accumulate = tfilter
-    test (NoTransientStateCycles g) = null $ cycles g
+    test (Annotated pos (StateMachineDeclarator sm_name), _) (NoTransientStateCycles g) =
+        case (cycles g) of
+        [] -> []
+        cs -> [Fault ERROR pos $ sm_name ++ ": Transient state cycles are forbidden: " ++
+               (intercalate " -> " $ [name | State name <- [st ees | Just ees <- map (lab g) c]]) | c <- cs]
 
 tfilter :: Context EnterExitState Happening -> NoTransientStateCycles -> NoTransientStateCycles
 tfilter (i, n, l, o) (NoTransientStateCycles a) = NoTransientStateCycles ((efs i, n, l, efs o) & a)

@@ -448,9 +448,9 @@ instance Backend CStaticOption where
                      ++ [ExternalDeclaration $ Left $ currentStateNameFunction debug sm]
                      ++ [ExternalDeclaration $ Left $ transitionFunction sm EventExit
                          $ [st | (_, EnterExitState {st, ex = (_:_)}) <- labNodes g] | (_, EnterExitState {st = StateAny}) <- labNodes g]
-                     ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug (not $ null [st | st@StateAny <- states_handling e g]) sm e | (e, _) <- toList $ events g]
+                     ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug (any_handles e g) sm e | (e, _) <- toList $ events g]
                      ++ [ExternalDeclaration $ Left $ initializeFunction sm $ initial g]
-                     ++ [ExternalDeclaration $ Left $ handleEventFunction debug sm e ss (anys g \\ ss) ((states g \\ ss) \\ (anys g))
+                     ++ [ExternalDeclaration $ Left $ handleEventFunction debug sm e ss (anys e g \\ ss) ((states g \\ ss) \\ (anys e g))
                          | (e, ss) <- toList $ events g]
                      ++ [ExternalDeclaration $ Left $ handleStateEventFunction sm s h s' syms
                          | (n, EnterExitState {st = s}) <- labNodes g, (_, n', h) <- out g n, Just EnterExitState {st = s'} <- [lab g n'], case s of State _ -> True; StateAny -> True; _ -> False, case s' of State _ -> True; StateAny -> True; _ -> False]
@@ -466,8 +466,9 @@ instance Backend CStaticOption where
               syms = insertExternalSymbol (snd gswust) "assert" [] ""
               initial g = head [st ese | (n, EnterExitState {st = StateEntry}) <- labNodes g, n' <- suc g n, (Just ese) <- [lab g n']]
               states g = [st ees | (_, ees) <- labNodes g]
+              anys e g = if any_handles e g then [] else states_handling EventAny g
+              any_handles e g = (not $ null [st | st@StateAny <- states_handling e g])
               states_handling e g = [st ees | (n, ees) <- labNodes g, (_, _, Happening {event}) <- out g n, event == e]
-              anys g = states_handling EventAny g
               events g = foldl insert_event empty [(h, st ees) | (n, ees) <- labNodes g, (_, _, h) <- out g n]
               insert_event m ((Happening e@(Event _) _ _), s@(State _)) = insertWith (flip (++)) e [s] m
               insert_event m ((Happening e@(Event _) _ _), s@StateAny)  = insertWith (flip (++)) e [s] m

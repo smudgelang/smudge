@@ -1,0 +1,31 @@
+Title: Any State + Any Event = Maybe Semantic Pass Failure.
+
+When a state machine has ambiguity between its any-states and
+any-events, Smudge should bail out in the semantic pass.
+
+SM
+{
+    A [ a --, _ -- ],
+    B [ b --, _ -- ],
+    _ [ a -- ]
+}
+
+This makes the B state ambiguous it can't choose whether to use B's
+handler for a or the any-state's.
+
+====
+
+The resolution to this was decided to change and enforce precedence
+order for events:
+
+state | event
+=============
+named | named
+any   | named
+named | any
+any   | any
+
+That is, named events take precedence, then named states.
+
+If the priority needs to be modified, this can be accomplished
+through the strategic use of submachines, covered in #46

@@ -60,3 +60,15 @@ following amount of resources:
 
 As such, the first could be used 6 times before it would make sense to use RAM
 instead, whereas the second could be used twice before RAM would be better.
+
+-------------------------------------------------------------------------------
+Note: This addresses 14 by giving a good solution to the problem. With
+this, we can choose the precedence order:
+
+state|event
+-----|-----
+named|named
+  _  |named
+named|  _
+  _  |  _
+

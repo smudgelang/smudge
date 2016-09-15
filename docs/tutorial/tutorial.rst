@@ -209,9 +209,23 @@ state where we don't want to crash on events that aren't handled
 explicitly, but want to take the same action on all of them, we can
 use the *any-event*.
 
++-------+-------+
+| state | event |
++=======+=======+
+| named | named |
++-------+-------+
+|  any  | named |
++-------+-------+
+| named |  any  |
++-------+-------+
+|  any  |  any  |
++-------+-------+
+
 Like the any-state, the any-event's name is a single underscore
 character. Events not explicitly handled by a state will be handled by
-the any-event. Example 9 shows the any-event in action. Since event
-handlers in states take priority over the any-state, we need to
+the any-event. Example 9 shows the any-event in action. Since named
+event handlers take priority over any-event handlers, we need to
 explicitly handle all the events from the any-state in a state with
-the any-event.
+the any-event. The priority order for named states and events vs the
+any-state and any-event is given in the table above.
+

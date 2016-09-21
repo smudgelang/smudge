@@ -9,3 +9,6 @@ I propose that we generate a way to get the result of
 SM_State_name(SM_state) when --c-no-debug is not turned on. It can
 return a string, so we don't have to worry about inconsistent results
 on recompiling.
+
+Update: 2d016786af67 made some progress on this but didn't close it
+because it's not in the header yet.

@@ -15,6 +15,7 @@ import Distribution.Package (packageVersion, packageName, PackageName(..))
 import Text.ParserCombinators.Parsec (parse, ParseError)
 import System.Console.GetOpt (usageInfo, getOpt, OptDescr(..), ArgDescr(..), ArgOrder(..))
 import System.Environment (getArgs)
+import System.FilePath (joinPath)
 import System.Exit (exitFailure)
 import Data.Version (showVersion)
 import Data.Monoid (mempty)
@@ -30,7 +31,7 @@ subcommand name f os = map makeSub os
                       ReqArg g s -> ReqArg (f . g) s
                       OptArg g s -> OptArg (f . g) s
 
-data SystemOption = Version | Help
+data SystemOption = Version | Help | OutDir FilePath
     deriving (Show, Eq)
 
 app_name :: String
@@ -43,7 +44,8 @@ header = "Usage: " ++ app_name ++ " [OPTIONS] file\n" ++
 
 sysopts :: [OptDescr SystemOption]
 sysopts = [Option ['v'] ["version"] (NoArg Version) "Version information.",
-           Option ['h'] ["help"] (NoArg Help) "Print this message."]
+           Option ['h'] ["help"] (NoArg Help) "Print this message.",
+           Option []    ["outdir"] (ReqArg OutDir "DIR") "Output directory."]
 
 data Options = SystemOption SystemOption | GraphVizOption GraphVizOption | CStaticOption CStaticOption
     deriving (Show, Eq)
@@ -107,6 +109,12 @@ main = do
             | elem (SystemOption Help) os -> printUsage
             | elem (SystemOption Version) os -> printVersion
 
-        (os, (fileName:as),  _) -> processFile fileName >>= make_output fileName os
+        (os, (fileName:as),  _) -> processFile fileName >>= make_output
+                                   (joinPath [(prefix os), fileName]) os
 
         (_,              _,  _) -> printUsage
+
+    where
+      prefix [] = "."
+      prefix ((SystemOption (OutDir p)):_) = p
+      prefix (_:t) = prefix t

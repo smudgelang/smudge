@@ -1,0 +1,5 @@
+Title: --c-ext_h=FILES
+
+Add a switch to Smudge's command line to specify what the _ext.h file should
+be called.
+

@@ -1,0 +1,4 @@
+Title: --output-path=PATH
+
+Add a command line switch to specify the path to all of Smudge's
+output files.

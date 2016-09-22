@@ -7,7 +7,7 @@ import Model (EnterExitState(..))
 import Semantics.Semantic (Passable(..), Severity(..), Fault(..))
 
 import Data.Foldable (toList)
-import Data.List (sort, intercalate, (\\))
+import Data.List (sort, intercalate, nub, (\\))
 import Data.Monoid (Monoid(..))
 import Data.Set (Set, singleton)
 
@@ -20,7 +20,7 @@ instance Monoid UniqueStateNames where
 instance Passable UniqueStateNames where
     accumulate (_, _, ees, _) = mappend (UniqueStateNames [st ees] (singleton $ st ees))
     test (Annotated pos (StateMachineDeclarator sm_name), _) (UniqueStateNames sl ss) =
-        case (sort sl \\ sort (toList ss)) of
+        case nub (sort sl \\ sort (toList ss)) \\ [StateEntry] of
         [] -> []
         rs -> [Fault ERROR pos $ sm_name ++ ": State names cannot repeat: " ++
-               (intercalate ", " $ [name | State name <- rs])]
+               (intercalate ", " $ [name | State name <- rs] ++ ["_" | StateAny <- rs])]

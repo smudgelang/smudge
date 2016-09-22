@@ -14,6 +14,7 @@ module Model (
     Binding(..),
     SymbolTable,
     qName,
+    passInitialState,
     passWholeStateToGraph,
     passGraphWithSymbols,
     passUniqueSymbols,
@@ -87,30 +88,29 @@ insertExternalSymbol table fname args returnType = Data.Map.insertWith
                            (QualifiedName [CookedId returnType]))
     table
 
+passInitialState :: [(StateMachine, [WholeState])] -> [(StateMachine, [WholeState])]
+passInitialState sms = map (\(sm, wss) -> (sm, foldr init [] wss)) sms
+    where init ws@(s, fs, en, es, ex) wss | elem Initial fs = (StateEntry, [], [], [(EventEnter, [], s)], []) : (s, filter (/= Initial) fs, en, es, ex) : wss
+          init ws wss = ws : wss    
+
 smToGraph :: (StateMachine, [WholeState]) ->
                  Gr EnterExitState Happening
-smToGraph (sm, ss) =
-    -- Graph.mkGraph :: [(Node, node)] -> [(Node, Node, edge)] -> gr node edge
-    mkGraph [s | s <- zip [1..] (EnterExitState [] StateEntry [] : map getEeState ss)] es
+smToGraph (sm, ss) = mkGraph eess es
     where
-        getEeState (st, _, en, _, ex) = EnterExitState {..}
-        getState (s, _, _, _, _) = s
+        ss' = zip [1..] ss
+        getEeState (n, (st, _, en, _, ex)) = (n, EnterExitState {..})
+        eess = map getEeState ss'
         sn :: Map State Node
-        sn = fromList [s | s <- zip (map getState ss) [2..]]
-        mkEdge :: State -> State -> Happening -> (Node, Node, Happening)
-        mkEdge s s'' eses = (sn ! s, sn ! s'', eses)
-        es = [ese | ese <- concat $ map f ss]
-            where
-                f :: WholeState -> [(Node, Node, Happening)]
-                f (s, fs, _, es, _) | elem Initial fs = (1, sn ! s, Happening EventEnter [] []) : f (s, [], [], es, [])
-                f (s,  _, _, es, _) = map g es
-                    where
-                        g :: (Event, [SideEffect], State) -> (Node, Node, Happening)
-                        g (e, ses, s') =
-                            let (e', s'') = case s' of
-                                    StateSame -> (Happening e ses [NoTransition], s)
-                                    otherwise -> (Happening e ses [], s')
-                            in mkEdge s s'' e'
+        sn = fromList $ map (\(n, ees) -> (st ees, n)) eess
+        mkEdge :: Node -> State -> Happening -> (Node, Node, Happening)
+        mkEdge n s'' eses = (n, sn ! s'', eses)
+        es = [ese | ese <- concat $ map (\(n, (s, _, _, es, _)) -> map (g n s) es) ss']
+        g :: Node -> State -> (Event, [SideEffect], State) -> (Node, Node, Happening)
+        g n s (e, ses, s') =
+            let (e', s'') = case s' of
+                    StateSame -> (Happening e ses [NoTransition], s)
+                    otherwise -> (Happening e ses [], s')
+            in mkEdge n s'' e'
 
 passWholeStateToGraph :: [(StateMachine, [WholeState])] ->
                             [(StateMachine, Gr EnterExitState Happening)]

@@ -4,7 +4,7 @@ import PackageInfo (packageInfo, author, synopsis)
 import Backends.Backend (options, generate)
 import Backends.GraphViz (GraphVizOption(..))
 import Backends.CStatic (CStaticOption(..))
-import Model (passInitialState, passWholeStateToGraph, passGraphWithSymbols, passUniqueSymbols)
+import Model (passInitialState, passFullyQualify, passWholeStateToGraph, passGraphWithSymbols, passUniqueSymbols)
 import Parsers.Smudge (state_machine, smudgle)
 import Semantics.Semantic (Severity(..), Fault(..))
 import Semantics (make_passes)
@@ -74,7 +74,8 @@ processFile fileName = do
     where
         m sms = do
             let sms' = passInitialState sms
-            let gs = passWholeStateToGraph sms'
+            let sms'' = passFullyQualify sms'
+            let gs = passWholeStateToGraph sms''
             let fs = concat $ map make_passes gs
             mapM (putStrLn . show) fs
             case [f | f@(Fault ERROR _ _) <- fs] ++

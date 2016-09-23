@@ -1,10 +1,13 @@
 module Grammars.Smudge (
+    Name,
     Annotated(..),
     Module(..),
     StateMachineDeclarator(..),
     StateMachine(..),
     State(..),
     Event(..),
+    QEvent,
+    Function(..),
     SideEffect(..),
     EventHandler,
     StateFlag(..),
@@ -13,28 +16,34 @@ module Grammars.Smudge (
 
 import Text.ParserCombinators.Parsec (SourcePos) -- Sorry.
 
+type Name = String
+
 data Annotated a = Annotated SourcePos a
     deriving (Show, Eq, Ord)
 
-data Module = Module String [StateMachine]
+data Module a = Module String [StateMachine a]
 
-data StateMachineDeclarator = StateMachineDeclarator String | StateMachineSame
+data StateMachineDeclarator a = StateMachineDeclarator a | StateMachineSame
     deriving (Show, Eq, Ord)
 
-type StateMachine = Annotated StateMachineDeclarator
+type StateMachine a = Annotated (StateMachineDeclarator a)
 
-data State = State String | StateAny | StateSame | StateEntry
+data State a = State a | StateAny | StateSame | StateEntry
     deriving (Show, Eq, Ord)
 
-data Event = Event String | EventAny | EventEnter | EventExit
+data Event a = Event a | EventAny | EventEnter | EventExit
     deriving (Show, Eq, Ord)
 
-data SideEffect = FuncVoid String | FuncEvent String (StateMachineDeclarator, Event) | FuncDefault (StateMachineDeclarator, Event)
+type QEvent a = (StateMachineDeclarator a, Event a)
+
+data Function a = FuncVoid | FuncTyped (QEvent a) | FuncEvent (QEvent a)
     deriving (Show, Eq, Ord)
 
-type EventHandler = (Event, [SideEffect], State)
+type SideEffect a = (a, Function a)
+
+type EventHandler a = (Event a, [SideEffect a], State a)
 
 data StateFlag = Initial
     deriving (Show, Eq, Ord)
 
-type WholeState = (State, [StateFlag], [SideEffect], [EventHandler], [SideEffect])
+type WholeState a = (State a, [StateFlag], [SideEffect a], [EventHandler a], [SideEffect a])

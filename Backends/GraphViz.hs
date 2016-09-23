@@ -5,8 +5,22 @@
 module Backends.GraphViz where
 
 import Backends.Backend (Backend(..))
-import Grammars.Smudge (StateMachine(..), Annotated(..), StateMachineDeclarator(..), State(..), Event(..), SideEffect(..))
-import Model (HappeningFlag(..), Happening(..), EnterExitState(..))
+import Grammars.Smudge (
+  Annotated(..),
+  StateMachine(..),
+  StateMachineDeclarator(..),
+  State(..),
+  Event(..),
+  Function(..),
+  SideEffect(..),
+  )
+import Model (
+  QualifiedName,
+  disqualify,
+  HappeningFlag(..),
+  Happening(..),
+  EnterExitState(..)
+  )
 import Trashcan.Graph
 
 import Data.GraphViz
@@ -21,7 +35,7 @@ import Data.Text.Internal.Lazy (Text(..))
 import System.Console.GetOpt
 import System.FilePath (FilePath, dropExtension)
 
-type QualifiedState = (StateMachineDeclarator, EnterExitState)
+type QualifiedState = (StateMachineDeclarator QualifiedName, EnterExitState)
 type UnqualifiedGraph = Gr EnterExitState Happening
 type QualifiedGraph = Gr QualifiedState Happening
 type NodeMap = M.Map G.Node G.Node
@@ -34,11 +48,14 @@ instance Monoid Label where
     mempty = StrLabel Empty
     mappend (StrLabel a) (StrLabel b) = StrLabel (mappend a b)
 
-instance Labellable StateMachineDeclarator where
+instance Labellable QualifiedName where
+    toLabelValue = toLabelValue . disqualify
+
+instance Labellable (StateMachineDeclarator QualifiedName) where
     toLabelValue (StateMachineDeclarator sm) = toLabelValue sm
     toLabelValue s                 = toLabelValue $ show s
 
-instance Labellable State where
+instance Labellable (State QualifiedName) where
     toLabelValue (State s) = toLabelValue s
     toLabelValue StateAny  = toLabelValue "Any"
     toLabelValue StateSame = toLabelValue "Same"
@@ -53,14 +70,14 @@ instance Labellable EnterExitState where
 instance Labellable QualifiedState where
     toLabelValue (_, qs) = toLabelValue qs
 
-instance Labellable Event where
+instance Labellable (Event QualifiedName) where
     toLabelValue (Event e) = toLabelValue e
     toLabelValue e         = toLabelValue $ show e
 
-instance Labellable SideEffect where
-    toLabelValue (FuncVoid f) = toLabelValue f
-    toLabelValue (FuncEvent f (s, e)) = toLabelValue e
-    toLabelValue (FuncDefault (s, e)) = mconcat [toLabelValue s, toLabelValue e]
+instance Labellable (SideEffect QualifiedName) where
+    toLabelValue (f, FuncVoid) = toLabelValue f
+    toLabelValue (f, FuncTyped (s, e)) = toLabelValue e
+    toLabelValue (f, FuncEvent (s, e)) = mconcat [toLabelValue s, toLabelValue e]
 
 instance Labellable Happening where
     toLabelValue (Happening e ses _) = mconcat $ intersperse labelCrlf $ toLabelValue e : map toLabelValue ses
@@ -79,7 +96,7 @@ smudgeParams sideEffects noTransitions clusterBox title entryNodes =
         where
             cluster (n, nl@(sm, _)) = C (smToString sm) (N (n, nl))
             clusterAttrs c = [GraphAttrs [toLabel c, Concentrate True]]
-            smToString (StateMachineDeclarator s) = s
+            smToString (StateMachineDeclarator s) = disqualify s
             fmtNode (_, (_, EnterExitState {st = StateEntry})) = [shape Circle, style filled, fillColor Black, toLabel ""]
             fmtNode (_, l) = [toLabel l]
             keep (n, _, ese) = [filtEntry n (toLabel ese), arrow ese]
@@ -96,10 +113,10 @@ outputFormats = [Eps, Bmp, Canon, DotOutput, Eps, Fig, Gd, Gd2, Gif, Ico,
                  Imap, Cmapx, ImapNP, CmapxNP, Jpeg, Pdf, Plain, Png,
                  Ps, Ps2, Svg, SvgZ, Tiff, Vml, VmlZ, Vrml, WBmp]
 
-gfold :: [(StateMachineDeclarator, UnqualifiedGraph)] -> QualifiedGraph
+gfold :: [(StateMachineDeclarator QualifiedName, UnqualifiedGraph)] -> QualifiedGraph
 gfold = mconcat . (map qualify)
     where
-        qualify :: (StateMachineDeclarator, UnqualifiedGraph) -> QualifiedGraph
+        qualify :: (StateMachineDeclarator QualifiedName, UnqualifiedGraph) -> QualifiedGraph
         qualify (sm, ug) = G.gmap (\ (i, n, l, o) -> (i, n, (sm, l), o)) ug
 
 instance Backend GraphVizOption where

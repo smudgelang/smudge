@@ -11,14 +11,19 @@ module Model (
     QualifiedName(..),
     mangleWith,
     disqualify,
+    disqualifyTag,
     nestInScope,
     nestCookedInScope,
+    Tag(..),
+    TaggedName,
+    untag,
     SymbolType(..),
     Binding(..),
     SymbolTable,
     qName,
     passInitialState,
     passFullyQualify,
+    passTagCategories,
     passWholeStateToGraph,
     passGraphWithSymbols,
     passUniqueSymbols,
@@ -50,17 +55,17 @@ import Data.Maybe (fromJust)
 import Data.Foldable (foldr1)
 
 data EnterExitState = EnterExitState {
-        en :: [SideEffect QualifiedName],
-        st :: State QualifiedName,
-        ex :: [SideEffect QualifiedName]
+        en :: [SideEffect TaggedName],
+        st :: State TaggedName,
+        ex :: [SideEffect TaggedName]
     } deriving (Show, Eq, Ord)
 
 data HappeningFlag = NoTransition
     deriving (Show, Eq, Ord)
 
 data Happening = Happening {
-        event       :: Event QualifiedName,
-        sideEffects :: [SideEffect QualifiedName],
+        event       :: Event TaggedName,
+        sideEffects :: [SideEffect TaggedName],
         flags       :: [HappeningFlag]
     } deriving (Show, Eq, Ord)
 
@@ -90,9 +95,24 @@ nestInScope (QualifiedName ids) i = QualifiedName $ ids ++ [i]
 nestCookedInScope :: QualifiedName -> Name -> QualifiedName
 nestCookedInScope q i = nestInScope q (CookedId i)
 
-type Parameter = QualifiedName
+data Tag = TagMachine
+         | TagState
+         | TagEvent
+         | TagFunction
+         | TagBuiltin
+    deriving (Show, Eq, Ord)
 
-type Result = QualifiedName
+type TaggedName = (Tag, QualifiedName)
+
+untag :: TaggedName -> QualifiedName
+untag = snd
+
+disqualifyTag :: TaggedName -> Name
+disqualifyTag = disqualify . untag
+
+type Parameter = TaggedName
+
+type Result = TaggedName
 
 data SymbolType = FunctionSym Parameter Result
     deriving (Show, Eq, Ord)
@@ -100,17 +120,17 @@ data SymbolType = FunctionSym Parameter Result
 data Binding = External | Unresolved | Resolved
     deriving (Show, Eq, Ord)
 
-type UnfilteredSymbolTable = Map QualifiedName (Set (Binding, SymbolType))
+type UnfilteredSymbolTable = Map TaggedName (Set (Binding, SymbolType))
 
-type SymbolTable = Map QualifiedName (Binding, SymbolType)
+type SymbolTable = Map TaggedName (Binding, SymbolType)
 
 -- Old table, Name, args, return type, new table
 insertExternalSymbol :: SymbolTable -> Name -> [Name] -> Name -> SymbolTable
 insertExternalSymbol table fname args returnType = Data.Map.insertWith
     simplifyDefinitely
-    (QualifiedName [CookedId fname])
-    (External, FunctionSym (QualifiedName (map CookedId args))
-                           (QualifiedName [CookedId returnType]))
+    (TagFunction, QualifiedName [CookedId fname])
+    (External, FunctionSym (TagBuiltin, QualifiedName (map CookedId args))
+                           (TagBuiltin, QualifiedName [CookedId returnType]))
     table
 
 passInitialState :: [(StateMachine Name, [WholeState Name])] -> [(StateMachine Name, [WholeState Name])]
@@ -162,36 +182,56 @@ passFullyQualify sms = map qual sms
                   qual_fn fn@(_, FuncTyped qe) = (qName sm fn, FuncTyped $ qual_qe qe)
                   qual_fn fn@(_, FuncEvent qe) = (qName sm fn, FuncEvent $ qual_qe qe)
 
-smToGraph :: (StateMachine QualifiedName, [WholeState QualifiedName]) ->
+passTagCategories :: [(StateMachine QualifiedName, [WholeState QualifiedName])] -> [(StateMachine TaggedName, [WholeState TaggedName])]
+passTagCategories sms = map tag sms
+    where tag (Annotated a sm, wss) = (Annotated a $ tag_sm sm, map tag_ws wss)
+          tag_sm (StateMachineDeclarator m) = StateMachineDeclarator (TagMachine, m)
+          tag_sm m = undefined
+          tag_ws (st, fs, en, es, ex) = (tag_st st, fs, map tag_fn en, map tag_eh es, map tag_fn ex)
+          tag_eh (ev, ses, s) = (tag_ev ev, map tag_fn ses, tag_st s)
+          tag_st (State s) = State (TagState, s)
+          tag_st StateAny = StateAny
+          tag_st StateSame = StateSame
+          tag_st StateEntry = StateEntry
+          tag_ev (Event e) = Event (TagEvent, e)
+          tag_ev EventAny = EventAny
+          tag_ev EventEnter = EventEnter
+          tag_ev EventExit = EventExit
+          tag_qe (sm', ev) = (tag_sm sm', tag_ev ev)
+          tag_fn (n, FuncVoid)     = ((TagFunction, n), FuncVoid)
+          tag_fn (n, FuncTyped qe) = ((TagFunction, n), FuncTyped $ tag_qe qe)
+          tag_fn (n, FuncEvent qe) = ((TagFunction, n), FuncEvent $ tag_qe qe)
+
+smToGraph :: (StateMachine TaggedName, [WholeState TaggedName]) ->
                  Gr EnterExitState Happening
 smToGraph (sm, ss) = mkGraph eess es
     where
         ss' = zip [1..] ss
         getEeState (n, (st, _, en, _, ex)) = (n, EnterExitState {..})
         eess = map getEeState ss'
-        sn :: Map (State QualifiedName) Node
+        sn :: Map (State TaggedName) Node
         sn = fromList $ map (\(n, ees) -> (st ees, n)) eess
-        mkEdge :: Node -> (State QualifiedName) -> Happening -> (Node, Node, Happening)
+        mkEdge :: Node -> (State TaggedName) -> Happening -> (Node, Node, Happening)
         mkEdge n s'' eses = (n, sn ! s'', eses)
         es = [ese | ese <- concat $ map (\(n, (s, _, _, es, _)) -> map (g n s) es) ss']
-        g :: Node -> (State QualifiedName) -> (Event QualifiedName, [SideEffect QualifiedName], State QualifiedName) -> (Node, Node, Happening)
+        g :: Node -> (State TaggedName) -> (Event TaggedName, [SideEffect TaggedName], State TaggedName) -> (Node, Node, Happening)
         g n s (e, ses, s') =
             let (e', s'') = case s' of
                     StateSame -> (Happening e ses [NoTransition], s)
                     otherwise -> (Happening e ses [], s')
             in mkEdge n s'' e'
 
-passWholeStateToGraph :: [(StateMachine QualifiedName, [WholeState QualifiedName])] ->
-                            [(StateMachine QualifiedName, Gr EnterExitState Happening)]
+passWholeStateToGraph :: [(StateMachine TaggedName, [WholeState TaggedName])] ->
+                            [(StateMachine TaggedName, Gr EnterExitState Happening)]
 passWholeStateToGraph sms = zip (map fst sms) (map smToGraph sms)
 
-symbols :: (StateMachine QualifiedName, Gr EnterExitState Happening) -> UnfilteredSymbolTable
+symbols :: (StateMachine TaggedName, Gr EnterExitState Happening) -> UnfilteredSymbolTable
 symbols (Annotated _ sm, gr) =
     fromListWith union $ [(n, singleton $ (bnd f, FunctionSym (param (event h) se) (result se)))
                           | (_, _, h) <- labEdges gr, se@(n, f) <- sideEffects h]
                          ++ [(n, singleton $ (bnd f, FunctionSym (tparam se) (result se)))
                              | (_, EnterExitState {en, ex}) <- labNodes gr, se@(n, f) <- en ++ ex]
-                         ++ [(e, singleton $ (Resolved, FunctionSym e (QualifiedName [])))
+                         ++ [(e, singleton $ (Resolved, FunctionSym e (TagBuiltin, QualifiedName [])))
                              | (_, _, Happening {event = (Event e)}) <- labEdges gr]
     where
         bnd (FuncEvent (sm', _)) | sm == sm' = Resolved
@@ -200,29 +240,29 @@ symbols (Annotated _ sm, gr) =
         param _           (_, FuncEvent (_, (Event e))) = e
         param _           (_, FuncEvent (_, _)) = undefined
         param (Event e)   _                     = e
-        param _           _                     = QualifiedName []
+        param _           _                     = (TagBuiltin, QualifiedName [])
         tparam (_, FuncEvent (_, (Event e))) = e
         tparam (_, FuncEvent (_, _)) = undefined
-        tparam _                     = QualifiedName []
+        tparam _                     = (TagBuiltin, QualifiedName [])
         result (_, FuncTyped (_, (Event e))) = e
         result (_, FuncTyped (_, _)) = undefined
-        result _                     = QualifiedName []
+        result _                     = (TagBuiltin, QualifiedName [])
 
-passGraphWithSymbols :: [(StateMachine QualifiedName, Gr EnterExitState Happening)] ->
-                        ([(StateMachine QualifiedName, Gr EnterExitState Happening)], UnfilteredSymbolTable)
+passGraphWithSymbols :: [(StateMachine TaggedName, Gr EnterExitState Happening)] ->
+                        ([(StateMachine TaggedName, Gr EnterExitState Happening)], UnfilteredSymbolTable)
 passGraphWithSymbols sms = (sms, unionsWith union $ map symbols sms)
 
 -- a result is simpler than no result
 simplifyReturn :: Result -> Result -> Maybe Result
-simplifyReturn a                       b              | a == b = Just a
-simplifyReturn a@(QualifiedName (_:_))   (QualifiedName [])    = Just a
-simplifyReturn   (QualifiedName [])    b@(QualifiedName (_:_)) = Just b
-simplifyReturn _                       _                       = Nothing
+simplifyReturn a                            b              | a == b  = Just a
+simplifyReturn a@(_, QualifiedName (_:_))   (_, QualifiedName [])    = Just a
+simplifyReturn   (_, QualifiedName [])    b@(_, QualifiedName (_:_)) = Just b
+simplifyReturn _                            _                        = Nothing
 
 -- no parameters is simpler than parameters
 simplifyParam :: Parameter -> Parameter -> Parameter
 simplifyParam a b | a == b = a
-simplifyParam _ _          = QualifiedName []
+simplifyParam _ _          = (TagBuiltin, QualifiedName [])
 
 -- an external binding cannot be resolved
 resolveBinding :: Binding -> Binding -> Binding
@@ -241,7 +281,7 @@ simplifyDefinitely a b = fromJust (simplifyFunc (Just a) (Just b))
 mapJust :: Ord a => Set a -> Set (Maybe a)
 mapJust = Data.Set.map Just
 
-passUniqueSymbols :: ([(StateMachine QualifiedName, Gr EnterExitState Happening)], UnfilteredSymbolTable) ->
-                        ([(StateMachine QualifiedName, Gr EnterExitState Happening)], SymbolTable)
+passUniqueSymbols :: ([(StateMachine TaggedName, Gr EnterExitState Happening)], UnfilteredSymbolTable) ->
+                        ([(StateMachine TaggedName, Gr EnterExitState Happening)], SymbolTable)
 passUniqueSymbols (sms, ust) = (sms, Data.Map.map (fromJust . foldr1 simplifyFunc . mapJust) ust)
 

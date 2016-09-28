@@ -5,7 +5,7 @@ module Semantics.Semantic (
     pass
 ) where
 
-import Model (QualifiedName, EnterExitState, Happening)
+import Model (TaggedName, EnterExitState, Happening)
 import Grammars.Smudge (StateMachine)
 
 import Text.ParserCombinators.Parsec (SourcePos) -- Sorry.
@@ -24,9 +24,9 @@ instance Show Fault where
 
 class Monoid a => Passable a where
     accumulate :: Context EnterExitState Happening -> a -> a
-    test :: (Graph gr) => (StateMachine QualifiedName, gr EnterExitState Happening) -> a -> [Fault]
+    test :: (Graph gr) => (StateMachine TaggedName, gr EnterExitState Happening) -> a -> [Fault]
 
-pass :: (Graph gr, Passable a) => (StateMachine QualifiedName, gr EnterExitState Happening) -> a -> [Fault]
+pass :: (Graph gr, Passable a) => (StateMachine TaggedName, gr EnterExitState Happening) -> a -> [Fault]
 pass sm@(_, g) b = xtest (ufold accumulate mempty g) b
     where
         xtest :: Passable a => a -> a -> [Fault]

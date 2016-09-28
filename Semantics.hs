@@ -2,7 +2,7 @@ module Semantics (
     make_passes
 ) where
 
-import Model (EnterExitState, Happening, QualifiedName)
+import Model (EnterExitState, Happening, TaggedName)
 import Grammars.Smudge (StateMachine)
 import Semantics.Semantic (pass, Fault)
 import Semantics.NoTransientStateCycles (NoTransientStateCycles)
@@ -11,7 +11,7 @@ import Semantics.OneInitialState (OneInitialState)
 
 import Data.Graph.Inductive.Graph (Graph)
 
-make_passes :: Graph gr => (StateMachine QualifiedName, gr EnterExitState Happening) -> [Fault]
+make_passes :: Graph gr => (StateMachine TaggedName, gr EnterExitState Happening) -> [Fault]
 make_passes g = concat [pass g (undefined :: UniqueStateNames),
                         pass g (undefined :: OneInitialState),
                         pass g (undefined :: NoTransientStateCycles)]

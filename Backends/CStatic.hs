@@ -18,8 +18,10 @@ import Model (
   HappeningFlag(..),
   Happening(..),
   QualifiedName(..),
+  TaggedName,
+  untag,
   mangleWith,
-  disqualify,
+  disqualifyTag,
   nestCookedInScope,
   SymbolType(..),
   Binding(..),
@@ -51,16 +53,19 @@ a +-+ b = a ++ "_" ++ b
 mangleQName :: QualifiedName -> Identifier
 mangleQName q = mangleWith (+-+) mangleIdentifier q
 
-mangleQEventName :: QualifiedName -> Identifier
-mangleQEventName qn = if null $ mangleQName qn then "" else mangleQName qn +-+ "t"
+mangleTName :: TaggedName -> Identifier
+mangleTName = mangleQName . untag
 
-mangleEvWith :: (QualifiedName -> Identifier) -> Event QualifiedName -> Identifier
+mangleQEventName :: TaggedName -> Identifier
+mangleQEventName tn = if null $ mangleTName tn then "" else mangleTName tn +-+ "t"
+
+mangleEvWith :: (TaggedName -> Identifier) -> Event TaggedName -> Identifier
 mangleEvWith f (Event evName) = f evName
 mangleEvWith _ EventEnter = "enter"
 mangleEvWith _ EventExit = "exit"
 mangleEvWith _ EventAny = "any"
 
-transitionFunctionDeclaration :: StateMachineDeclarator QualifiedName -> Event QualifiedName -> Declaration
+transitionFunctionDeclaration :: StateMachineDeclarator TaggedName -> Event TaggedName -> Declaration
 transitionFunctionDeclaration (StateMachineDeclarator smName) e =
     Declaration
     (fromList [A STATIC, B VOID])
@@ -71,12 +76,12 @@ transitionFunctionDeclaration (StateMachineDeclarator smName) e =
           RIGHTPAREN)) Nothing])
     SEMICOLON
     where
-        smMangledName = mangleQName smName
+        smMangledName = mangleTName smName
         tType = "exit"
         f_name = smMangledName +-+ "ANY_STATE" +-+ tType
 
 
-transitionFunction :: StateMachineDeclarator QualifiedName -> Event QualifiedName -> [State QualifiedName] -> FunctionDefinition
+transitionFunction :: StateMachineDeclarator TaggedName -> Event TaggedName -> [State TaggedName] -> FunctionDefinition
 transitionFunction (StateMachineDeclarator smName) EventExit ss =
     makeFunction (fromList [A STATIC, B VOID]) [] f_name [ParameterDeclaration (fromList [B VOID]) Nothing]
     (CompoundStatement
@@ -90,18 +95,18 @@ transitionFunction (StateMachineDeclarator smName) EventExit ss =
                                        RIGHTCURLY])
     RIGHTCURLY)
     where
-        smMangledName = mangleQName smName
+        smMangledName = mangleTName smName
         tType = "exit"
         f_name = smMangledName +-+ "ANY_STATE" +-+ tType
-        state_var = (#:) (mangleQName $ nestCookedInScope smName "state") (:#)
-        ssMangled = [mangleQName s | (State s) <- ss]
+        state_var = (#:) (mangleQName $ nestCookedInScope (untag smName) "state") (:#)
+        ssMangled = [mangleTName s | (State s) <- ss]
         case_stmt s = let state_case = (#:) s (:#)
                           state_evt_handler = (#:) (s +-+ tType) (:#)
                           call_state_evt_handler = (#:) (apply state_evt_handler []) (:#) in
                         CASE state_case COLON $
                         EStatement $ ExpressionStatement (Just $ fromList [call_state_evt_handler]) SEMICOLON
 
-initializeFunction :: StateMachineDeclarator QualifiedName -> State QualifiedName -> FunctionDefinition
+initializeFunction :: StateMachineDeclarator TaggedName -> State TaggedName -> FunctionDefinition
 initializeFunction (StateMachineDeclarator smName) (State s) =
     makeFunction (fromList [A STATIC, B VOID]) [] f_name [ParameterDeclaration (fromList [B VOID]) Nothing]
     (CompoundStatement
@@ -118,23 +123,23 @@ initializeFunction (StateMachineDeclarator smName) (State s) =
                                        Nothing])
     RIGHTCURLY)
     where
-        state_var = (#:) (mangleQName $ nestCookedInScope smName "state") (:#)
-        f_name = mangleQName $ nestCookedInScope smName "initialize"
+        state_var = (#:) (mangleQName $ nestCookedInScope (untag smName) "state") (:#)
+        f_name = mangleQName $ nestCookedInScope (untag smName) "initialize"
         init_var = "initialized"
         init_init = "INITIALIZED"
         init_uninit = "UNINITIALIZED"
-        assign_state = state_var `ASSIGN` ((#:) (mangleQName s) (:#))
-        enter_f = (#:) (mangleQName $ nestCookedInScope s "enter") (:#)
+        assign_state = state_var `ASSIGN` ((#:) (mangleTName s) (:#))
+        enter_f = (#:) (mangleQName $ nestCookedInScope (untag s) "enter") (:#)
         call_enter = (#:) (apply enter_f []) (:#)
         init_check = (#:) ((#:) init_init (:#) `NOTEQUAL` (#:) init_var (:#)) (:#)
         init_set = (#:) init_var (:#) `ASSIGN` (#:) init_init (:#)
         side_effects = [assign_state, call_enter, init_set]
 
-sName :: QualifiedName -> State QualifiedName -> QualifiedName
-sName _ (State s) = s
-sName smName StateAny  = nestCookedInScope smName "ANY_STATE"
+sName :: TaggedName -> State TaggedName -> QualifiedName
+sName _ (State s) = untag s
+sName smName StateAny  = nestCookedInScope (untag smName) "ANY_STATE"
 
-handleStateEventFunction :: StateMachineDeclarator QualifiedName -> State QualifiedName -> Happening -> State QualifiedName -> SymbolTable -> FunctionDefinition
+handleStateEventFunction :: StateMachineDeclarator TaggedName -> State TaggedName -> Happening -> State TaggedName -> SymbolTable -> FunctionDefinition
 handleStateEventFunction sm@(StateMachineDeclarator smName) st h st' syms =
     makeFunction (fromList [A STATIC, B VOID]) [] f_name
                                    (if not hasPs then [ParameterDeclaration (fromList [B VOID]) Nothing]
@@ -151,12 +156,12 @@ handleStateEventFunction sm@(StateMachineDeclarator smName) st h st' syms =
         hasPs = case event h of
                         (Event _) -> True
                         otherwise -> False
-        f_name = mangleQName $ sScope $ mangleEvWith (mangleIdentifier . disqualify) $ event h
-        event_type = (mangleEvWith mangleQName $ event h) +-+ "t"
+        f_name = mangleQName $ sScope $ mangleEvWith (mangleIdentifier . disqualifyTag) $ event h
+        event_type = (mangleEvWith mangleTName $ event h) +-+ "t"
         event_var = "e"
         event_ex = (#:) event_var (:#)
         dest_state = (#:) destStateMangledName (:#)
-        state_var = (#:) (mangleQName $ nestCookedInScope smName "state") (:#)
+        state_var = (#:) (mangleQName $ nestCookedInScope (untag smName) "state") (:#)
         assign_state = (state_var `ASSIGN` dest_state)
         exit_f = (#:) (mangleQName $ sScope "exit") (:#)
         enter_f = (#:) (mangleQName $ nestCookedInScope (sName smName st') "enter") (:#)
@@ -164,15 +169,15 @@ handleStateEventFunction sm@(StateMachineDeclarator smName) st h st' syms =
         call_enter = (#:) (apply enter_f []) (:#)
 
         psOf (_, FunctionSym p _) | mangleQEventName p == event_type = [event_ex]
-        psOf (_, FunctionSym (QualifiedName (_:_)) _)                = [(#:) "0" (:#)]
+        psOf (_, FunctionSym (_, QualifiedName (_:_)) _)             = [(#:) "0" (:#)]
         psOf _                                                       = []
         apply_se (f, FuncTyped _) = undefined -- See ticket #15, harder than it seems at first.
-        apply_se (f, _) = (#:) (apply ((#:) (mangleQName f) (:#)) (psOf (syms ! f))) (:#)
+        apply_se (f, _) = (#:) (apply ((#:) (mangleTName f) (:#)) (psOf (syms ! f))) (:#)
         side_effects = case h of
                           (Happening _ ses [])                        -> [apply_se se | se <- ses] ++ [call_exit, assign_state, call_enter]
                           (Happening _ ses fs) | elem NoTransition fs -> [apply_se se | se <- ses]
 
-handleEventFunction :: Bool -> StateMachineDeclarator QualifiedName -> Event QualifiedName -> [State QualifiedName] -> [State QualifiedName] -> [State QualifiedName] -> FunctionDefinition
+handleEventFunction :: Bool -> StateMachineDeclarator TaggedName -> Event TaggedName -> [State TaggedName] -> [State TaggedName] -> [State TaggedName] -> FunctionDefinition
 handleEventFunction debug (StateMachineDeclarator smName) (Event evName) ss anys unss =
     makeFunction (fromList [B VOID]) [] f_name [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
                                             (Just $ Left $ Declarator (Just $ fromList [POINTER Nothing]) $ IDirectDeclarator event_var)]
@@ -191,27 +196,27 @@ handleEventFunction debug (StateMachineDeclarator smName) (Event evName) ss anys
                                        RIGHTCURLY])
     RIGHTCURLY)
     where
-        evMangledName = mangleQName evName
-        evAlone = mangleIdentifier $ disqualify evName
+        evMangledName = mangleTName evName
+        evAlone = mangleIdentifier $ disqualifyTag evName
         f_name = evMangledName
         event_type = f_name +-+ "t"
         event_var = "e"
         event_ex = (#:) event_var (:#)
-        state_var = (#:) (mangleQName $ nestCookedInScope smName "state") (:#)
-        unhandled = (#:) (mangleQName $ nestCookedInScope (nestCookedInScope smName "UNHANDLED_EVENT") evAlone) (:#)
-        initialize = (#:) (mangleQName $ nestCookedInScope smName "initialize") (:#)
+        state_var = (#:) (mangleQName $ nestCookedInScope (untag smName) "state") (:#)
+        unhandled = (#:) (mangleQName $ nestCookedInScope (nestCookedInScope (untag smName) "UNHANDLED_EVENT") evAlone) (:#)
+        initialize = (#:) (mangleQName $ nestCookedInScope (untag smName) "initialize") (:#)
         call_unhandled = (#:) (apply unhandled [event_ex]) (:#)
         call_initialize = (#:) (apply initialize []) (:#)
-        unhd_stmt s = let state_case = (#:) (mangleQName s) (:#) in
+        unhd_stmt s = let state_case = (#:) (mangleTName s) (:#) in
                         CASE state_case COLON $
                         EStatement $ ExpressionStatement (Just $ fromList [call_unhandled]) SEMICOLON
-        case_stmt s en es = let state_case = (#:) (mangleQName s) (:#)
-                                state_evt_handler = (#:) (mangleQName $ nestCookedInScope s en) (:#)
+        case_stmt s en es = let state_case = (#:) (mangleTName s) (:#)
+                                state_evt_handler = (#:) (mangleQName $ nestCookedInScope (untag s) en) (:#)
                                 call_state_evt_handler = (#:) (apply state_evt_handler es) (:#) in
                         CASE state_case COLON $
                         EStatement $ ExpressionStatement (Just $ fromList [call_state_evt_handler]) SEMICOLON
 
-unhandledEventFunction :: Bool -> Bool -> StateMachineDeclarator QualifiedName -> Event QualifiedName -> FunctionDefinition
+unhandledEventFunction :: Bool -> Bool -> StateMachineDeclarator TaggedName -> Event TaggedName -> FunctionDefinition
 unhandledEventFunction debug any_handles (StateMachineDeclarator smName) (Event evName) =
     makeFunction (fromList [A STATIC, B VOID]) [] f_name [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
                                                           (Just $ Left $ Declarator (Just $ fromList [POINTER Nothing]) $ IDirectDeclarator event_var)]
@@ -227,22 +232,22 @@ unhandledEventFunction debug any_handles (StateMachineDeclarator smName) (Event 
     where
         name_var = "event_name"
         name_ex = (#:) name_var (:#)
-        evMangledName = mangleQName evName
-        evAlone = mangleIdentifier $ disqualify evName
-        evname_e = (#:) (show $ disqualify evName) (:#)
-        f_name = mangleQName $ nestCookedInScope (nestCookedInScope smName "UNHANDLED_EVENT") evAlone
+        evMangledName = mangleTName evName
+        evAlone = mangleIdentifier $ disqualifyTag evName
+        evname_e = (#:) (show $ disqualifyTag evName) (:#)
+        f_name = mangleQName $ nestCookedInScope (nestCookedInScope (untag smName) "UNHANDLED_EVENT") evAlone
         event_type = evMangledName +-+ "t"
         event_var = "e"
         assert_f = (#:) (if debug then "printf_assert" else "assert") (:#)
-        assert_s = (#:) (show (disqualify smName ++ "[%s]: Unhandled event \"%s\"\n")) (:#)
-        sname_f  = (#:) (mangleQName $ nestCookedInScope smName "State_name") (:#)
-        state_var = (#:) (mangleQName $ nestCookedInScope smName "state") (:#)
+        assert_s = (#:) (show (disqualifyTag smName ++ "[%s]: Unhandled event \"%s\"\n")) (:#)
+        sname_f  = (#:) (mangleQName $ nestCookedInScope (untag smName) "State_name") (:#)
+        state_var = (#:) (mangleQName $ nestCookedInScope (untag smName) "state") (:#)
         call_sname_f = (#:) (apply sname_f [state_var]) (:#)
         call_assert_f = (#:) (apply assert_f (if debug then [assert_s, call_sname_f, name_ex] else [])) (:#)
-        any_f = (#:) (mangleQName $ nestCookedInScope (nestCookedInScope smName "ANY_STATE") (mangleIdentifier $ disqualify evName)) (:#)
+        any_f = (#:) (mangleQName $ nestCookedInScope (nestCookedInScope (untag smName) "ANY_STATE") (mangleIdentifier $ disqualifyTag evName)) (:#)
         call_any_f = (#:) (apply any_f [(#:) event_var (:#)]) (:#)
 
-stateNameFunction :: StateMachineDeclarator QualifiedName -> [State QualifiedName] -> FunctionDefinition
+stateNameFunction :: StateMachineDeclarator TaggedName -> [State TaggedName] -> FunctionDefinition
 stateNameFunction (StateMachineDeclarator smName) ss =
     makeFunction (fromList [A STATIC, C CONST, B CHAR]) [POINTER Nothing] f_name
                                            [ParameterDeclaration (fromList [B $ TypeSpecifier smMangledName])
@@ -253,7 +258,7 @@ stateNameFunction (StateMachineDeclarator smName) ss =
                                       (Just $ fromList [InitDeclarator (Declarator (Just $ fromList [POINTER $ Just $ fromList [CONST]]) $
                                                                         CDirectDeclarator (IDirectDeclarator names_var) LEFTSQUARE Nothing RIGHTSQUARE)
                                                         (Just $ Pair EQUAL (LInitializer LEFTCURLY
-                                                                                         (fromList [AInitializer ((#:) (show $ disqualify s) (:#)) | (State s) <- ss])
+                                                                                         (fromList [AInitializer ((#:) (show $ disqualifyTag s) (:#)) | (State s) <- ss])
                                                                                          Nothing
                                                                                          RIGHTCURLY))])
                                       SEMICOLON,
@@ -264,11 +269,11 @@ stateNameFunction (StateMachineDeclarator smName) ss =
         (Just $ fromList [JStatement $ RETURN (Just $ fromList [safe_array_index_e]) SEMICOLON])
     RIGHTCURLY)
     where
-        smMangledName = mangleQName $ nestCookedInScope smName "State"
+        smMangledName = mangleQName $ nestCookedInScope (untag smName) "State"
         count_var = "state_count"
         state_var = "s"
         names_var = "state_name"
-        f_name = mangleQName $ nestCookedInScope smName "State_name"
+        f_name = mangleQName $ nestCookedInScope (untag smName) "State_name"
         names_size_e = (#:) (SIZEOF $ Right $ Trio LEFTPAREN (TypeName (fromList [Left $ TypeSpecifier names_var]) Nothing) RIGHTPAREN) (:#)
         ptr_size_e = (#:) (SIZEOF $ Right $ Trio LEFTPAREN (TypeName (fromList [Right CONST, Left CHAR])
                                                                      (Just $ AbstractDeclarator $ This $ fromList [POINTER Nothing])) RIGHTPAREN) (:#)
@@ -281,7 +286,7 @@ stateNameFunction (StateMachineDeclarator smName) ss =
         array_index_e = (#:) (EPostfixExpression names_var_e LEFTSQUARE (fromList [(#:) state_var_e (:#)]) RIGHTSQUARE) (:#)
         safe_array_index_e = (#:) (bounds_check_e `QUESTION` (Trio (fromList [array_index_e]) COLON default_state)) (:#)
 
-currentStateNameFunction :: Bool -> StateMachineDeclarator QualifiedName -> FunctionDefinition
+currentStateNameFunction :: Bool -> StateMachineDeclarator TaggedName -> FunctionDefinition
 currentStateNameFunction debug (StateMachineDeclarator smName) = 
     makeFunction (fromList [C CONST, B CHAR]) [POINTER Nothing] f_name [ParameterDeclaration (fromList [B VOID]) Nothing]
     (CompoundStatement
@@ -290,12 +295,12 @@ currentStateNameFunction debug (StateMachineDeclarator smName) =
         (Just $ fromList [JStatement $ RETURN (Just $ fromList [if debug then call_sname_f else ((#:) (show "") (:#))]) SEMICOLON])
     RIGHTCURLY)
     where
-        f_name = mangleQName $ nestCookedInScope smName "Current_state_name"
-        sname_f  = (#:) (mangleQName $ nestCookedInScope smName "State_name") (:#)
-        state_var = (#:) (mangleQName $ nestCookedInScope smName "state") (:#)
+        f_name = mangleQName $ nestCookedInScope (untag smName) "Current_state_name"
+        sname_f  = (#:) (mangleQName $ nestCookedInScope (untag smName) "State_name") (:#)
+        state_var = (#:) (mangleQName $ nestCookedInScope (untag smName) "state") (:#)
         call_sname_f = (#:) (apply sname_f [state_var]) (:#)
 
-handleStateEventDeclaration :: StateMachineDeclarator QualifiedName -> State QualifiedName -> Event QualifiedName -> Declaration
+handleStateEventDeclaration :: StateMachineDeclarator TaggedName -> State TaggedName -> Event TaggedName -> Declaration
 handleStateEventDeclaration (StateMachineDeclarator smName) st e =
     Declaration
     (fromList [A STATIC, B VOID])
@@ -314,10 +319,10 @@ handleStateEventDeclaration (StateMachineDeclarator smName) st e =
         hasPs = case e of
                         (Event _) -> True
                         otherwise -> False
-        f_name = mangleQName $ sScope $ mangleEvWith (mangleIdentifier . disqualify) e
-        event_type = (mangleEvWith mangleQName e) +-+ "t"
+        f_name = mangleQName $ sScope $ mangleEvWith (mangleIdentifier . disqualifyTag) e
+        event_type = (mangleEvWith mangleTName e) +-+ "t"
 
-handleEventDeclaration :: StateMachineDeclarator QualifiedName -> Event QualifiedName -> Declaration
+handleEventDeclaration :: StateMachineDeclarator TaggedName -> Event TaggedName -> Declaration
 handleEventDeclaration (StateMachineDeclarator smName) (Event evName) =
     Declaration
     (fromList [B VOID])
@@ -331,11 +336,11 @@ handleEventDeclaration (StateMachineDeclarator smName) (Event evName) =
           RIGHTPAREN)) Nothing])
     SEMICOLON
     where
-        evMangledName = mangleQName evName
+        evMangledName = mangleTName evName
         f_name = evMangledName
         event_type = evMangledName +-+ "t"
 
-stateVarDeclaration :: StateMachineDeclarator QualifiedName -> State QualifiedName -> Declaration
+stateVarDeclaration :: StateMachineDeclarator TaggedName -> State TaggedName -> Declaration
 stateVarDeclaration (StateMachineDeclarator smName) (State s) =
     Declaration
     (fromList [A STATIC, B $ TypeSpecifier smEnum])
@@ -343,11 +348,11 @@ stateVarDeclaration (StateMachineDeclarator smName) (State s) =
                                      (Just $ Pair EQUAL $ AInitializer ((#:) sMangled (:#)))])
     SEMICOLON
     where
-        smEnum = mangleQName $ nestCookedInScope smName "State"
-        sMangled = mangleQName s
-        state_var = mangleQName $ nestCookedInScope smName "state"
+        smEnum = mangleQName $ nestCookedInScope (untag smName) "State"
+        sMangled = mangleTName s
+        state_var = mangleQName $ nestCookedInScope (untag smName) "state"
 
-stateEnum :: StateMachineDeclarator QualifiedName -> [State QualifiedName] -> Declaration
+stateEnum :: StateMachineDeclarator TaggedName -> [State TaggedName] -> Declaration
 stateEnum (StateMachineDeclarator smName) ss =
     Declaration
     (fromList [A TYPEDEF,
@@ -355,8 +360,8 @@ stateEnum (StateMachineDeclarator smName) ss =
     (Just $ fromList [InitDeclarator (Declarator Nothing (IDirectDeclarator smMangledName)) Nothing])
     SEMICOLON
     where
-        smMangledName = mangleQName $ nestCookedInScope smName "State"
-        ssMangled = [mangleQName s | (State s) <- ss]
+        smMangledName = mangleQName $ nestCookedInScope (untag smName) "State"
+        ssMangled = [mangleTName s | (State s) <- ss]
 
 makeEnum :: Identifier -> [Identifier] -> TypeSpecifier
 makeEnum smName [] = ENUM (Left $ smName)
@@ -366,7 +371,7 @@ makeEnum smName ss =
     (fromList [Enumerator s Nothing | s <- ss])
     RIGHTCURLY))
 
-eventStruct :: StateMachineDeclarator QualifiedName -> Event QualifiedName -> Declaration
+eventStruct :: StateMachineDeclarator TaggedName -> Event TaggedName -> Declaration
 eventStruct (StateMachineDeclarator smName) (Event evName) =
     Declaration
     (fromList [A TYPEDEF,
@@ -374,7 +379,7 @@ eventStruct (StateMachineDeclarator smName) (Event evName) =
     (Just $ fromList [InitDeclarator (Declarator Nothing (IDirectDeclarator event_type)) Nothing])
     SEMICOLON
     where
-        evMangledName = mangleQName evName
+        evMangledName = mangleTName evName
         event_type = evMangledName +-+ "t"
 
 makeStruct :: Identifier -> [(SpecifierQualifierList, Identifier)] -> TypeSpecifier
@@ -394,8 +399,8 @@ makeFunctionDeclarator ps f_name params =
           (Just $ Left $ ParameterTypeList (fromList params) Nothing)
           RIGHTPAREN
 
-makeFunctionDeclaration :: QualifiedName -> SymbolType -> Declaration
-makeFunctionDeclaration q (FunctionSym p r) =
+makeFunctionDeclaration :: TaggedName -> SymbolType -> Declaration
+makeFunctionDeclaration n (FunctionSym p r) =
     Declaration
     (fromList [A EXTERN, B $ result ])
     (Just $ fromList [InitDeclarator (makeFunctionDeclarator ps f_name params) Nothing])
@@ -405,7 +410,7 @@ makeFunctionDeclaration q (FunctionSym p r) =
         p_name = mangleQEventName p
         result = case r_name of "" -> VOID; t -> TypeSpecifier t
         ps = case r_name of "" -> []; _ -> [POINTER Nothing]
-        f_name = mangleQName q
+        f_name = mangleTName n
         params = case p_name of
                     "" -> [ParameterDeclaration (fromList [B VOID]) Nothing]
                     t -> [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier t])

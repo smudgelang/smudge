@@ -436,6 +436,7 @@ instance Backend CStaticOption where
                      ++ [ExternalDeclaration $ Right $ handleEventDeclaration sm e
                          | (e, _) <- toList $ events g]
                      | (sm, g) <- gs'']
+                    ++ [[ExternalDeclaration $ Right $ makeFunctionDeclaration name ftype | (name, (_, ftype)) <- toList externs]]
               tue = [ExternalDeclaration $ Right $ makeFunctionDeclaration name ftype | (name, (External, ftype)) <- toList syms]
               tus = [[ExternalDeclaration $ Right $ stateEnum sm $ states g]
                      ++ [ExternalDeclaration $ Right $ stateVarDeclaration sm $ initial g]
@@ -462,6 +463,8 @@ instance Backend CStaticOption where
               gs = [(smd, g) | (Annotated _ smd, g) <- fst gswust]
               syms :: SymbolTable
               syms = insertExternalSymbol (snd gswust) "assert" [] ""
+              externs :: SymbolTable  -- Sorry
+              externs = foldl (\syms sym -> insertExternalSymbol syms sym [] "const char") empty [mangleQName $ nestCookedInScope (untag smName) "Current_state_name" | ((StateMachineDeclarator smName), _) <- gs'']
               initial g = head [st ese | (n, EnterExitState {st = StateEntry}) <- labNodes g, n' <- suc g n, (Just ese) <- [lab g n']]
               states g = [st ees | (_, ees) <- labNodes g]
               anys e g = if any_handles e g then [] else states_handling EventAny g

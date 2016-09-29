@@ -75,9 +75,8 @@ transitionFunctionDeclaration (StateMachineDeclarator smName) e =
           RIGHTPAREN)) Nothing])
     SEMICOLON
     where
-        smMangledName = mangleTName smName
         tType = "exit"
-        f_name = smMangledName +-+ "ANY_STATE" +-+ tType
+        f_name = mangleQName $ nestCookedInScope (nestCookedInScope (untag smName) "ANY_STATE") tType
 
 
 transitionFunction :: StateMachineDeclarator TaggedName -> Event TaggedName -> [State TaggedName] -> FunctionDefinition
@@ -94,9 +93,8 @@ transitionFunction (StateMachineDeclarator smName) EventExit ss =
                                        RIGHTCURLY])
     RIGHTCURLY)
     where
-        smMangledName = mangleTName smName
         tType = "exit"
-        f_name = smMangledName +-+ "ANY_STATE" +-+ tType
+        f_name = mangleQName $ nestCookedInScope (nestCookedInScope (untag smName) "ANY_STATE") tType
         state_var = (#:) (mangleQName $ nestCookedInScope (untag smName) "state") (:#)
         ssMangled = [mangleTName s | (State s) <- ss]
         case_stmt s = let state_case = (#:) s (:#)
@@ -247,7 +245,7 @@ unhandledEventFunction debug any_handles (StateMachineDeclarator smName) (Event 
 stateNameFunction :: StateMachineDeclarator TaggedName -> [State TaggedName] -> FunctionDefinition
 stateNameFunction (StateMachineDeclarator smName) ss =
     makeFunction (fromList [A STATIC, C CONST, B CHAR]) [POINTER Nothing] f_name
-                                           [ParameterDeclaration (fromList [B $ TypeSpecifier smMangledName])
+                                           [ParameterDeclaration (fromList [B $ TypeSpecifier smEnum])
                                             (Just $ Left $ Declarator Nothing $ IDirectDeclarator state_var)] 
     (CompoundStatement
     LEFTCURLY
@@ -266,7 +264,7 @@ stateNameFunction (StateMachineDeclarator smName) ss =
         (Just $ fromList [JStatement $ RETURN (Just $ fromList [safe_array_index_e]) SEMICOLON])
     RIGHTCURLY)
     where
-        smMangledName = mangleQName $ nestCookedInScope (untag smName) "State"
+        smEnum = mangleQName $ nestCookedInScope (untag smName) "State"
         count_var = "state_count"
         state_var = "s"
         names_var = "state_name"
@@ -352,11 +350,11 @@ stateEnum :: StateMachineDeclarator TaggedName -> [State TaggedName] -> Declarat
 stateEnum (StateMachineDeclarator smName) ss =
     Declaration
     (fromList [A TYPEDEF,
-               B (makeEnum smMangledName ssMangled)])
-    (Just $ fromList [InitDeclarator (Declarator Nothing (IDirectDeclarator smMangledName)) Nothing])
+               B (makeEnum smEnum ssMangled)])
+    (Just $ fromList [InitDeclarator (Declarator Nothing (IDirectDeclarator smEnum)) Nothing])
     SEMICOLON
     where
-        smMangledName = mangleQName $ nestCookedInScope (untag smName) "State"
+        smEnum = mangleQName $ nestCookedInScope (untag smName) "State"
         ssMangled = [mangleTName s | (State s) <- ss]
 
 makeEnum :: Identifier -> [Identifier] -> TypeSpecifier

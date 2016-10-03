@@ -465,7 +465,6 @@ instance Backend CStaticOption where
               syms :: SymbolTable
               syms = insertExternalSymbol (snd gswust) "assert" [] ""
               externs = [((TagFunction, nestCookedInScope (untag smName) "Current_state_name"), Unary External Void (Ty External (TagBuiltin, QualifiedName [Model.CookedId "const char"]))) | ((StateMachineDeclarator smName), _) <- gs'']
-
               initial g = head [st ese | (n, EnterExitState {st = StateEntry}) <- labNodes g, n' <- suc g n, (Just ese) <- [lab g n']]
               states g = [st ees | (_, ees) <- labNodes g]
               anys e g = if any_handles e g then [] else states_handling EventAny g

@@ -26,7 +26,7 @@ import Model (
   nestCookedInScope,
   qName,
   )
-import Semantics.Solver (SymbolType(..), Binding(..), SymbolTable, insertExternalSymbol)
+import Semantics.Solver (Ty(..), Binding(..), SymbolTable, insertExternalSymbol)
 import Trashcan.FilePath (relPath)
 import Unparsers.C89 (renderPretty)
 
@@ -162,9 +162,12 @@ handleStateEventFunction sm@(StateMachineDeclarator smName) st h st' syms =
         call_exit = (#:) (apply exit_f []) (:#)
         call_enter = (#:) (apply enter_f []) (:#)
 
-        psOf (_, FunctionSym p _) | mangleTName p == event_type = [event_ex]
-        psOf (_, FunctionSym (_, QualifiedName (_:_)) _)        = [(#:) "0" (:#)]
-        psOf _                                                  = []
+        isEventTy :: Ty -> Event TaggedName -> Bool
+        isEventTy (Ty _ a) (Event e) = a == e
+        isEventTy _ _ = False
+
+        psOf (Unary _ Void _) = []
+        psOf (Unary _ p    _) = [if isEventTy p (event h) then event_ex else (#:) "0" (:#)]
         apply_se (f, FuncTyped _) = undefined -- See ticket #15, harder than it seems at first.
         apply_se (f, _) = (#:) (apply ((#:) (mangleTName f) (:#)) (psOf (syms ! f))) (:#)
         side_effects = case h of
@@ -389,22 +392,21 @@ makeFunctionDeclarator ps f_name params =
           (Just $ Left $ ParameterTypeList (fromList params) Nothing)
           RIGHTPAREN
 
-makeFunctionDeclaration :: TaggedName -> SymbolType -> Declaration
-makeFunctionDeclaration n (FunctionSym p r) =
+makeFunctionDeclaration :: TaggedName -> Ty -> Declaration
+makeFunctionDeclaration n (Unary b p r) =
     Declaration
-    (fromList [A EXTERN, B $ result ])
+    (fromList $ binding ++ [B result])
     (Just $ fromList [InitDeclarator (makeFunctionDeclarator ps f_name params) Nothing])
     SEMICOLON
     where
-        r_name = mangleTName r
-        p_name = mangleTName p
-        result = case r_name of "" -> VOID; t -> TypeSpecifier t
-        ps = case r_name of "" -> []; _ -> [POINTER Nothing]
+        binding = case b of External -> [A EXTERN]; _ -> []
+        result = case r of Void -> VOID; Ty _ t -> TypeSpecifier $ mangleTName t
+        ps = case r of Void -> []; _ -> [POINTER Nothing]
         f_name = mangleTName n
-        params = case p_name of
-                    "" -> [ParameterDeclaration (fromList [B VOID]) Nothing]
-                    t -> [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier t])
-                          (Just $ Right $ AbstractDeclarator (This $ fromList [POINTER Nothing]))]
+        params = case p of
+                    Void -> [ParameterDeclaration (fromList [B VOID]) Nothing]
+                    Ty _ t -> [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier $ mangleTName t])
+                               (Just $ Right $ AbstractDeclarator (This $ fromList [POINTER Nothing]))]
 
 makeFunction :: DeclarationSpecifiers -> [Pointer] -> Identifier -> [ParameterDeclaration] -> CompoundStatement -> FunctionDefinition
 makeFunction dss ps f_name params body =
@@ -433,8 +435,8 @@ instance Backend CStaticOption where
                      ++ [ExternalDeclaration $ Right $ handleEventDeclaration sm e
                          | (e, _) <- toList $ events g]
                      | (sm, g) <- gs'']
-                    ++ [[ExternalDeclaration $ Right $ makeFunctionDeclaration name ftype | (name, (_, ftype)) <- toList externs]]
-              tue = [ExternalDeclaration $ Right $ makeFunctionDeclaration name ftype | (name, (External, ftype)) <- toList syms]
+                    ++ [[ExternalDeclaration $ Right $ makeFunctionDeclaration name ftype | (name, ftype) <- toList externs]]
+              tue = [ExternalDeclaration $ Right $ makeFunctionDeclaration name ftype | (name, ftype@(Unary External _ _)) <- toList syms]
               tus = [[ExternalDeclaration $ Right $ stateEnum sm $ states g]
                      ++ [ExternalDeclaration $ Right $ stateVarDeclaration sm $ initial g]
                      ++ [ExternalDeclaration $ Right $ transitionFunctionDeclaration sm EventExit | (_, EnterExitState {st = StateAny}) <- labNodes g]

@@ -1,10 +1,14 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Semantics.Solver (
-    insertExternalSymbol,
     Ty(..),
     Binding(..),
+
     SymbolTable,
+    insertExternalSymbol,
+    toList,
+    (!),
+
     passGraphWithSymbols,
     passUniqueSymbols,
 ) where
@@ -28,12 +32,13 @@ import Model (
 import Data.Graph.Inductive.Graph (labNodes, labEdges)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Map (Map, fromListWith, unionsWith, insertWith)
-import qualified Data.Map (map)
+import qualified Data.Map as Map(map, toList, (!))
 import Data.Set (Set, union, singleton)
 import qualified Data.Set (map)
 import Control.Monad (liftM)
 import Data.Maybe (fromJust)
 
+-- external interface
 data Binding = External | Unresolved | Resolved
     deriving (Show, Eq, Ord)
 
@@ -44,17 +49,30 @@ data Ty = Void
 
 type UnfilteredSymbolTable = Map TaggedName (Set Ty)
 
-type SymbolTable = Map TaggedName Ty
+newtype SymbolTable = SymbolTable SymTab
+    deriving (Show, Eq, Ord)
+
+instance Monoid SymbolTable where
+    mappend (SymbolTable gamma) (SymbolTable gamma') = SymbolTable $ mappend gamma gamma'
+    mempty = SymbolTable mempty
 
 -- Old table, Name, args, return type, new table
 insertExternalSymbol :: SymbolTable -> Name -> [Name] -> Name -> SymbolTable
-insertExternalSymbol table fname args returnType = Data.Map.insertWith
-    simplifyDefinitely
-    (TagFunction, QualifiedName [CookedId fname])
-    (Unary External
-           (if null args then Void else Ty External (TagBuiltin, QualifiedName (map CookedId args)))
-           (if null returnType then Void else Ty External (TagBuiltin, QualifiedName [CookedId returnType])))
-    table
+insertExternalSymbol (SymbolTable gamma) fname args returnType = SymbolTable $ Data.Map.insertWith simplifyDefinitely name ty gamma
+    where
+          name = (TagFunction, QualifiedName [CookedId fname])
+          ty = (Unary External
+                      (if null args then Void else Ty External (TagBuiltin, QualifiedName (map CookedId args)))
+                      (if null returnType then Void else Ty External (TagBuiltin, QualifiedName [CookedId returnType])))
+
+toList :: SymbolTable -> [(TaggedName, Ty)]
+toList (SymbolTable gamma) = Map.toList gamma
+
+(!) :: SymbolTable -> TaggedName -> Ty
+(SymbolTable gamma) ! name = gamma Map.! name
+
+-- internal implementation
+type SymTab = Map TaggedName Ty
 
 symbols :: (StateMachine TaggedName, Gr EnterExitState Happening) -> UnfilteredSymbolTable
 symbols (Annotated _ sm, gr) =
@@ -115,5 +133,5 @@ mapJust = Data.Set.map Just
 
 passUniqueSymbols :: ([(StateMachine TaggedName, Gr EnterExitState Happening)], UnfilteredSymbolTable) ->
                         ([(StateMachine TaggedName, Gr EnterExitState Happening)], SymbolTable)
-passUniqueSymbols (sms, ust) = (sms, Data.Map.map (fromJust . foldr1 simplifyFunc . mapJust) ust)
+passUniqueSymbols (sms, ust) = (sms, SymbolTable $ Map.map (fromJust . foldr1 simplifyFunc . mapJust) ust)
 

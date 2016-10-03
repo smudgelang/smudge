@@ -18,7 +18,7 @@ import Model (
   HappeningFlag(..),
   Happening(..),
   QualifiedName(..),
-  Tag(TagEvent),
+  Tag(..),
   TaggedName,
   untag,
   mangleWith,
@@ -26,13 +26,15 @@ import Model (
   nestCookedInScope,
   qName,
   )
-import Semantics.Solver (Ty(..), Binding(..), SymbolTable, insertExternalSymbol)
+import qualified Model(Identifier(CookedId))
+import Semantics.Solver (Ty(..), Binding(..), SymbolTable, insertExternalSymbol, (!))
+import qualified Semantics.Solver as Solver(toList)
 import Trashcan.FilePath (relPath)
 import Unparsers.C89 (renderPretty)
 
 import Data.Graph.Inductive.Graph (labNodes, lab, out, suc, insEdges, nodes, delNodes)
 import Data.List (intercalate, (\\))
-import Data.Map (insertWith, empty, toList, (!))
+import Data.Map (insertWith, empty, toList)
 import qualified Data.Map (null)
 import Data.Text (replace)
 import System.Console.GetOpt
@@ -435,8 +437,8 @@ instance Backend CStaticOption where
                      ++ [ExternalDeclaration $ Right $ handleEventDeclaration sm e
                          | (e, _) <- toList $ events g]
                      | (sm, g) <- gs'']
-                    ++ [[ExternalDeclaration $ Right $ makeFunctionDeclaration name ftype | (name, ftype) <- toList externs]]
-              tue = [ExternalDeclaration $ Right $ makeFunctionDeclaration name ftype | (name, ftype@(Unary External _ _)) <- toList syms]
+                    ++ [[ExternalDeclaration $ Right $ makeFunctionDeclaration name ftype | (name, ftype) <- externs]]
+              tue = [ExternalDeclaration $ Right $ makeFunctionDeclaration name ftype | (name, ftype@(Unary External _ _)) <- Solver.toList syms]
               tus = [[ExternalDeclaration $ Right $ stateEnum sm $ states g]
                      ++ [ExternalDeclaration $ Right $ stateVarDeclaration sm $ initial g]
                      ++ [ExternalDeclaration $ Right $ transitionFunctionDeclaration sm EventExit | (_, EnterExitState {st = StateAny}) <- labNodes g]
@@ -462,8 +464,8 @@ instance Backend CStaticOption where
               gs = [(smd, g) | (Annotated _ smd, g) <- fst gswust]
               syms :: SymbolTable
               syms = insertExternalSymbol (snd gswust) "assert" [] ""
-              externs :: SymbolTable  -- Sorry
-              externs = foldl (\syms sym -> insertExternalSymbol syms sym [] "const char") empty [mangleQName $ nestCookedInScope (untag smName) "Current_state_name" | ((StateMachineDeclarator smName), _) <- gs'']
+              externs = [((TagFunction, nestCookedInScope (untag smName) "Current_state_name"), Unary External Void (Ty External (TagBuiltin, QualifiedName [Model.CookedId "const char"]))) | ((StateMachineDeclarator smName), _) <- gs'']
+
               initial g = head [st ese | (n, EnterExitState {st = StateEntry}) <- labNodes g, n' <- suc g n, (Just ese) <- [lab g n']]
               states g = [st ees | (_, ees) <- labNodes g]
               anys e g = if any_handles e g then [] else states_handling EventAny g

@@ -9,6 +9,8 @@ import Model (
   passFullyQualify,
   passTagCategories,
   passWholeStateToGraph,
+  )
+import Semantics.Solver (
   passGraphWithSymbols,
   passUniqueSymbols
   )

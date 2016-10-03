@@ -3,7 +3,8 @@ module Backends.Backend (
 ) where
 
 import Grammars.Smudge (StateMachine, State, SideEffect)
-import Model (TaggedName, Happening, EnterExitState, SymbolTable)
+import Model (TaggedName, Happening, EnterExitState)
+import Semantics.Solver (SymbolTable)
 
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import System.Console.GetOpt (OptDescr)

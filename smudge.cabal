@@ -51,7 +51,12 @@ Executable smudge
   Build-depends:     base <= 4.8.2.0, Cabal, containers, directory, filepath, fgl, parsec, pretty, text, graphviz
 
   -- Modules not exported by this package.
-  Other-modules:     Backends.Backend Backends.CStatic Backends.GraphViz Grammars.C89 Grammars.Smudge Model Parsers.Smudge Semantics Semantics.Semantic Semantics.NoTransientStateCycles Semantics.UniqueStateNames Trashcan.FilePath Trashcan.Graph Unparsers.C89
+  Other-modules:     Backends.Backend Backends.CStatic Backends.GraphViz
+                     Grammars.C89 Grammars.Smudge
+                     Semantics Semantics.Semantic Semantics.NoTransientStateCycles Semantics.UniqueStateNames
+                     Model Semantics.Solver
+                     Trashcan.FilePath Trashcan.Graph
+                     Parsers.Smudge Unparsers.C89
   
   -- Extra tools (e.g. alex, hsc2hs, ...) needed to build the source.
   -- Build-tools:         

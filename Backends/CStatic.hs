@@ -24,12 +24,9 @@ import Model (
   mangleWith,
   disqualifyTag,
   nestCookedInScope,
-  SymbolType(..),
-  Binding(..),
-  SymbolTable,
   qName,
-  insertExternalSymbol
   )
+import Semantics.Solver (SymbolType(..), Binding(..), SymbolTable, insertExternalSymbol)
 import Trashcan.FilePath (relPath)
 import Unparsers.C89 (renderPretty)
 

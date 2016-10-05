@@ -1,0 +1,18 @@
+anyany
+{
+   *A
+    [
+        z --> B,
+        _ --> B // handles just y
+    ],
+    B
+    [
+        x --,
+        y --> A
+    ],
+    _
+    [
+        x --> A, // handles x in A
+        _ --> A // handles z in B
+    ]
+}

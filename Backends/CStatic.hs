@@ -214,18 +214,18 @@ handleEventFunction debug (StateMachineDeclarator smName) (Event evName) ss anys
                         CASE state_case COLON $
                         EStatement $ ExpressionStatement (Just $ fromList [call_state_evt_handler]) SEMICOLON
 
-unhandledEventFunction :: Bool -> Bool -> StateMachineDeclarator TaggedName -> Event TaggedName -> FunctionDefinition
-unhandledEventFunction debug any_handles (StateMachineDeclarator smName) (Event evName) =
+unhandledEventFunction :: Bool -> Bool -> Bool -> StateMachineDeclarator TaggedName -> Event TaggedName -> FunctionDefinition
+unhandledEventFunction debug any_handles anyany (StateMachineDeclarator smName) (Event evName) =
     makeFunction (fromList [A STATIC, B VOID]) [] f_name [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
                                                           (Just $ Left $ Declarator (Just $ fromList [POINTER Nothing]) $ IDirectDeclarator event_var)]
     (CompoundStatement
     LEFTCURLY
-        (if any_handles || not debug then Nothing else
+        (if any_handles || anyany || not debug then Nothing else
           (Just $ fromList [Declaration (fromList [C CONST, B CHAR]) 
                                         (Just $ fromList [InitDeclarator (Declarator (Just $ fromList [POINTER Nothing]) $ IDirectDeclarator name_var)
                                                           (Just $ Pair EQUAL $ AInitializer evname_e)])
                                         SEMICOLON]))
-        (Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [if any_handles then call_any_f else call_assert_f]) SEMICOLON])
+        (Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [call_handler_f]) SEMICOLON])
     RIGHTCURLY)
     where
         name_var = "event_name"
@@ -241,8 +241,12 @@ unhandledEventFunction debug any_handles (StateMachineDeclarator smName) (Event 
         state_var = (#:) (mangleQName $ nestCookedInScope (untag smName) "state") (:#)
         call_sname_f = (#:) (apply sname_f [state_var]) (:#)
         call_assert_f = (#:) (apply assert_f (if debug then [assert_s, call_sname_f, name_ex] else [])) (:#)
-        any_f = (#:) (mangleQName $ nestCookedInScope (nestCookedInScope (untag smName) "ANY_STATE") (mangleIdentifier $ disqualifyTag evName)) (:#)
+        handle_f e = (#:) (mangleQName $ nestCookedInScope (nestCookedInScope (untag smName) "ANY_STATE") e) (:#)
+        any_f = handle_f evAlone
+        any_any_f = handle_f "any"
         call_any_f = (#:) (apply any_f [(#:) event_var (:#)]) (:#)
+        call_any_any_f = (#:) (apply any_any_f []) (:#)
+        call_handler_f = if any_handles then call_any_f else if anyany then call_any_any_f else call_assert_f
 
 stateNameFunction :: StateMachineDeclarator TaggedName -> [State TaggedName] -> FunctionDefinition
 stateNameFunction (StateMachineDeclarator smName) ss =
@@ -448,7 +452,7 @@ instance Backend CStaticOption where
                      ++ [ExternalDeclaration $ Left $ currentStateNameFunction debug sm]
                      ++ [ExternalDeclaration $ Left $ transitionFunction sm EventExit
                          $ [st | (_, EnterExitState {st, ex = (_:_)}) <- labNodes g] | (_, EnterExitState {st = StateAny}) <- labNodes g]
-                     ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug (any_handles e g) sm e | (e, _) <- toList $ events g]
+                     ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug (any_handles e g) (anyany g) sm e | (e, _) <- toList $ events g]
                      ++ [ExternalDeclaration $ Left $ initializeFunction sm $ initial g]
                      ++ [ExternalDeclaration $ Left $ handleEventFunction debug sm e ss (anys e g \\ ss) ((states g \\ ss) \\ (anys e g))
                          | (e, ss) <- toList $ events g]
@@ -469,6 +473,7 @@ instance Backend CStaticOption where
               states g = [st ees | (_, ees) <- labNodes g]
               anys e g = if any_handles e g then [] else states_handling EventAny g
               any_handles e g = (not $ null [st | st@StateAny <- states_handling e g])
+              anyany g = any_handles EventAny g
               states_handling e g = [st ees | (n, ees) <- labNodes g, (_, _, Happening {event}) <- out g n, event == e]
               events g = foldl insert_event empty [(h, st ees) | (n, ees) <- labNodes g, (_, _, h) <- out g n]
               insert_event m ((Happening e@(Event _) _ _), s@(State _)) = insertWith (flip (++)) e [s] m

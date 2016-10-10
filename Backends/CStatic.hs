@@ -323,23 +323,6 @@ handleStateEventDeclaration (StateMachineDeclarator smName) st e =
         f_name = mangleQName $ sScope $ mangleEvWith (mangleIdentifier . disqualifyTag) e
         event_type = mangleEvWith mangleTName e
 
-handleEventDeclaration :: StateMachineDeclarator TaggedName -> Event TaggedName -> Declaration
-handleEventDeclaration (StateMachineDeclarator smName) (Event evName) =
-    Declaration
-    (fromList [B VOID])
-    (Just $ fromList [InitDeclarator (Declarator Nothing (PDirectDeclarator
-          (IDirectDeclarator f_name)
-          LEFTPAREN
-          (Just $ Left $ ParameterTypeList
-                         (fromList [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
-                                    (Just $ Right $ AbstractDeclarator $ This $ fromList [POINTER Nothing])])
-                         Nothing)
-          RIGHTPAREN)) Nothing])
-    SEMICOLON
-    where
-        f_name = mangleQName $ untag evName
-        event_type = mangleTName evName
-
 stateVarDeclaration :: StateMachineDeclarator TaggedName -> State TaggedName -> Declaration
 stateVarDeclaration (StateMachineDeclarator smName) (State s) =
     Declaration
@@ -438,9 +421,8 @@ instance Backend CStaticOption where
               hdr = fromList $ concat tuh
               tuh = [[ExternalDeclaration $ Right $ eventStruct sm e
                          | (e, _) <- toList $ events g]
-                     ++ [ExternalDeclaration $ Right $ handleEventDeclaration sm e
-                         | (e, _) <- toList $ events g]
                      | (sm, g) <- gs'']
+                    ++ [[ExternalDeclaration $ Right $ makeFunctionDeclaration name ftype | (name, ftype@(Unary Resolved _ _)) <- Solver.toList syms]]
                     ++ [[ExternalDeclaration $ Right $ makeFunctionDeclaration name ftype | (name, ftype) <- externs]]
               tue = [ExternalDeclaration $ Right $ makeFunctionDeclaration name ftype | (name, ftype@(Unary External _ _)) <- Solver.toList syms]
               tus = [[ExternalDeclaration $ Right $ stateEnum sm $ states g]

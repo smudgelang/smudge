@@ -67,11 +67,7 @@ transitionFunctionDeclaration :: StateMachineDeclarator TaggedName -> Event Tagg
 transitionFunctionDeclaration (StateMachineDeclarator smName) e =
     Declaration
     (fromList [A STATIC, B VOID])
-    (Just $ fromList [InitDeclarator (Declarator Nothing (PDirectDeclarator
-          (IDirectDeclarator f_name)
-          LEFTPAREN
-          (Just $ Left $ ParameterTypeList (fromList $ [ParameterDeclaration (fromList [B VOID]) Nothing]) Nothing)
-          RIGHTPAREN)) Nothing])
+    (Just $ fromList [InitDeclarator (makeFunctionDeclarator [] f_name [ParameterDeclaration (fromList [B VOID]) Nothing]) Nothing])
     SEMICOLON
     where
         tType = "exit"
@@ -305,21 +301,14 @@ handleStateEventDeclaration :: StateMachineDeclarator TaggedName -> State Tagged
 handleStateEventDeclaration (StateMachineDeclarator smName) st e =
     Declaration
     (fromList [A STATIC, B VOID])
-    (Just $ fromList [InitDeclarator (Declarator Nothing (PDirectDeclarator
-          (IDirectDeclarator f_name)
-          LEFTPAREN
-          (Just $ Left $ ParameterTypeList
-                         (fromList (if not hasPs then [ParameterDeclaration (fromList [B VOID]) Nothing]
-                                    else [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
-                                          (Just $ Right $ AbstractDeclarator $ This $ fromList [POINTER Nothing])]))
-                         Nothing)
-          RIGHTPAREN)) Nothing])
+    (Just $ fromList [InitDeclarator (makeFunctionDeclarator [] f_name params) Nothing])
     SEMICOLON
     where
         sScope = nestCookedInScope $ sName smName st
-        hasPs = case e of
-                        (Event _) -> True
-                        otherwise -> False
+        params = case e of
+                    (Event _) -> [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
+                                  (Just $ Right $ AbstractDeclarator $ This $ fromList [POINTER Nothing])]
+                    otherwise -> [ParameterDeclaration (fromList [B VOID]) Nothing]
         f_name = mangleQName $ sScope $ mangleEvWith (mangleIdentifier . disqualifyTag) e
         event_type = mangleEvWith mangleTName e
 

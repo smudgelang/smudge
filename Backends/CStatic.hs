@@ -57,22 +57,11 @@ mangleTName :: TaggedName -> Identifier
 mangleTName (TagEvent, q) = mangleQName q +-+ "t"
 mangleTName t = mangleQName $ untag t
 
-mangleEvWith :: (TaggedName -> Identifier) -> Event TaggedName -> Identifier
-mangleEvWith f (Event evName) = f evName
-mangleEvWith _ EventEnter = "enter"
-mangleEvWith _ EventExit = "exit"
-mangleEvWith _ EventAny = "any"
-
-transitionFunctionDeclaration :: StateMachineDeclarator TaggedName -> Event TaggedName -> Declaration
-transitionFunctionDeclaration (StateMachineDeclarator smName) e =
-    Declaration
-    (fromList [A STATIC, B VOID])
-    (Just $ fromList [InitDeclarator (makeFunctionDeclarator [] f_name [ParameterDeclaration (fromList [B VOID]) Nothing]) Nothing])
-    SEMICOLON
-    where
-        tType = "exit"
-        f_name = mangleQName $ nestCookedInScope (nestCookedInScope (untag smName) "ANY_STATE") tType
-
+mangleEv :: Event TaggedName -> Identifier
+mangleEv (Event evName) = mangleIdentifier $ disqualifyTag evName
+mangleEv EventEnter = "enter"
+mangleEv EventExit = "exit"
+mangleEv EventAny = "any"
 
 transitionFunction :: StateMachineDeclarator TaggedName -> Event TaggedName -> [State TaggedName] -> FunctionDefinition
 transitionFunction (StateMachineDeclarator smName) EventExit ss =
@@ -89,7 +78,7 @@ transitionFunction (StateMachineDeclarator smName) EventExit ss =
     RIGHTCURLY)
     where
         tType = "exit"
-        f_name = mangleQName $ nestCookedInScope (nestCookedInScope (untag smName) "ANY_STATE") tType
+        f_name = mangleQName $ nestCookedInScope (sName smName StateAny) tType
         state_var = (#:) (mangleQName $ nestCookedInScope (untag smName) "state") (:#)
         ssMangled = [mangleTName s | (State s) <- ss]
         case_stmt s = let state_case = (#:) s (:#)
@@ -133,10 +122,7 @@ sName smName StateAny  = nestCookedInScope (untag smName) "ANY_STATE"
 
 handleStateEventFunction :: StateMachineDeclarator TaggedName -> State TaggedName -> Happening -> State TaggedName -> SymbolTable -> FunctionDefinition
 handleStateEventFunction sm@(StateMachineDeclarator smName) st h st' syms =
-    makeFunction (fromList [A STATIC, B VOID]) [] f_name
-                                   (if not hasPs then [ParameterDeclaration (fromList [B VOID]) Nothing]
-                                    else [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
-                                          (Just $ Left $ Declarator (Just $ fromList [POINTER Nothing]) $ IDirectDeclarator event_var)])
+    makeFunction (fromList [A STATIC, B VOID]) [] f_name params
     (CompoundStatement
     LEFTCURLY
         Nothing
@@ -145,11 +131,11 @@ handleStateEventFunction sm@(StateMachineDeclarator smName) st h st' syms =
     where
         sScope = nestCookedInScope $ sName smName st
         destStateMangledName = mangleQName $ sName smName st'
-        hasPs = case event h of
-                        (Event _) -> True
-                        otherwise -> False
-        f_name = mangleQName $ sScope $ mangleEvWith (mangleIdentifier . disqualifyTag) $ event h
-        event_type = mangleEvWith mangleTName $ event h
+        params = case event h of
+                    (Event t) -> [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier $ mangleTName t])
+                                  (Just $ Left $ Declarator (Just $ fromList [POINTER Nothing]) $ IDirectDeclarator event_var)]
+                    otherwise -> [ParameterDeclaration (fromList [B VOID]) Nothing]
+        f_name = mangleQName $ sScope $ mangleEv $ event h
         event_var = "e"
         event_ex = (#:) event_var (:#)
         dest_state = (#:) destStateMangledName (:#)
@@ -237,7 +223,7 @@ unhandledEventFunction debug any_handles anyany (StateMachineDeclarator smName) 
         state_var = (#:) (mangleQName $ nestCookedInScope (untag smName) "state") (:#)
         call_sname_f = (#:) (apply sname_f [state_var]) (:#)
         call_assert_f = (#:) (apply assert_f (if debug then [assert_s, call_sname_f, name_ex] else [])) (:#)
-        handle_f e = (#:) (mangleQName $ nestCookedInScope (nestCookedInScope (untag smName) "ANY_STATE") e) (:#)
+        handle_f e = (#:) (mangleQName $ nestCookedInScope (sName smName StateAny) e) (:#)
         any_f = handle_f evAlone
         any_any_f = handle_f "any"
         call_any_f = (#:) (apply any_f [(#:) event_var (:#)]) (:#)
@@ -306,11 +292,10 @@ handleStateEventDeclaration (StateMachineDeclarator smName) st e =
     where
         sScope = nestCookedInScope $ sName smName st
         params = case e of
-                    (Event _) -> [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
+                    (Event t) -> [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier $ mangleTName t])
                                   (Just $ Right $ AbstractDeclarator $ This $ fromList [POINTER Nothing])]
                     otherwise -> [ParameterDeclaration (fromList [B VOID]) Nothing]
-        f_name = mangleQName $ sScope $ mangleEvWith (mangleIdentifier . disqualifyTag) e
-        event_type = mangleEvWith mangleTName e
+        f_name = mangleQName $ sScope $ mangleEv e
 
 stateVarDeclaration :: StateMachineDeclarator TaggedName -> State TaggedName -> Declaration
 stateVarDeclaration (StateMachineDeclarator smName) (State s) =
@@ -416,7 +401,7 @@ instance Backend CStaticOption where
               tue = [ExternalDeclaration $ Right $ makeFunctionDeclaration name ftype | (name, ftype@(Unary External _ _)) <- Solver.toList syms]
               tus = [[ExternalDeclaration $ Right $ stateEnum sm $ states g]
                      ++ [ExternalDeclaration $ Right $ stateVarDeclaration sm $ initial g]
-                     ++ [ExternalDeclaration $ Right $ transitionFunctionDeclaration sm EventExit | (_, EnterExitState {st = StateAny}) <- labNodes g]
+                     ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration sm s EventExit | (_, EnterExitState {st = s@StateAny}) <- labNodes g]
                      ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration sm s e
                          | (n, EnterExitState {st = s}) <- labNodes g, e <- (map (event . edgeLabel) $ out g n), case s of State _ -> True; StateAny -> True; _ -> False]
                      ++ (if debug then [ExternalDeclaration $ Left $ stateNameFunction sm $ states g] else [])

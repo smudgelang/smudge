@@ -31,10 +31,10 @@ import Model (
 
 import Data.Graph.Inductive.Graph (labNodes, labEdges)
 import Data.Graph.Inductive.PatriciaTree (Gr)
-import Data.Map (Map, fromListWith, unionsWith, insertWith)
+import Data.Map (Map, fromListWith, unionsWith, insertWith, foldrWithKey, mapWithKey)
 import qualified Data.Map as Map(map, toList, (!))
 import Data.Set (Set, union, singleton)
-import qualified Data.Set (map)
+import qualified Data.Set (map, foldr)
 import Control.Monad (liftM)
 import Data.Maybe (fromJust)
 
@@ -80,9 +80,10 @@ symbols (Annotated _ sm, gr) =
                           | (_, _, h) <- labEdges gr, se@(n, f) <- sideEffects h]
                          ++ [(n, singleton $ Unary (bnd f) (tparam se) (result se))
                              | (_, EnterExitState {en, ex}) <- labNodes gr, se@(n, f) <- en ++ ex]
-                         ++ [(e, singleton $ Unary Resolved (Ty Resolved e) Void)
+                         ++ [(retag e, singleton $ Unary Resolved (Ty Resolved e) Void)
                              | (_, _, Happening {event = (Event e)}) <- labEdges gr]
     where
+        retag (TagEvent, n) = (TagFunction, n)
         bndQE (sm', _) | sm == sm' = Resolved
         bndQE _                    = Unresolved
         bnd (FuncEvent qe) = bndQE qe
@@ -131,7 +132,24 @@ simplifyDefinitely a b = fromJust (simplifyFunc (Just a) (Just b))
 mapJust :: Ord a => Set a -> Set (Maybe a)
 mapJust = Data.Set.map Just
 
+resolve :: UnfilteredSymbolTable -> UnfilteredSymbolTable
+resolve t = mapWithKey (\ n ts -> Data.Set.map (rn n) ts) t
+    where bindings = foldrWithKey findAllBindings mempty t
+          findAllBindings n ts rs = unionsWith resolveBinding [findSomeBindings n ts, rs]
+          findSomeBindings n ts = fromListWith resolveBinding (Data.Set.foldr (\ ty a -> a ++ bn n ty) [] ts)
+          rty Void           = Void
+          rty (Ty _ n)       = Ty (bindings Map.! n) n
+          rty (Unary b t t') = Unary b (rty t) (rty t')
+          rn n ty@(Unary _ t t') = rty $ Unary (bindings Map.! n) t t'
+          rn _ ty                = rty ty
+          bty Void           = []
+          bty (Ty b n)       = [(n, b)]
+          bty (Unary _ t t') = bty t ++ bty t'
+          bn _ Void             = []
+          bn n ty@(Ty b _)      = [(n, b)] ++ bty ty
+          bn n ty@(Unary b _ _) = [(n, b)] ++ bty ty
+
 passUniqueSymbols :: ([(StateMachine TaggedName, Gr EnterExitState Happening)], UnfilteredSymbolTable) ->
                         ([(StateMachine TaggedName, Gr EnterExitState Happening)], SymbolTable)
-passUniqueSymbols (sms, ust) = (sms, SymbolTable $ Map.map (fromJust . foldr1 simplifyFunc . mapJust) ust)
+passUniqueSymbols (sms, ust) = (sms, SymbolTable $ Map.map (fromJust . foldr1 simplifyFunc . mapJust) $ resolve ust)
 

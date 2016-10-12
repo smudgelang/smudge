@@ -3,3 +3,28 @@ Title: Exit functions are generated for terminal states.
 Smudge needs to determine that states are terminal so it can avoid
 generating code that's never called.
 
+If there is no any state, then if a state has no outbound edges,
+then it is terminal.  If there is an any state, then if the
+events handled by the any state in this state do not have outbound
+edges, then it is terminal.
+
+This can be solved:
+  * in the backends, by introspecting the graph, and testing for
+    the above conditions,
+  * in the graph, by factoring the any state into each state, and
+    removing the any state information,
+  * with a flag introduced by a transformation pass,
+  * in a helper function outside of all backends and passes.
+
+The downside of doing it the backends is that it needs to be done
+for each backend, which is ad hoc, error-prone, and results in
+duplicate code, so it's a bad long-term solution.
+
+The downside of doing it in the graph is that the generated code
+no longer can match the smudge code, and it will be more work.
+
+The downside of using a flag is that it complicates the model by
+adding metadata to states.
+
+The downside of a helper function is that it is not automatic,
+i.e., it does not force backends to handle it.

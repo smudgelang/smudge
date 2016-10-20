@@ -27,15 +27,16 @@ import Model (
   qName,
   )
 import qualified Model(Identifier(CookedId))
+import Semantics.Operation (handlers)
 import Semantics.Solver (Ty(..), Binding(..), SymbolTable, insertExternalSymbol, (!))
 import qualified Semantics.Solver as Solver(toList)
 import Trashcan.FilePath (relPath)
 import Unparsers.C89 (renderPretty)
 
-import Data.Graph.Inductive.Graph (labNodes, lab, out, suc, insEdges, nodes, delNodes)
-import Data.List (intercalate, (\\))
-import Data.Map (insertWith, empty, toList)
-import qualified Data.Map (null)
+import Data.Graph.Inductive.Graph (labNodes, labEdges, lab, out, suc, insEdges, nodes, delNodes)
+import Data.List (intercalate, nub, sort, (\\))
+import Data.Map (empty, toList)
+import qualified Data.Map (null, (!))
 import Data.Text (replace)
 import System.Console.GetOpt
 import System.FilePath (FilePath, dropExtension, takeDirectory, takeFileName, (<.>))
@@ -151,8 +152,8 @@ handleStateEventFunction sm@(StateMachineDeclarator smName) st h st' syms =
                           (Happening _ ses [])                        -> [apply_se se | se <- ses] ++ [call_exit, assign_state, call_enter]
                           (Happening _ ses fs) | elem NoTransition fs -> [apply_se se | se <- ses]
 
-handleEventFunction :: StateMachineDeclarator TaggedName -> Event TaggedName -> [State TaggedName] -> [State TaggedName] -> [State TaggedName] -> FunctionDefinition
-handleEventFunction (StateMachineDeclarator smName) e@(Event evName) ss anys unss =
+handleEventFunction :: StateMachineDeclarator TaggedName -> Event TaggedName -> [(State TaggedName, (State TaggedName, Event TaggedName))] -> [State TaggedName] -> FunctionDefinition
+handleEventFunction (StateMachineDeclarator smName) e@(Event evName) ss unss =
     makeFunction (fromList [B VOID]) [] f_name params
     (CompoundStatement
     LEFTCURLY
@@ -173,19 +174,20 @@ handleEventFunction (StateMachineDeclarator smName) e@(Event evName) ss anys uns
         initialize = (#:) (mangleQName $ nestCookedInScope (untag smName) "initialize") (:#)
         call_unhandled = (#:) (apply unhandled [event_ex]) (:#)
         call_initialize = (#:) (apply initialize []) (:#)
-        call_ev_in s n vs = (#:) (apply ((#:) (mangleQName $ nestCookedInScope (untag s) n) (:#)) vs) (:#)
-        cases = [((#:) (mangleTName s) (:#), [fromList [call_ev_in s evAlone [event_ex]]]) | (State s) <- ss]
-             ++ [((#:) (mangleTName s) (:#), [fromList [call_ev_in s "any" []]]) | (State s) <- anys]
+        call_ev_in s ev vs = (#:) (apply ((#:) (mangleQName $ nestCookedInScope (untag s) (mangleEv ev)) (:#)) vs) (:#)
+        esOf EventAny = []
+        esOf e' | e == e' = [(#:) event_var (:#)]
+        cases = [((#:) (mangleTName s) (:#), [fromList [call_ev_in s' ev (esOf ev)]]) | (State s, (State s', ev)) <- ss]
              ++ [((#:) (mangleTName s) (:#), [fromList [call_unhandled]]) | (State s) <- unss]
         defaults = [fromList [call_unhandled]]
 
-unhandledEventFunction :: Bool -> Bool -> Bool -> StateMachineDeclarator TaggedName -> Event TaggedName -> FunctionDefinition
-unhandledEventFunction debug any_handles anyany (StateMachineDeclarator smName) e@(Event evName) =
+unhandledEventFunction :: Bool -> [(State TaggedName, Event TaggedName)] -> StateMachineDeclarator TaggedName -> Event TaggedName -> FunctionDefinition
+unhandledEventFunction debug handler (StateMachineDeclarator smName) e@(Event evName) =
     makeFunction (fromList [A STATIC, B VOID]) [] f_name [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
                                                           (Just $ Left $ Declarator (Just $ fromList [POINTER Nothing]) $ IDirectDeclarator event_var)]
     (CompoundStatement
     LEFTCURLY
-        (if any_handles || anyany || not debug then Nothing else
+        (if not $ null handler || not debug then Nothing else
           (Just $ fromList [Declaration (fromList [C CONST, B CHAR]) 
                                         (Just $ fromList [InitDeclarator (Declarator (Just $ fromList [POINTER Nothing]) $ IDirectDeclarator name_var)
                                                           (Just $ Pair EQUAL $ AInitializer evname_e)])
@@ -206,12 +208,12 @@ unhandledEventFunction debug any_handles anyany (StateMachineDeclarator smName) 
         state_var = (#:) (mangleQName $ nestCookedInScope (untag smName) "state") (:#)
         call_sname_f = (#:) (apply sname_f [state_var]) (:#)
         call_assert_f = (#:) (apply assert_f (if debug then [assert_s, call_sname_f, name_ex] else [])) (:#)
-        handle_f e = (#:) (mangleQName $ nestCookedInScope (sName smName StateAny) e) (:#)
-        any_f = handle_f evAlone
-        any_any_f = handle_f "any"
-        call_any_f = (#:) (apply any_f [(#:) event_var (:#)]) (:#)
-        call_any_any_f = (#:) (apply any_any_f []) (:#)
-        call_handler_f = if any_handles then call_any_f else if anyany then call_any_any_f else call_assert_f
+        handle_f s e = (#:) (mangleQName $ nestCookedInScope (sName smName s) (mangleEv e)) (:#)
+        esOf EventAny = []
+        esOf e' | e == e' = [(#:) event_var (:#)]
+        call_handler_f = case handler of
+                         [(s, e)] -> (#:) (apply (handle_f s e) (esOf e)) (:#)
+                         [] -> call_assert_f
 
 stateNameFunction :: StateMachineDeclarator TaggedName -> [State TaggedName] -> FunctionDefinition
 stateNameFunction (StateMachineDeclarator smName) ss =
@@ -389,12 +391,10 @@ instance Backend CStaticOption where
                                          ++ [writeTranslationUnit (renderHdr ext [headerName os]) (extHdrName os) | not $ null tue]
         where src = fromList $ concat tus
               ext = fromList tue
-              hdr = fromList $ concat tuh
-              tuh = [[ExternalDeclaration $ Right $ eventStruct sm e
-                         | (e, _) <- toList $ events g]
-                     | (sm, g) <- gs'']
-                    ++ [[ExternalDeclaration $ Right $ makeFunctionDeclaration name ftype | (name, ftype@(Unary Resolved _ _)) <- Solver.toList syms]]
-                    ++ [[ExternalDeclaration $ Right $ makeFunctionDeclaration name ftype | (name, ftype) <- externs]]
+              hdr = fromList tuh
+              tuh = [ExternalDeclaration $ Right $ eventStruct sm e | (sm, g) <- gs'', e <- events g]
+                    ++ [ExternalDeclaration $ Right $ makeFunctionDeclaration name ftype | (name, ftype@(Unary Resolved _ _)) <- Solver.toList syms]
+                    ++ [ExternalDeclaration $ Right $ makeFunctionDeclaration name ftype | (name, ftype) <- externs]
               tue = [ExternalDeclaration $ Right $ makeFunctionDeclaration name ftype | (name, ftype@(Unary External _ _)) <- Solver.toList syms]
               tus = [[ExternalDeclaration $ Right $ stateEnum sm $ states g]
                      ++ [ExternalDeclaration $ Right $ stateVarDeclaration sm $ initial g]
@@ -405,10 +405,9 @@ instance Backend CStaticOption where
                      ++ [ExternalDeclaration $ Left $ currentStateNameFunction debug sm]
                      ++ [ExternalDeclaration $ Left $ transitionFunction sm EventExit
                          [st | (_, EnterExitState {st, ex = (_:_)}) <- labNodes g] | (_, EnterExitState {st = StateAny}) <- labNodes g]
-                     ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug (any_handles e g) (anyany g) sm e | (e, _) <- toList $ events g]
+                     ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug (any_handler e g) sm e | e <- events g]
                      ++ [ExternalDeclaration $ Left $ initializeFunction sm $ initial g]
-                     ++ [ExternalDeclaration $ Left $ handleEventFunction sm e ss (anys e g \\ ss) ((states g \\ ss) \\ (anys e g))
-                         | (e, ss) <- toList $ events g]
+                     ++ [ExternalDeclaration $ Left $ handleEventFunction sm e (s_handlers e g) (unhandled e g) | e <- events g]
                      ++ [ExternalDeclaration $ Left $ handleStateEventFunction sm s h s' syms
                          | (n, EnterExitState {st = s}) <- labNodes g, (_, n', h) <- out g n, Just EnterExitState {st = s'} <- [lab g n'], case s of State _ -> True; StateAny -> True; _ -> False, case s' of State _ -> True; StateAny -> True; _ -> False]
                      | (sm, g) <- gs'']
@@ -424,14 +423,10 @@ instance Backend CStaticOption where
               externs = [((TagFunction, nestCookedInScope (untag smName) "Current_state_name"), Unary External Void (Ty External (TagBuiltin, QualifiedName [Model.CookedId "const char"]))) | ((StateMachineDeclarator smName), _) <- gs'']
               initial g = head [st ese | (n, EnterExitState {st = StateEntry}) <- labNodes g, n' <- suc g n, (Just ese) <- [lab g n']]
               states g = [st ees | (_, ees) <- labNodes g]
-              anys e g = if any_handles e g then [] else states_handling EventAny g
-              any_handles e g = (not $ null [st | st@StateAny <- states_handling e g])
-              anyany g = any_handles EventAny g
-              states_handling e g = [st ees | (n, ees) <- labNodes g, (_, _, Happening {event}) <- out g n, event == e]
-              events g = foldl insert_event empty [(h, st ees) | (n, ees) <- labNodes g, (_, _, h) <- out g n]
-              insert_event m ((Happening e@(Event _) _ _), s@(State _)) = insertWith (flip (++)) e [s] m
-              insert_event m ((Happening e@(Event _) _ _), s@StateAny)  = insertWith (flip (++)) e [s] m
-              insert_event m                                          _ = m
+              s_handlers e g = [(s, h) | (s, Just h@(State _, _)) <- toList (handlers e g)]
+              unhandled e g = [s | (s, Just (StateAny, _)) <- toList (handlers e g)] ++ [s | (s, Nothing) <- toList (handlers e g)]
+              any_handler e g = nub [h | (_, Just h@(StateAny, _)) <- toList (handlers e g)]
+              events g = nub $ sort [e | (_, _, Happening {event=e@(Event _)}) <- labEdges g]
               edgeLabel (_, _, l) = l
               writeTranslationUnit render fp = (writeFile fp (render fp)) >> (return fp)
               renderHdr u includes fp = hdrLeader includes fp ++ renderPretty u ++ hdrTrailer

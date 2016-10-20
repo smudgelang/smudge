@@ -54,7 +54,7 @@ Executable smudge
   Other-modules:     Backends.Backend Backends.CStatic Backends.GraphViz
                      Grammars.C89 Grammars.Smudge
                      Semantics Semantics.Semantic Semantics.NoTransientStateCycles Semantics.UniqueStateNames
-                     Model Semantics.Solver
+                     Model Semantics.Solver Semantics.Operation
                      Trashcan.FilePath Trashcan.Graph
                      Parsers.Smudge Unparsers.C89
   

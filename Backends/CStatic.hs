@@ -202,7 +202,7 @@ unhandledEventFunction debug handler (StateMachineDeclarator smName) e@(Event ev
                                                           (Just $ Left $ Declarator (Just $ fromList [POINTER Nothing]) $ IDirectDeclarator event_var)]
     (CompoundStatement
     LEFTCURLY
-        (if not $ null handler || not debug then Nothing else
+        (if (not $ null handler) || not debug then Nothing else
           (Just $ fromList [Declaration (fromList [C CONST, B CHAR]) 
                                         (Just $ fromList [InitDeclarator (Declarator (Just $ fromList [POINTER Nothing]) $ IDirectDeclarator name_var)
                                                           (Just $ Pair EQUAL $ AInitializer evname_e)])

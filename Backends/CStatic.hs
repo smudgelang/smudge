@@ -52,7 +52,10 @@ import System.FilePath (
   (<.>)
   )
 
-data CStaticOption = OutFile FilePath | Header FilePath | NoDebug
+data CStaticOption = OutFile FilePath
+                   | Header FilePath
+                   | ExtFile FilePath
+                   | NoDebug
     deriving (Show, Eq)
 
 apply :: PostfixExpression -> [AssignmentExpression] -> PostfixExpression
@@ -395,6 +398,8 @@ instance Backend CStaticOption where
                  "The name of the target file if not derived from source file.",
                 Option [] ["h"] (ReqArg Header "FILE")
                  "The name of the target header file if not derived from source file.",
+                Option [] ["ext_h"] (ReqArg ExtFile "FILE")
+                 "The name of the target ext header file if not derived from source file.",
                 Option [] ["no-debug"] (NoArg NoDebug)
                  "Don't generate debugging information"])
     generate os gswust inputName = sequence $ [writeTranslationUnit (renderHdr hdr []) (headerName os),
@@ -453,7 +458,9 @@ instance Backend CStaticOption where
               headerFileName ((Header f):_) = f
               headerFileName xs = getFirstOrDefault headerFileName ((takeBaseName inputName) <.> "h") xs
               headerName = makeFileName headerFileName
-              extHdrName xs = getFirstOrDefault extHdrName (((dropExtension inputName) ++ "_ext") <.> "h") xs
+              extHdrFileName ((ExtFile f):_) = f
+              extHdrFileName xs = getFirstOrDefault extHdrFileName (((takeBaseName inputName) ++ "_ext") <.> "h") xs
+              extHdrName = makeFileName extHdrFileName
               inputPath = dropFileName inputName
               doDebug ((NoDebug):_) = False
               doDebug xs = getFirstOrDefault doDebug True xs
@@ -462,7 +469,6 @@ instance Backend CStaticOption where
                 do
                   relativeInclude <- relPath (takeDirectory $ outputName os) include
                   return $ concat ["#include \"", relativeInclude, "\"\n"]
-                  
               srcLeader = genIncludes
               srcTrailer = ""
               reinclusionName fp = concat ["__", map (\a -> (if a == '.' then '_' else a)) (takeFileName fp), "__"]
@@ -471,6 +477,5 @@ instance Backend CStaticOption where
                   gennedIncludes <- genIncludes includes
                   return $ concat ["#ifndef ", reinclusionName fp, "\n", "#define ", reinclusionName fp, "\n",
                                    gennedIncludes]
-
               hdrTrailer = "#endif\n"
               debug = doDebug os

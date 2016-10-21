@@ -1,0 +1,19 @@
+Title: Fix output path messiness.
+
+1)
+Given a Smudge file that's in ./A/B.smudge
+
+$ smudge --c-h=c.h ./A/B.smudge
+
+will generate "./A/c.h" instead of the expected "./c.h".
+
+2)
+$ smudge --c-ext_h=$HOME/c.h ./A/B.smudge
+
+will generate code in ~/c.h that incorrectly includes "B.h" because
+B.c and B.h are in the same directory.
+
+3)
+$ smudge --outdir=P/Q --c-h=C.h ./A/B.smudge
+
+will generate correct code, despite what's done in case #1 above.

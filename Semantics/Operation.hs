@@ -1,6 +1,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 module Semantics.Operation (
     handlers,
+    finalStates,
 ) where
 
 import Grammars.Smudge (
@@ -10,17 +11,24 @@ import Grammars.Smudge (
 import Model (
   EnterExitState(..),
   Happening(..),
+  HappeningFlag(..),
   TaggedName,
   )
 
 import Data.Graph.Inductive.Graph (
+  Node,
   labNodes,
+  labEdges,
+  nodes,
   out,
   )
 import Data.Graph.Inductive.PatriciaTree (Gr)
-import Data.Map (Map, fromList)
+import Data.List (nub, (\\))
+import Data.Map (Map, fromList, toList, (!))
+import qualified Data.Map as Map(map)
+import Control.Monad (guard)
 
--- The `handlers` function enforces the precedence order for events:
+-- The `precedence` function enforces the precedence order for events:
 -- 
 -- state | event
 -- =============
@@ -28,23 +36,51 @@ import Data.Map (Map, fromList)
 -- any   | named
 -- named | any
 -- any   | any
+--
+-- This could be done with listToMaybe, but it's less explicit.
+precedence :: [a] -> [a] -> [a] -> [a] -> Maybe a
+precedence [namednamed] _          _          _        = Just namednamed
+precedence _            [anynamed] _          _        = Just anynamed
+precedence _            _          [namedany] _        = Just namedany
+precedence _            _          _          [anyany] = Just anyany
+precedence _            _          _          _        = Nothing
 
 handlers :: Event TaggedName -> Gr EnterExitState Happening -> Map (State TaggedName) (Maybe (State TaggedName, Event TaggedName))
-handlers e g = fromList $
-    do  (_, EnterExitState {st=st@(State _)}) <- states
-        case (filter ((== st) . fst) named_named, any_named, filter ((== st) . fst) named_any, any_any) of
-            ([h], _, _, _) -> return (st, Just h)
-            (_, [h], _, _) -> return (st, Just h)
-            (_, _, [h], _) -> return (st, Just h)
-            (_, _, _, [h]) -> return (st, Just h)
-            (_, _, _, _  ) -> return (st, Nothing)
-    where
-        states = labNodes g
-        all_handlers e = [(st ees, e) | (n, ees) <- states, (_, _, h) <- out g n, event h == e]
+handlers e g = allHandlers g ! e
 
-        all_evt_handlers = all_handlers e
-        all_any_handlers = all_handlers EventAny
-        named_named = [h | h@(State _, _) <- all_evt_handlers]
-        any_named = [h | h@(StateAny, _) <- all_evt_handlers]
-        named_any = [h | h@(State _, _) <- all_any_handlers]
-        any_any = [h | h@(StateAny, _) <- all_any_handlers]
+allHandlers :: Gr EnterExitState Happening -> Map (Event TaggedName) (Map (State TaggedName) (Maybe (State TaggedName, Event TaggedName)))
+allHandlers g = fromList $
+    do  e <- nub $ map (event . thrd) events
+        let all_evt_handlers = all_handlers e
+        let all_any_handlers = all_handlers EventAny
+        let named_named = [h | h@(State _, _) <- all_evt_handlers]
+        let any_named = [h | h@(StateAny, _) <- all_evt_handlers]
+        let named_any = [h | h@(State _, _) <- all_any_handlers]
+        let any_any = [h | h@(StateAny, _) <- all_any_handlers]
+        return $ (,) e $ fromList $
+            do  (_, EnterExitState {st=st@(State _)}) <- states
+                let st_named = filter ((== st) . fst) named_named
+                let st_any = filter ((== st) . fst) named_any
+                return (st, precedence st_named any_named st_any any_any)
+    where
+        thrd (_, _, t) = t
+        states = labNodes g
+        events = labEdges g
+        all_handlers e =
+            do  (n, ees) <- states
+                (_, _, h) <- out g n
+                guard $ event h == e
+                return (st ees, e)
+
+finalStates :: Gr EnterExitState Happening -> [Node]
+finalStates g = nodes g \\
+    do  (n, EnterExitState {st=st@(State _)}) <- states
+        (Event _, Just (st', ev')) <- toList $ Map.map (! st) ahs
+        (m, EnterExitState {st=st''}) <- states
+        guard $ st' == st''
+        (_, _, Happening {flags}) <- out g m
+        guard $ not $ elem NoTransition flags
+        return n
+    where
+        ahs = allHandlers g
+        states = labNodes g

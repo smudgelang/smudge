@@ -27,7 +27,7 @@ import Model (
   qName,
   )
 import qualified Model(Identifier(CookedId))
-import Semantics.Operation (handlers)
+import Semantics.Operation (handlers, finalStates)
 import Semantics.Solver (Ty(..), Binding(..), SymbolTable, insertExternalSymbol, (!))
 import qualified Semantics.Solver as Solver(toList)
 import Trashcan.FilePath (relPath)
@@ -404,7 +404,7 @@ instance Backend CStaticOption where
                      ++ (if debug then [ExternalDeclaration $ Left $ stateNameFunction sm $ states g] else [])
                      ++ [ExternalDeclaration $ Left $ currentStateNameFunction debug sm]
                      ++ [ExternalDeclaration $ Left $ transitionFunction sm EventExit
-                         [st | (_, EnterExitState {st, ex = (_:_)}) <- labNodes g] | (_, EnterExitState {st = StateAny}) <- labNodes g]
+                         [st | (n, EnterExitState {st, ex = (_:_)}) <- labNodes g, n `notElem` finalStates g] | (_, EnterExitState {st = StateAny}) <- labNodes g]
                      ++ [ExternalDeclaration $ Left $ unhandledEventFunction debug (any_handler e g) sm e | e <- events g]
                      ++ [ExternalDeclaration $ Left $ initializeFunction sm $ initial g]
                      ++ [ExternalDeclaration $ Left $ handleEventFunction sm e (s_handlers e g) (unhandled e g) | e <- events g]
@@ -415,7 +415,7 @@ instance Backend CStaticOption where
                                      | (n, EnterExitState {en, st = State _}) <- labNodes $ delNodes [n | n <- nodes g, (_, _, Happening EventEnter _ _) <- out g n] g] g)
                       | (sm, g) <- gs']
               gs'  = [(sm, insEdges [(n, n, Happening EventExit ex [NoTransition])
-                                     | (n, EnterExitState {st = State _, ex}) <- labNodes $ delNodes [n | n <- nodes g, (_, _, Happening EventExit _ _) <- out g n] g] g)
+                                     | (n, EnterExitState {st = State _, ex}) <- labNodes $ delNodes (finalStates g ++ [n | n <- nodes g, (_, _, Happening EventExit _ _) <- out g n]) g] g)
                       | (sm, g) <- gs]
               gs = [(smd, g) | (Annotated _ smd, g) <- fst gswust]
               syms :: SymbolTable

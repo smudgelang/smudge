@@ -1,0 +1,93 @@
+halt {
+  * halt [
+        halt -- // halts here
+    ] (@forceExit),
+
+    _ [
+        halt --> halt,
+        _ --> halt
+    ] (@forceExit)
+}
+
+anynamedhalt {
+  * anynamedhalt [
+    ] (@forceExit),
+
+    _ [
+        anynamedhalt -- // halts here
+    ] (@forceExit)
+}
+
+namedanyhalt {
+  * namedanyhalt [
+        _ -- // halts here
+    ] (@forceExit),
+
+    unused [
+        namedanyhalt --> namedanyhalt
+    ] (@forceExit),
+
+    _ [
+        _ --> namedanyhalt
+    ] (@forceExit)
+}
+
+anyanyhalt {
+  * anyanyhalt [
+    ] (@forceExit),
+
+    unused [
+        anyanyhalt --> anyanyhalt
+    ] (@forceExit),
+
+    _ [
+        _ -- // halts here
+    ] (@forceExit)
+}
+
+nohalt {
+  * nohalt [
+        nohalt --> nohalt // loops here
+    ] (@forceExit),
+
+    _ [
+        nohalt --,
+        _ --
+    ] (@forceExit)
+}
+
+anynamednohalt {
+  * anynamednohalt [
+    ] (@forceExit),
+
+    _ [
+        anynamednohalt --> anynamednohalt // loops here
+    ] (@forceExit)
+}
+
+namedanynohalt {
+  * namedanynohalt [
+        _ --> namedanynohalt // loops here
+    ] (@forceExit),
+
+    unused [
+        namedanynohalt --
+    ] (@forceExit),
+
+    _ [
+        _ --
+    ] (@forceExit)
+}
+
+anyanynohalt {
+  * anyanynohalt [
+    ] (@forceExit),
+
+    unused [
+        anyanynohalt --
+    ] (@forceExit),
+
+    _ [
+        _ --> anyanynohalt // loops here
+    ] (@forceExit)
+}

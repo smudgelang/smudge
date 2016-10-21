@@ -6,7 +6,40 @@ code and documentation for them. Example state machines can be found
 in the examples directory. In particular, first.smudge has extensive
 comments to describe what it's doing.
 
+There's also a tutorial called tutorial.pdf.
+
 -- Revision History --
+v0.3: This release is much polished compared to 0.2, and suitable for
+      even broader use.
+
+      Tickets closed because they were in the roadmap:
+
+      14: Any State + Any Event = Maybe Semantic Pass Failure.
+      17: Exit functions are generated for terminal states.
+      27: Better error messages
+      32: Transient state @function prototypes
+      33: _ [ _ -- ]
+      34: Clean up release target.
+
+      Tickets closed because we felt like it:
+
+      18: _ event in _ state.
+      31: Expose a way to get internal state?
+      35: Separate object directories
+      36: Option to disable no-transition events in dot output
+      41: Debug code takes up global memory.
+      50: --output-path=PATH
+
+      Tickets deferred to 0.4:
+
+      15: Typed function calls not implemented.
+
+v0.2.1: Point release, fix minor niggles:
+
+      Tickets:
+
+      36: Option to disable no-transition events in dot output
+      31: Expose a way to get internal state? (partial work done)
 
 v0.2: Broader release for some limited use. Generates working C code
       for simple state machines.

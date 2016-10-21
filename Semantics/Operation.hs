@@ -75,7 +75,8 @@ allHandlers g = fromList $
 finalStates :: Gr EnterExitState Happening -> [Node]
 finalStates g = nodes g \\
     do  (n, EnterExitState {st=st@(State _)}) <- states
-        (Event _, Just (st', ev')) <- toList $ Map.map (! st) ahs
+        (e, Just (st', ev')) <- toList $ Map.map (! st) ahs
+        guard $ canTransition e
         (m, EnterExitState {st=st''}) <- states
         guard $ st' == st''
         (_, _, Happening {flags}) <- out g m
@@ -84,3 +85,6 @@ finalStates g = nodes g \\
     where
         ahs = allHandlers g
         states = labNodes g
+        canTransition EventEnter = True
+        canTransition (Event _) = True
+        canTransition _ = False

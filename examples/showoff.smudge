@@ -8,6 +8,7 @@
     [
         _ -(SM3."External")-> B
     ],
+    D --> A,
     B (@enterB)
     [
         "Whee" --> C,
@@ -17,7 +18,8 @@
   * C
     [
         Beedoo --> A,
-        GoB -(@gob)-> B
+        GoB -(@gob)-> B,
+        something --> D
     ]
 }
 

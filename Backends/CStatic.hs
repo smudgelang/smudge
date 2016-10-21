@@ -33,12 +33,14 @@ import qualified Semantics.Solver as Solver(toList)
 import Trashcan.FilePath (relPath)
 import Unparsers.C89 (renderPretty)
 
+import Control.Monad (liftM)
 import Data.Graph.Inductive.Graph (labNodes, labEdges, lab, out, suc, insEdges, nodes, delNodes)
 import Data.List (intercalate, nub, sort, (\\))
 import Data.Map (empty, toList)
 import qualified Data.Map (null, (!))
 import Data.Text (replace)
 import System.Console.GetOpt
+import System.IO.Unsafe (unsafePerformIO)
 import System.FilePath (
   FilePath,
   dropExtension,
@@ -437,9 +439,10 @@ instance Backend CStaticOption where
               any_handler e g = nub [h | (_, Just h@(StateAny, _)) <- toList (handlers e g)]
               events g = nub $ sort [e | (_, _, Happening {event=e@(Event _)}) <- labEdges g]
               edgeLabel (_, _, l) = l
-              writeTranslationUnit render fp = (writeFile fp (render fp)) >> (return fp)
-              renderHdr u includes fp = hdrLeader includes fp ++ renderPretty u ++ hdrTrailer
-              renderSrc u includes _ = srcLeader includes ++ renderPretty u ++ srcTrailer
+              inc ^++ src = (liftM (++src)) inc
+              writeTranslationUnit render fp = (render fp) >>= (writeFile fp) >> (return fp)
+              renderHdr u includes fp = hdrLeader includes fp ^++ (renderPretty u ++ hdrTrailer)
+              renderSrc u includes _ = srcLeader includes ^++ (renderPretty u ++ srcTrailer)
               getFirstOrDefault :: ([a] -> b) -> b -> [a] -> b
               getFirstOrDefault _ d     [] = d
               getFirstOrDefault f _ (x:xs) = f xs
@@ -451,15 +454,23 @@ instance Backend CStaticOption where
               headerFileName xs = getFirstOrDefault headerFileName ((takeBaseName inputName) <.> "h") xs
               headerName = makeFileName headerFileName
               extHdrName xs = getFirstOrDefault extHdrName (((dropExtension inputName) ++ "_ext") <.> "h") xs
-              headerIncludePath = relPath (takeDirectory $ outputName os) (headerName os)
               inputPath = dropFileName inputName
               doDebug ((NoDebug):_) = False
               doDebug xs = getFirstOrDefault doDebug True xs
-              mkInclude f = concat ["#include \"", f, "\"\n"]
-              genIncludes includes = concat $ map mkInclude includes
+              genIncludes includes = liftM concat $ sequence $ map mkInclude includes
+              mkInclude include =
+                do
+                  relativeInclude <- relPath (takeDirectory $ outputName os) include
+                  return $ concat ["#include \"", relativeInclude, "\"\n"]
+                  
               srcLeader = genIncludes
               srcTrailer = ""
               reinclusionName fp = concat ["__", map (\a -> (if a == '.' then '_' else a)) (takeFileName fp), "__"]
-              hdrLeader includes fp = concat ["#ifndef ", reinclusionName fp, "\n", "#define ", reinclusionName fp, "\n", genIncludes includes]
+              hdrLeader includes fp =
+                do
+                  gennedIncludes <- genIncludes includes
+                  return $ concat ["#ifndef ", reinclusionName fp, "\n", "#define ", reinclusionName fp, "\n",
+                                   gennedIncludes]
+
               hdrTrailer = "#endif\n"
               debug = doDebug os

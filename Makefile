@@ -49,10 +49,7 @@ release: build doc
 	$(MAKE) -C examples clean
 	cp -r examples dist/release
 	./clean-tutorial.sh
-	cp -r docs/tutorial dist/release
-    # There should be a way to to just copy the subdirectories, not the files.
-	rm dist/release/tutorial/Makefile dist/release/tutorial/tutorial.rst
-	cp docs/tutorial/tutorial.pdf dist/release/tutorial
+	cp -r dist/doc dist/release
 	cp README dist/release
 	./tar-up-release.sh $(SMUDGE_TARGET) $(PLATFORM)
 

@@ -1,24 +1,20 @@
-SMUDGE ?= smudge
-SMUDGE_OPTIONS=--c-no-debug --dot-fmt=Svg
+.PHONY: all clean
 
-CC=gcc
-CFLAGS=-Wall -Wextra -Wno-unused-parameter
+DIST_PATH=../../dist/doc
 
-.PHONY: clean
+all: $(DIST_PATH)/tutorial.pdf
 
-all: main
+$(DIST_PATH)/tutorial.pdf: tutorial.rst $(DIST_PATH)/1/tutorial.png
+	rst2pdf $<
 
-main: main.c turnstyle.o
-	$(CC) -o $@ $(CFLAGS) $^
+$(DIST_PATH)1/tutorial.png: $(DIST_PATH)/1/Makefile
+	cd $(DIST_PATH)
+	cd 1 && $(MAKE)
 
-%.o: %.c
-	$(CC) -c -o $@ $(CFLAGS) $<
-
-%.c: %.smudge
-	$(SMUDGE) $(SMUDGE_OPTIONS) $<
-
-%.svg: %.smudge
-	$(SMUDGE) $(SMUDGE_OPTIONS) $<
+$(DIST_PATH)/1/Makefile:
+	mkdir $(DIST_PATH)
+	find . -maxdepth 1 -type d | xargs cp -r $(DIST_PATH)
 
 clean:
-	rm -f *.o main turnstyle.c turnstyle.h *_ext.h *.svg
+	rm -rf $(DIST_PATH)
+	rm -f *.pdf

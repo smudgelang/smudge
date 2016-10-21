@@ -39,7 +39,16 @@ import Data.Map (empty, toList)
 import qualified Data.Map (null, (!))
 import Data.Text (replace)
 import System.Console.GetOpt
-import System.FilePath (FilePath, dropExtension, takeDirectory, takeFileName, (<.>))
+import System.FilePath (
+  FilePath,
+  dropExtension,
+  dropFileName,
+  takeDirectory,
+  takeBaseName,
+  joinPath,
+  takeFileName,
+  (<.>)
+  )
 
 data CStaticOption = OutFile FilePath | Header FilePath | NoDebug
     deriving (Show, Eq)
@@ -434,12 +443,16 @@ instance Backend CStaticOption where
               getFirstOrDefault :: ([a] -> b) -> b -> [a] -> b
               getFirstOrDefault _ d     [] = d
               getFirstOrDefault f _ (x:xs) = f xs
-              outputName ((OutFile f):_) = f
-              outputName xs = getFirstOrDefault outputName ((dropExtension inputName) <.> "c") xs
-              headerName ((Header f):_) = f
-              headerName xs = getFirstOrDefault headerName ((dropExtension inputName) <.> "h") xs
+              makeFileName n xs = joinPath [inputPath, n xs]
+              outputFileName ((OutFile f):_) = f
+              outputFileName xs = getFirstOrDefault outputFileName ((takeBaseName inputName) <.> "c") xs
+              outputName = makeFileName outputFileName
+              headerFileName ((Header f):_) = f
+              headerFileName xs = getFirstOrDefault headerFileName ((takeBaseName inputName) <.> "h") xs
+              headerName = makeFileName headerFileName
               extHdrName xs = getFirstOrDefault extHdrName (((dropExtension inputName) ++ "_ext") <.> "h") xs
               headerIncludePath = relPath (takeDirectory $ outputName os) (headerName os)
+              inputPath = dropFileName inputName
               doDebug ((NoDebug):_) = False
               doDebug xs = getFirstOrDefault doDebug True xs
               mkInclude f = concat ["#include \"", f, "\"\n"]

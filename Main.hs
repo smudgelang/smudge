@@ -24,7 +24,7 @@ import Distribution.Package (packageVersion, packageName, PackageName(..))
 import Text.ParserCombinators.Parsec (parse, ParseError)
 import System.Console.GetOpt (usageInfo, getOpt, OptDescr(..), ArgDescr(..), ArgOrder(..))
 import System.Environment (getArgs)
-import System.FilePath (joinPath)
+import System.FilePath (joinPath, normalise)
 import System.Exit (exitFailure)
 import Data.Version (showVersion)
 import Data.Monoid (mempty)
@@ -122,7 +122,7 @@ main = do
             | elem (SystemOption Version) os -> printVersion
 
         (os, (fileName:as),  _) -> processFile fileName >>= make_output
-                                   (joinPath [(prefix os), fileName]) os
+                                   (normalise $ joinPath [(prefix os), fileName]) os
 
         (_,              _,  _) -> printUsage
 

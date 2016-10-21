@@ -48,6 +48,7 @@ import System.FilePath (
   takeDirectory,
   takeBaseName,
   joinPath,
+  normalise,
   takeFileName,
   (<.>)
   )
@@ -451,7 +452,7 @@ instance Backend CStaticOption where
               getFirstOrDefault :: ([a] -> b) -> b -> [a] -> b
               getFirstOrDefault _ d     [] = d
               getFirstOrDefault f _ (x:xs) = f xs
-              makeFileName n xs = joinPath [inputPath, n xs]
+              makeFileName n xs = normalise $ joinPath [inputPath, n xs]
               outputFileName ((OutFile f):_) = f
               outputFileName xs = getFirstOrDefault outputFileName ((takeBaseName inputName) <.> "c") xs
               outputName = makeFileName outputFileName

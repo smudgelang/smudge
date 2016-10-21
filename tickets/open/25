@@ -2,3 +2,10 @@ Title: Resolve conflict between QualifiedName [] and QualifiedName [""]
 
 Technically these both translate to "" when cooked and served, which is
 a possible source of bugs.
+
+After auditing the code, the potential for this bug to occur in smudge
+source is non-existent as there is no way to introduce empty names.  Since
+resolving the []/Void overlap in the type system changes, this issue can
+now only manifest due to errors made actually constructing a QualifiedName
+or in calling insertExternalSymbol.  It would be good to knit up those two
+leaks anyhow, though.

@@ -1,6 +1,11 @@
 Title: A single state can't handle an event two different ways.
 
+If you redeclare an event handler within a state, Smudge doesn't complain.
+
 Smudge is supposed to produce deterministic state machines, but accepts this
 input, which would be nondeterministic (really, it just doesn't compile):
 
 sm { *st [ ev --, ev --> st ] }
+
+Smudge doesn't give an error for this, and it could be caught in a semantic
+pass check.

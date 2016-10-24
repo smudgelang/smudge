@@ -1,0 +1,13 @@
+Title: Comment correlation
+
+Figure out a way to propagate comments from smudge code into generated code.
+
+e.g.
+
+Comments before/after the name of a state machine would go at the
+beginning of the block that defines the state machine in the generated
+output.
+
+Comments with @functions would go in the _ext.h where the @function's
+prototype is, or the call site.
+

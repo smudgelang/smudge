@@ -1,0 +1,4 @@
+Title: Parallel State Machines
+
+Run two instances of the same state machine, in lockstep, maybe on two
+separate processors. The design could use vector clocks.

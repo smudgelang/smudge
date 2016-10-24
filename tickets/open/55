@@ -1,0 +1,25 @@
+Title: Interactive mode
+
+Monkey patching smudgles! Also lets you send events in a repl.
+
+Example session:
+
+$ smudge --interactive
+> SM = { *A [ x --> B ], B [ y --> A ] }
+SM
+> SM.y
+SM A --> B
+> SM{B} = [ x --, y -(@foo)-> A ]
+SM
+> SM.x
+SM B --
+> SM.y
+@foo
+SM B --> A
+> SM{B}
+[x --, y -(@foo)-> A]
+> SM{B}[x] = -(@bar)-
+SM
+> SM
+{ -> *A [ x --> B ], B [ x -(@bar)-, y -(@foo)-> A] }
+> 

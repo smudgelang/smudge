@@ -1,0 +1,10 @@
+Title: Unit tests
+
+In order to support a unit test framework, Smudge should generate a
+file with all the stubs (_stubs.c) for the _ext.h file. It should also
+generate a _main.c that exercises the state machine.
+
+Outside Smudge, we can use ctypes in Python to hook this in to a test
+harness. This isn't strictly Smudge effort, but may get wrapped in
+with it.
+

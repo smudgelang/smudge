@@ -38,7 +38,7 @@ state machine that's in *unlocked*.
 :: 
 
     Caveat!
-    Smudge version 0.2 is a work in progress. The next section will assume
+    Smudge version 0.3 is a work in progress. The next section will assume
     that smudge is run with the --c-no-debug flag because that's what
     works without modifications right now.
 
@@ -99,7 +99,7 @@ You may have noticed that these side effect and event trigger
 functions take pointers to arguments whose types are left incomplete
 in turnstyle.h. Smudge won't ever put anything in these payloads, but
 you can. Let's say that you want to pay attention to who's going
-through your turnstyle and play a nice customized greeting to them
+through your turnstyle and play a nice customized greeting for them
 when they pass. Example 3 doesn't change the Smudge code at all, but
 adds some code to main.c to do just that.
 

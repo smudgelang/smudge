@@ -448,7 +448,7 @@ instance Backend CStaticOption where
               inc ^++ src = (liftM (++src)) inc
               writeTranslationUnit render fp = (render fp) >>= (writeFile fp) >> (return fp)
               renderHdr u includes fp = hdrLeader includes fp ^++ (renderPretty u ++ hdrTrailer)
-              renderSrc u includes _ = srcLeader includes ^++ (renderPretty u ++ srcTrailer)
+              renderSrc u includes fp = srcLeader includes fp ^++ (renderPretty u ++ srcTrailer)
               getFirstOrDefault :: ([a] -> b) -> b -> [a] -> b
               getFirstOrDefault _ d     [] = d
               getFirstOrDefault f _ (x:xs) = f xs
@@ -465,17 +465,17 @@ instance Backend CStaticOption where
               inputPath = dropFileName inputName
               doDebug ((NoDebug):_) = False
               doDebug xs = getFirstOrDefault doDebug True xs
-              genIncludes includes = liftM concat $ sequence $ map mkInclude includes
-              mkInclude include =
+              genIncludes includes includer = liftM concat $ sequence $ map (mkInclude includer) includes
+              mkInclude includer include =
                 do
-                  relativeInclude <- relPath (takeDirectory $ outputName os) include
+                  relativeInclude <- relPath (takeDirectory includer) include
                   return $ concat ["#include \"", relativeInclude, "\"\n"]
               srcLeader = genIncludes
               srcTrailer = ""
               reinclusionName fp = concat ["__", map (\a -> (if a == '.' then '_' else a)) (takeFileName fp), "__"]
               hdrLeader includes fp =
                 do
-                  gennedIncludes <- genIncludes includes
+                  gennedIncludes <- genIncludes includes fp
                   return $ concat ["#ifndef ", reinclusionName fp, "\n", "#define ", reinclusionName fp, "\n",
                                    gennedIncludes]
               hdrTrailer = "#endif\n"

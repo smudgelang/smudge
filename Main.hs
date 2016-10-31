@@ -24,7 +24,7 @@ import Distribution.Package (packageVersion, packageName, PackageName(..))
 import Text.ParserCombinators.Parsec (parse, ParseError)
 import System.Console.GetOpt (usageInfo, getOpt, OptDescr(..), ArgDescr(..), ArgOrder(..))
 import System.Environment (getArgs)
-import System.FilePath (joinPath, normalise)
+import System.FilePath (joinPath, takeFileName, dropFileName, normalise)
 import System.Exit (exitFailure)
 import Data.Version (showVersion)
 import Data.Monoid (mempty)
@@ -121,12 +121,13 @@ main = do
             | elem (SystemOption Help) os -> printUsage
             | elem (SystemOption Version) os -> printVersion
 
-        (os, (fileName:as),  _) -> processFile fileName >>= make_output
-                                   (normalise $ joinPath [(prefix os), fileName]) os
+        (os, (fileName:as),  _) ->
+            let outputTarget = normalise $ joinPath [(prefix os), takeFileName fileName]
+                prefix [] = dropFileName fileName
+                prefix ((SystemOption (OutDir p)):_) = p
+                prefix (_:t) = prefix t
+            in processFile fileName >>= make_output outputTarget os
 
         (_,              _,  _) -> printUsage
 
     where
-      prefix [] = "."
-      prefix ((SystemOption (OutDir p)):_) = p
-      prefix (_:t) = prefix t

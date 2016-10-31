@@ -44,10 +44,7 @@ import System.IO.Unsafe (unsafePerformIO)
 import System.FilePath (
   FilePath,
   dropExtension,
-  dropFileName,
   takeDirectory,
-  takeBaseName,
-  joinPath,
   normalise,
   takeFileName,
   (<.>)
@@ -403,7 +400,7 @@ instance Backend CStaticOption where
                  "The name of the target ext header file if not derived from source file.",
                 Option [] ["no-debug"] (NoArg NoDebug)
                  "Don't generate debugging information"])
-    generate os gswust inputName = sequence $ [writeTranslationUnit (renderHdr hdr []) (headerName os),
+    generate os gswust outputTarget = sequence $ [writeTranslationUnit (renderHdr hdr []) (headerName os),
                                          writeTranslationUnit (renderSrc src [extHdrName os, headerName os]) (outputName os)]
                                          ++ [writeTranslationUnit (renderHdr ext [headerName os]) (extHdrName os) | not $ null tue]
         where src = fromList $ concat tus
@@ -452,17 +449,15 @@ instance Backend CStaticOption where
               getFirstOrDefault :: ([a] -> b) -> b -> [a] -> b
               getFirstOrDefault _ d     [] = d
               getFirstOrDefault f _ (x:xs) = f xs
-              makeFileName n xs = normalise $ joinPath [inputPath, n xs]
               outputFileName ((OutFile f):_) = f
-              outputFileName xs = getFirstOrDefault outputFileName ((takeBaseName inputName) <.> "c") xs
-              outputName = makeFileName outputFileName
+              outputFileName xs = getFirstOrDefault outputFileName ((dropExtension outputTarget) <.> "c") xs
+              outputName = normalise . outputFileName
               headerFileName ((Header f):_) = f
-              headerFileName xs = getFirstOrDefault headerFileName ((takeBaseName inputName) <.> "h") xs
-              headerName = makeFileName headerFileName
+              headerFileName xs = getFirstOrDefault headerFileName ((dropExtension outputTarget) <.> "h") xs
+              headerName = normalise . headerFileName
               extHdrFileName ((ExtFile f):_) = f
-              extHdrFileName xs = getFirstOrDefault extHdrFileName (((takeBaseName inputName) ++ "_ext") <.> "h") xs
-              extHdrName = makeFileName extHdrFileName
-              inputPath = dropFileName inputName
+              extHdrFileName xs = getFirstOrDefault extHdrFileName (((dropExtension outputTarget) ++ "_ext") <.> "h") xs
+              extHdrName = normalise . extHdrFileName
               doDebug ((NoDebug):_) = False
               doDebug xs = getFirstOrDefault doDebug True xs
               genIncludes includes includer = liftM concat $ sequence $ map (mkInclude includer) includes

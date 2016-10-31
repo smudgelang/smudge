@@ -1,0 +1,15 @@
+badsideeffectname
+{
+    *A
+    [
+        x -(y)-> A
+    ]
+}
+
+worsesideeffectname
+{
+    *A
+    [
+        z -(badsideeffectname.q)-> A
+    ]
+}

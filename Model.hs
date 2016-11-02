@@ -1,20 +1,19 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Model (
     EnterExitState(..),
     HappeningFlag(..),
     Happening(..),
-    Identifier(CookedId),
-    cookWith,
-    QualifiedName(..),
+    QualifiedName,
+    Qualifiable(..),
     mangleWith,
     disqualify,
     disqualifyTag,
-    nestInScope,
-    nestCookedInScope,
-    Tag(..),
-    TaggedName,
-    untag,
+    TaggedName(..),
     qName,
     passInitialState,
     passFullyQualify,
@@ -40,7 +39,8 @@ import Prelude hiding (foldr1)
 import Data.Graph.Inductive.Graph (mkGraph, Node)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Map (Map, fromList, (!))
-import Data.Foldable (foldr1)
+import Data.Foldable (foldr1, asum)
+import Control.Applicative (Alternative)
 
 data EnterExitState = EnterExitState {
         en :: [SideEffect TaggedName],
@@ -67,36 +67,50 @@ cookWith _ id           = id
 serve :: Identifier -> Name
 serve (CookedId name) = name
 
-newtype QualifiedName = QualifiedName [Identifier]
-    deriving (Show, Eq, Ord)
+newtype Qualified a = Qualified [a]
+    deriving (Show, Eq, Ord, Applicative, Alternative, Functor, Monad)
+
+type QualifiedName = Qualified Identifier
+
+class Qualifiable n where
+    qualify :: n -> QualifiedName
+
+instance Qualifiable QualifiedName where
+    qualify = id
+
+instance Qualifiable Identifier where
+    qualify n = Qualified [n]
+
+instance Qualifiable Name where
+    qualify = qualify . CookedId
+
+instance (Qualifiable s, Qualifiable n) => Qualifiable (s, n) where
+    qualify (s, n) = asum $ (qualify s) : [qualify n]
 
 mangleWith :: (Name -> Name -> Name) -> (Name -> Name) -> QualifiedName -> Name
-mangleWith _  _ (QualifiedName []) = ""
-mangleWith ff f q = foldr1 ff $  map (serve . cookWith f) $ (\(QualifiedName ids) -> ids) q
+mangleWith _  _ (Qualified []) = ""
+mangleWith ff f q = foldr1 ff $  map (serve . cookWith f) $ (\(Qualified ids) -> ids) q
 
 disqualify :: QualifiedName -> Name
 disqualify = mangleWith seq id
 
-nestInScope :: QualifiedName -> Identifier -> QualifiedName
-nestInScope (QualifiedName ids) i = QualifiedName $ ids ++ [i]
-
-nestCookedInScope :: QualifiedName -> Name -> QualifiedName
-nestCookedInScope q i = nestInScope q (CookedId i)
-
-data Tag = TagMachine
-         | TagState
-         | TagEvent
-         | TagFunction
-         | TagBuiltin
+data TaggedName =
+          TagMachine QualifiedName
+        | TagState QualifiedName
+        | TagEvent QualifiedName
+        | TagFunction QualifiedName
+        | TagBuiltin QualifiedName
     deriving (Show, Eq, Ord)
 
-type TaggedName = (Tag, QualifiedName)
-
-untag :: TaggedName -> QualifiedName
-untag = snd
+instance Qualifiable TaggedName where
+    qualify (TagMachine n) = n
+    qualify (TagState n) = n
+    qualify (TagEvent n) = n
+    qualify (TagFunction n) = n
+    qualify (TagBuiltin n) = n
 
 disqualifyTag :: TaggedName -> Name
-disqualifyTag = disqualify . untag
+disqualifyTag = disqualify . qualify
 
 passInitialState :: [(StateMachine Name, [WholeState Name])] -> [(StateMachine Name, [WholeState Name])]
 passInitialState sms = map (\(sm, wss) -> (sm, foldr init [] wss)) sms
@@ -108,37 +122,37 @@ pickSm _ s@(StateMachineDeclarator _) = s
 pickSm s@(StateMachineDeclarator _) _ = s
 pickSm StateMachineSame _ = undefined
 
-qSm :: StateMachineDeclarator Name -> QualifiedName
-qSm (StateMachineDeclarator n) = QualifiedName [RawId n]
-qSm StateMachineSame = undefined
+instance Qualifiable (StateMachineDeclarator Name) where
+    qualify (StateMachineDeclarator n) = qualify $ RawId n
+    qualify StateMachineSame           = undefined
 
-qSt :: StateMachineDeclarator Name -> State Name -> QualifiedName
-qSt sm (State s) = nestInScope (qSm sm) (RawId s)
-qSt _ _ = undefined
+instance Qualifiable (State Name) where
+    qualify (State s) = qualify $ RawId s
+    qualify _         = undefined
 
-qEv :: StateMachineDeclarator Name -> Event Name -> QualifiedName
-qEv sm (Event e) = nestInScope (qSm sm) (RawId e)
-qEv _ _ = undefined
+instance Qualifiable (Event Name) where
+    qualify (Event e) = qualify $ RawId e
+    qualify _         = undefined
 
 qQE :: StateMachineDeclarator Name -> QEvent Name -> QualifiedName
-qQE sm (sm', ev) = qEv (pickSm sm sm') ev
+qQE sm (sm', ev) = qualify (pickSm sm sm', ev)
 
 qName :: StateMachineDeclarator Name -> SideEffect Name -> QualifiedName
-qName _  (s, FuncVoid)    = QualifiedName [CookedId s]
-qName _  (s, FuncTyped _) = QualifiedName [CookedId s]
+qName _  (s, FuncVoid)    = qualify s
+qName _  (s, FuncTyped _) = qualify s
 qName sm (_, FuncEvent e) = qQE sm e
 
 passFullyQualify :: [(StateMachine Name, [WholeState Name])] -> [(StateMachine QualifiedName, [WholeState QualifiedName])]
 passFullyQualify sms = map qual sms
     where qual (Annotated a sm, wss) = (Annotated a $ qual_sm sm, map qual_ws wss)
-            where qual_sm = StateMachineDeclarator . qSm
+            where qual_sm = StateMachineDeclarator . qualify
                   qual_ws (st, fs, en, es, ex) = (qual_st st, fs, map qual_fn en, map qual_eh es, map qual_fn ex)
                   qual_eh (ev, ses, s) = (qual_ev ev, map qual_fn ses, qual_st s)
-                  qual_st st@(State _) = State $ qSt sm st
+                  qual_st st@(State _) = State $ qualify (sm, st)
                   qual_st StateAny = StateAny
                   qual_st StateSame = StateSame
                   qual_st StateEntry = StateEntry
-                  qual_ev ev@(Event _) = Event $ qEv sm ev
+                  qual_ev ev@(Event _) = Event $ qualify (sm, ev)
                   qual_ev EventAny = EventAny
                   qual_ev EventEnter = EventEnter
                   qual_ev EventExit = EventExit
@@ -150,22 +164,22 @@ passFullyQualify sms = map qual sms
 passTagCategories :: [(StateMachine QualifiedName, [WholeState QualifiedName])] -> [(StateMachine TaggedName, [WholeState TaggedName])]
 passTagCategories sms = map tag sms
     where tag (Annotated a sm, wss) = (Annotated a $ tag_sm sm, map tag_ws wss)
-          tag_sm (StateMachineDeclarator m) = StateMachineDeclarator (TagMachine, m)
+          tag_sm (StateMachineDeclarator m) = StateMachineDeclarator (TagMachine m)
           tag_sm m = undefined
           tag_ws (st, fs, en, es, ex) = (tag_st st, fs, map tag_fn en, map tag_eh es, map tag_fn ex)
           tag_eh (ev, ses, s) = (tag_ev ev, map tag_fn ses, tag_st s)
-          tag_st (State s) = State (TagState, s)
+          tag_st (State s) = State (TagState s)
           tag_st StateAny = StateAny
           tag_st StateSame = StateSame
           tag_st StateEntry = StateEntry
-          tag_ev (Event e) = Event (TagEvent, e)
+          tag_ev (Event e) = Event (TagEvent e)
           tag_ev EventAny = EventAny
           tag_ev EventEnter = EventEnter
           tag_ev EventExit = EventExit
           tag_qe (sm', ev) = (tag_sm sm', tag_ev ev)
-          tag_fn (n, FuncVoid)     = ((TagFunction, n), FuncVoid)
-          tag_fn (n, FuncTyped qe) = ((TagFunction, n), FuncTyped $ tag_qe qe)
-          tag_fn (n, FuncEvent qe) = ((TagFunction, n), FuncEvent $ tag_qe qe)
+          tag_fn (n, FuncVoid)     = ((TagFunction n), FuncVoid)
+          tag_fn (n, FuncTyped qe) = ((TagFunction n), FuncTyped $ tag_qe qe)
+          tag_fn (n, FuncEvent qe) = ((TagFunction n), FuncEvent $ tag_qe qe)
 
 smToGraph :: (StateMachine TaggedName, [WholeState TaggedName]) ->
                  Gr EnterExitState Happening

@@ -21,10 +21,8 @@ import Grammars.Smudge (
   Function(..),
   )
 import Model (
-  Identifier(CookedId),
-  QualifiedName(..),
-  Tag(..),
-  TaggedName,
+  qualify,
+  TaggedName(..),
   EnterExitState(..),
   Happening(..),
   )
@@ -60,10 +58,11 @@ instance Monoid SymbolTable where
 insertExternalSymbol :: SymbolTable -> Name -> [Name] -> Name -> SymbolTable
 insertExternalSymbol (SymbolTable gamma) fname args returnType = SymbolTable $ Data.Map.insertWith simplifyDefinitely name ty gamma
     where
-          name = (TagFunction, QualifiedName [CookedId fname])
+          name = (TagFunction $ qualify fname)
           ty = (Unary External
-                      (if null args then Void else Ty External (TagBuiltin, QualifiedName (map CookedId args)))
-                      (if null returnType then Void else Ty External (TagBuiltin, QualifiedName [CookedId returnType])))
+                      -- TODO: args is variable arity, but for now only unary is possible.
+                      (if null args then Void else Ty External (TagBuiltin $ qualify $ head args))
+                      (if null returnType then Void else Ty External (TagBuiltin $ qualify returnType)))
 
 toList :: SymbolTable -> [(TaggedName, Ty)]
 toList (SymbolTable gamma) = Map.toList gamma
@@ -83,7 +82,7 @@ symbols (Annotated _ sm, gr) =
                          ++ [(retag e, singleton $ Unary Resolved (Ty Resolved e) Void)
                              | (_, _, Happening {event = (Event e)}) <- labEdges gr]
     where
-        retag (TagEvent, n) = (TagFunction, n)
+        retag (TagEvent n) = (TagFunction n)
         bndQE (sm', _) | sm == sm' = Resolved
         bndQE _                    = Unresolved
         bnd (FuncEvent qe) = bndQE qe

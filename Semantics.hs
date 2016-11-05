@@ -10,6 +10,7 @@ import Semantics.NoTransientStateCycles (NoTransientStateCycles)
 import Semantics.UniqueStateNames (UniqueStateNames)
 import Semantics.OneInitialState (OneInitialState)
 import Semantics.DeclaredStateNames (DeclaredStateNames)
+import Semantics.DeclaredEventNames (DeclaredEventNames)
 
 import Data.Graph.Inductive.Graph (Graph)
 
@@ -19,4 +20,5 @@ make_passes g = concat [pass g (undefined :: UniqueStateNames),
                         pass g (undefined :: NoTransientStateCycles)]
 
 name_passes :: (StateMachine TaggedName, [WholeState TaggedName]) -> [Fault]
-name_passes sm = concat [pass sm (undefined :: DeclaredStateNames)]
+name_passes sm = concat [pass sm (undefined :: DeclaredStateNames),
+                         pass sm (undefined :: DeclaredEventNames)]

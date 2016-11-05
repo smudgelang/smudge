@@ -1,0 +1,15 @@
+Title: Detect undeclared events sent to other state machines.
+
+Right now, this state machine counterexample does not produce any errors, but
+it ought to have one, because there is no event named 'q':
+
+WorseSideEffectName
+{
+    *A
+    [
+        z -(BadSideEffectName.q)-> A
+    ]
+}
+
+The reason this does not raise an error is because each state machine's names
+are validated one-at-a-time, in isolation.

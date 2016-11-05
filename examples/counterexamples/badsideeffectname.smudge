@@ -1,15 +1,16 @@
-badsideeffectname
+BadSideEffectName
 {
     *A
     [
-        x -(y)-> A
+        x -(y)-> A,
+        z -(BadSideEffectName.w)-> A
     ]
 }
 
-worsesideeffectname
-{
-    *A
-    [
-        z -(badsideeffectname.q)-> A
-    ]
-}
+//WorseSideEffectName
+//{
+//    *A
+//    [
+//        z -(BadSideEffectName.q)-> A
+//    ]
+//}

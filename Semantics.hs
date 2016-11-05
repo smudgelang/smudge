@@ -15,10 +15,10 @@ import Semantics.DeclaredEventNames (DeclaredEventNames)
 import Data.Graph.Inductive.Graph (Graph)
 
 make_passes :: Graph gr => (StateMachine TaggedName, gr EnterExitState Happening) -> [Fault]
-make_passes g = concat [pass g (undefined :: UniqueStateNames),
-                        pass g (undefined :: OneInitialState),
+make_passes g = concat [pass g (undefined :: OneInitialState),
                         pass g (undefined :: NoTransientStateCycles)]
 
 name_passes :: (StateMachine TaggedName, [WholeState TaggedName]) -> [Fault]
 name_passes sm = concat [pass sm (undefined :: DeclaredStateNames),
+                         pass sm (undefined :: UniqueStateNames),
                          pass sm (undefined :: DeclaredEventNames)]

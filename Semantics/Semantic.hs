@@ -7,6 +7,7 @@ module Semantics.Semantic (
     Passable(..),
     Severity(..),
     Fault(..),
+    fatal,
 ) where
 
 import Model (TaggedName)
@@ -22,6 +23,10 @@ data Severity = ERROR | BUG
 type Location = SourcePos
 type Description = String
 data Fault = Fault Severity Location Description
+
+fatal :: Fault -> Bool
+fatal (Fault ERROR _ _) = True
+fatal (Fault BUG _ _) = True
 
 instance Show Fault where
     show (Fault s l d) = show s ++ " at " ++ show l ++ ":\n" ++ d

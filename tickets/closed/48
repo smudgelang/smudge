@@ -2,7 +2,7 @@ Title: Map.!: given key is not an element in the map
 
 Pull this out into a semantic check, and add a better error message.
 
-In Main.processFile, after psasFullyQualify and before
+In Main.processFile, after passFullyQualify and before
 passTagCategories, we can put in a new pass that works the same as the
 semantic passes, but is for name checking. It should check for both
 state and event name validity (see

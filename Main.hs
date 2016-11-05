@@ -15,10 +15,11 @@ import Semantics.Solver (
   passUniqueSymbols
   )
 import Parsers.Smudge (state_machine, smudgle)
-import Semantics.Semantic (Severity(..), Fault(..))
-import Semantics (make_passes)
+import Semantics.Semantic (Severity(..), Fault(..), fatal)
+import Semantics (make_passes, name_passes)
 import Trashcan.Graph
 
+import Control.Monad (when)
 import Control.Applicative ((<$>), (<*>))
 import Distribution.Package (packageVersion, packageName, PackageName(..))
 import Text.ParserCombinators.Parsec (parse, ParseError)
@@ -85,17 +86,17 @@ processFile fileName = do
             let sms' = passInitialState sms
             let sms'' = passFullyQualify sms'
             let sms''' = passTagCategories sms''
+            let fs = concat $ map name_passes sms'''
+            mapM (putStrLn . show) fs
+            when (any fatal fs) $ report_failure $ length fs
+
             let gs = passWholeStateToGraph sms'''
             let fs = concat $ map make_passes gs
             mapM (putStrLn . show) fs
-            case [f | f@(Fault ERROR _ _) <- fs] ++
-                 [f | f@(Fault BUG _ _) <- fs] of
-                [] -> do
-                    let gswst = passGraphWithSymbols gs
-                    case True of
-                        False -> report_failure 0
-                        _ -> return $ passUniqueSymbols gswst
-                _  -> report_failure $ length fs
+            when (any fatal fs) $ report_failure $ length fs
+
+            let gswst = passGraphWithSymbols gs
+            return $ passUniqueSymbols gswst
         report_failure n =
             print_exit ("Exiting with " ++ show n ++ " error" ++ (if n == 1 then "" else "s"))
         print_exit e = do

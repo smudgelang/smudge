@@ -1,3 +1,6 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
+
 module Semantics.OneInitialState (
     OneInitialState
 ) where
@@ -6,7 +9,7 @@ import Grammars.Smudge (State(..), Annotated(..), StateMachineDeclarator(..))
 import Model (EnterExitState(..), Happening, disqualifyTag)
 import Semantics.Semantic (Passable(..), Severity(..), Fault(..))
 
-import Data.Graph.Inductive.Graph (Adj, lab)
+import Data.Graph.Inductive.Graph (Graph, Adj, lab)
 import Data.Monoid (Monoid(..))
 import Data.List (intercalate)
 
@@ -16,9 +19,9 @@ instance Monoid OneInitialState where
     mappend (OneInitialState is os) (OneInitialState is' os') =
         OneInitialState (mappend is is') (mappend os os')
 
-instance Passable OneInitialState where
-    accumulate (i, _, EnterExitState {st = StateEntry}, o) a = mappend (OneInitialState i o) a
-    accumulate                                           _ a = a
+instance (Graph gr) => Passable (gr EnterExitState Happening) OneInitialState where
+    accumulate _ (i, _, EnterExitState {st = StateEntry}, o) a = mappend (OneInitialState i o) a
+    accumulate _                                           _ a = a
     test (Annotated pos (StateMachineDeclarator sm_name), g) (OneInitialState is os) =
         case (length is, length os) of
         (0, 1) -> []

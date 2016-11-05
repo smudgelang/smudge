@@ -1,3 +1,6 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
+
 module Semantics.NoTransientStateCycles (
     NoTransientStateCycles
 ) where
@@ -7,7 +10,7 @@ import Model (EnterExitState(..), Happening(..), disqualifyTag)
 import Semantics.Semantic (Passable(..), Severity(..), Fault(..))
 import Trashcan.Graph (cycles)
 
-import Data.Graph.Inductive.Graph (Context, (&), lab)
+import Data.Graph.Inductive.Graph (Graph, Context, (&), lab)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Monoid (Monoid(..))
 import Data.List (intercalate)
@@ -17,8 +20,8 @@ instance Monoid NoTransientStateCycles where
     mempty = NoTransientStateCycles mempty
     mappend (NoTransientStateCycles a) (NoTransientStateCycles b) = NoTransientStateCycles (mappend a b)
 
-instance Passable NoTransientStateCycles where
-    accumulate = tfilter
+instance (Graph gr) => Passable (gr EnterExitState Happening) NoTransientStateCycles where
+    accumulate _ = tfilter
     test (Annotated pos (StateMachineDeclarator sm_name), _) (NoTransientStateCycles g) =
         case (cycles g) of
         [] -> []

@@ -1,3 +1,6 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
+
 module Semantics.UniqueStateNames (
     UniqueStateNames
 ) where
@@ -6,6 +9,7 @@ import Grammars.Smudge (State(..), Annotated(..), StateMachineDeclarator(..))
 import Model (EnterExitState(..), TaggedName, disqualifyTag)
 import Semantics.Semantic (Passable(..), Severity(..), Fault(..))
 
+import Data.Graph.Inductive.Graph (Graph)
 import Data.Foldable (toList)
 import Data.List (sort, intercalate, nub, (\\))
 import Data.Monoid (Monoid(..))
@@ -17,8 +21,8 @@ instance Monoid UniqueStateNames where
     mappend (UniqueStateNames sl ss) (UniqueStateNames sl' ss') =
         UniqueStateNames (mappend sl sl') (mappend ss ss')
 
-instance Passable UniqueStateNames where
-    accumulate (_, _, ees, _) = mappend (UniqueStateNames [st ees] (singleton $ st ees))
+instance (Graph gr) => Passable (gr EnterExitState a) UniqueStateNames where
+    accumulate _ (_, _, ees, _) = mappend (UniqueStateNames [st ees] (singleton $ st ees))
     test (Annotated pos (StateMachineDeclarator sm_name), _) (UniqueStateNames sl ss) =
         case nub (sort sl \\ sort (toList ss)) \\ [StateEntry] of
         [] -> []

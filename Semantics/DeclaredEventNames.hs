@@ -1,5 +1,5 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Semantics.DeclaredEventNames (
     DeclaredEventNames
@@ -31,8 +31,9 @@ qesOfSes :: [SideEffect TaggedName] -> [QEvent TaggedName]
 qesOfSes ses = [qe | (_, FuncTyped qe@(_, Event _)) <- ses] ++
                [qe | (_, FuncEvent qe@(_, Event _)) <- ses]
 
-instance Passable [WholeState TaggedName] DeclaredEventNames where
-    accumulate _ (_, _, en, eh, ex) =
+instance Passable DeclaredEventNames where
+    type Representation DeclaredEventNames = [WholeState TaggedName]
+    accumulate (_, _, en, eh, ex) =
         mappend $ DeclaredEventNames (fromList [e | (e@(Event _), _, _) <- eh])
                     (fromList $ qesOfSes en ++ concat [qesOfSes ses | (_, ses, _) <- eh] ++ qesOfSes ex)
     test (Annotated pos sm@(StateMachineDeclarator sm_name), _) (DeclaredEventNames eh se) =

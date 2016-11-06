@@ -1,5 +1,5 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Semantics.UniqueStateNames (
     UniqueStateNames
@@ -20,8 +20,9 @@ instance Monoid UniqueStateNames where
     mappend (UniqueStateNames sl ss) (UniqueStateNames sl' ss') =
         UniqueStateNames (mappend sl sl') (mappend ss ss')
 
-instance Passable [WholeState TaggedName] UniqueStateNames where
-    accumulate _ (s, _, _, _, _) = mappend (UniqueStateNames [s] (singleton s))
+instance Passable UniqueStateNames where
+    type Representation UniqueStateNames = [WholeState TaggedName]
+    accumulate (s, _, _, _, _) = mappend (UniqueStateNames [s] (singleton s))
     test (Annotated pos (StateMachineDeclarator sm_name), _) (UniqueStateNames sl ss) =
         case nub (sort sl \\ sort (toList ss)) \\ [StateEntry] of
         [] -> []

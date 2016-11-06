@@ -1,6 +1,6 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module Semantics.Semantic (
@@ -43,13 +43,14 @@ instance AbstractFoldable [a] where
     type FoldContext [a] = a
     afold = foldr
 
-class (AbstractFoldable f, Monoid p) => Passable f p where
-    accumulate :: f -> FoldContext f -> p -> p
-    test :: (StateMachine TaggedName, f) -> p -> [Fault]
+class (AbstractFoldable (Representation p), Monoid p) => Passable p where
+    type Representation p :: *
 
-    pass :: (StateMachine TaggedName, f) -> p -> [Fault]
-    pass sm@(_, f) dummyp = xtest (afold (accumulate dummyf) mempty f) dummyp
+    accumulate :: FoldContext (Representation p) -> p -> p
+    test :: (StateMachine TaggedName, Representation p) -> p -> [Fault]
+
+    pass :: (StateMachine TaggedName, Representation p) -> p -> [Fault]
+    pass sm@(_, r) dummyp = xtest (afold accumulate mempty r) dummyp
         where
             xtest :: p -> p -> [Fault]
             xtest = const . (test sm)
-            dummyf = undefined :: f

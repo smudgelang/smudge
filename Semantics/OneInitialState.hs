@@ -1,5 +1,6 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Semantics.OneInitialState (
     OneInitialState
@@ -13,15 +14,16 @@ import Data.Graph.Inductive.Graph (Graph, Adj, lab)
 import Data.Monoid (Monoid(..))
 import Data.List (intercalate)
 
-data OneInitialState = OneInitialState (Adj Happening) (Adj Happening)
-instance Monoid OneInitialState where
+data (Graph gr) => OneInitialState gr = OneInitialState (Adj Happening) (Adj Happening)
+instance (Graph gr) => Monoid (OneInitialState gr) where
     mempty = OneInitialState mempty mempty
     mappend (OneInitialState is os) (OneInitialState is' os') =
         OneInitialState (mappend is is') (mappend os os')
 
-instance (Graph gr) => Passable (gr EnterExitState Happening) OneInitialState where
-    accumulate _ (i, _, EnterExitState {st = StateEntry}, o) a = mappend (OneInitialState i o) a
-    accumulate _                                           _ a = a
+instance (Graph gr) => Passable (OneInitialState gr) where
+    type Representation (OneInitialState gr) = gr EnterExitState Happening
+    accumulate (i, _, EnterExitState {st = StateEntry}, o) a = mappend (OneInitialState i o) a
+    accumulate                                           _ a = a
     test (Annotated pos (StateMachineDeclarator sm_name), g) (OneInitialState is os) =
         case (length is, length os) of
         (0, 1) -> []

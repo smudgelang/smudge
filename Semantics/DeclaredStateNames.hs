@@ -1,5 +1,5 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Semantics.DeclaredStateNames (
     DeclaredStateNames
@@ -18,8 +18,9 @@ instance Monoid DeclaredStateNames where
     mappend (DeclaredStateNames sf st) (DeclaredStateNames sf' st') =
         DeclaredStateNames (mappend sf sf') (mappend st st')
 
-instance Passable [WholeState TaggedName] DeclaredStateNames where
-    accumulate _ (s, _, _, hs, _) = mappend $ DeclaredStateNames (singleton s) (fromList [s' | (_, _, s'@(State _)) <- hs])
+instance Passable DeclaredStateNames where
+    type Representation DeclaredStateNames = [WholeState TaggedName]
+    accumulate (s, _, _, hs, _) = mappend $ DeclaredStateNames (singleton s) (fromList [s' | (_, _, s'@(State _)) <- hs])
     test (Annotated pos (StateMachineDeclarator sm_name), _) (DeclaredStateNames sf st) =
         case toList (st \\ sf) of
         [] -> []

@@ -1,3 +1,4 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Semantics.Solver (
@@ -48,11 +49,7 @@ data Ty = Void
 type UnfilteredSymbolTable = Map TaggedName (Set Ty)
 
 newtype SymbolTable = SymbolTable SymTab
-    deriving (Show, Eq, Ord)
-
-instance Monoid SymbolTable where
-    mappend (SymbolTable gamma) (SymbolTable gamma') = SymbolTable $ mappend gamma gamma'
-    mempty = SymbolTable mempty
+    deriving (Show, Eq, Ord, Monoid)
 
 -- Old table, Name, args, return type, new table
 insertExternalSymbol :: SymbolTable -> Name -> [Name] -> Name -> SymbolTable

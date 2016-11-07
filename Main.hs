@@ -130,5 +130,3 @@ main = do
             in processFile fileName >>= make_output outputTarget os
 
         (_,              _,  _) -> printUsage
-
-    where

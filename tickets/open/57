@@ -1,0 +1,5 @@
+Title: Dependency output
+
+Add a command line option to Smudge to print out dependencies like
+GCC's -M[x] options.
+

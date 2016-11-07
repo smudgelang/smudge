@@ -41,7 +41,9 @@ subcommand name f os = map makeSub os
                       ReqArg g s -> ReqArg (f . g) s
                       OptArg g s -> OptArg (f . g) s
 
-data SystemOption = Version | Help | OutDir FilePath
+data SystemOption = Version
+                  | Help
+                  | OutDir FilePath
     deriving (Show, Eq)
 
 app_name :: String

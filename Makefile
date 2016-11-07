@@ -43,6 +43,8 @@ newticket:
 	cd tickets && ./mkticket.sh "$(title)"
 
 release: build doc
+	@read -r -p "Is this release correctly versioned and tagged? [Yn] " REPLY; \
+	if [ "$$REPLY" = "n" ]; then echo "Well, do that, then!"; exit 1; fi
 	rm -rf dist/release # Make sure it's a clean new release build.
 	mkdir dist/release
 	cp $(SMUDGE_TARGET) dist/release

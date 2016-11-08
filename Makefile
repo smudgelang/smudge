@@ -26,6 +26,7 @@ examples: build
 
 doc:
 	$(MAKE) -C docs/tutorial all
+	$(MAKE) -C docs/definition all
 
 # Let Cabal handle dependencies.
 dist/setup-config: smudge.cabal
@@ -62,3 +63,4 @@ clean:
 	rm -rf dist TAGS tags
 	$(MAKE) -C examples clean
 	$(MAKE) -C docs/tutorial clean
+	$(MAKE) -C docs/definition clean

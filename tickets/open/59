@@ -1,0 +1,9 @@
+Title: Friendly message to install GraphViz
+
+Somehow, the user needs to discover that GraphViz is a smudge dependency.
+Right now if GraphViz is missing, the error emitted is cryptic:
+
+smudge.exe: dot: runInteractiveProcess: does not exist (No such file or directory)
+
+Besides fixing it in smudge itself, this should probably also be added to the
+tutorial.

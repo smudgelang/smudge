@@ -2,9 +2,12 @@
 \usepackage{amsmath}
 \usepackage{semantic}
 
+\newcommand{\dom}{\operatorname{dom}}
 \newcommand{\instantiates}{\operatorname{<:}}
 
 \newcommand{\hastype}[3]{#1 \vdash #2 : #3}
+\newcommand{\tuple}[1]{\left\langle #1 \right\rangle}
+\newcommand{\yield}[2]{\tuple{#1} \rightarrow \tuple{#2}}
 
 \begin{document}
 \section*{Type inference in smudge}
@@ -15,17 +18,68 @@ type simplification algorithm.
 
 To construct these rules, both the notation of natural deduction for type
 inference and the notation for automata are useful here, with a slight
-modification: events are considered to be composite, that is, they
+modification: rather than a machine being represented by a top-level structure
+composed of states, symbols, and uniform total transitions, the symbols
+(referred to as events) are nested behind the states, and nested within events
 are transitions composed of a sequence of side-effectful computation
 statements, whose types can be non-uniform.  For clarity, the following
 conventions are used:
 \begin{itemize}
     \item $\Gamma$ refers to the environment of types
     \item $\tau$ refers to a type
+    \item $x$ refers to an identifier
 
+    \item $m$ refers to a single state machine
+    \item $q$ refers to a single state
+    \item $a$ refers to a single input event
     \item $\delta$ refers to a total transition function for a state and event
     \item $\check{\delta}$ refers to a named side-effectful partial transition
 \end{itemize}
+
+The definition phase initiates elaboration, and is followed by resolution.
+
+\subsection*{Definition rules}
+During definition, each module is inspected, and names are collected and
+assigned types in the type environment $\Gamma$.
+
+The functions \texttt{typefor}, \texttt{resolve}, and \texttt{simplify} are not
+specified, but must be deterministic.  All names are fully-qualified.
+\[
+    \inference[ModuleDef]
+    {\yield{m_1,\Gamma}{\Gamma_1}&\ldots&\yield{m_n,\Gamma_{n-1}}{\Gamma_n}}
+    {\yield{\textsc{module}(\tuple{m_1,\ldots,m_n}),\Gamma}{\texttt{resolve}(\Gamma_n)}}
+\]
+
+\[
+    \inference[StateMachineDef]
+    {\yield{q_1,\Gamma}{\Gamma_1}&\ldots&\yield{q_n,\Gamma_{n-1}}{\Gamma_n}}
+    {\yield{\textsc{statemachine}(m,\tuple{q_1,\ldots,q_n}),\Gamma}{\Gamma_n}}
+\]
+
+\[
+    \inference[StateDef]
+    {\yield{a_1,\Gamma}{\Gamma_1}&\ldots&\yield{a_n,\Gamma_{n-1}}{\Gamma_n}}
+    {\yield{\textsc{state}(q,\tuple{a_1,\ldots,a_n}),\Gamma}{\Gamma_n}}
+\]
+
+\[
+    \inference[EventDef]
+    {\yield{\textsc{name}(a),\Gamma}{\Gamma'}&\yield{\textsc{name}(x_{\delta_a}),\Gamma'}{\Gamma''}\\
+     \yield{\textsc{name}(x_1),\Gamma''}{\Gamma_1}&\ldots&\yield{\textsc{name}(x_n),\Gamma_{n-1}}{\Gamma_n}}
+    {\yield{\textsc{event}(a,\tuple{x_1,\check{\delta_1},\ldots,x_n,\check{\delta_n}}),\Gamma}{\Gamma_n}}
+\]
+
+\[
+    \inference[NameDef]
+    {x\not\in\dom\Gamma}
+    {\yield{\textsc{name}(x),\Gamma}{\Gamma\left\{x\mapsto\texttt{typefor}(x)\right\}}}
+\]
+
+\[
+    \inference[NameDefAlready]
+    {x\in\dom\Gamma}
+    {\yield{\textsc{name}(x),\Gamma}{\Gamma\left\{x\mapsto\texttt{simplify}(\texttt{typefor}(x),\Gamma(x))\right\}}}
+\]
 
 \subsection*{Subtype polymorphic unification rules}
 The default unification method is to simplify the types using polymorphism.  It

@@ -10,8 +10,7 @@ module Semantics.Solver (
     toList,
     (!),
 
-    passGraphWithSymbols,
-    passUniqueSymbols,
+    elaboratePoly,
 ) where
 
 import Grammars.Smudge (
@@ -20,6 +19,8 @@ import Grammars.Smudge (
   StateMachine(..),
   Event(..),
   Function(..),
+  EventHandler,
+  WholeState
   )
 import Model (
   qualify,
@@ -28,14 +29,10 @@ import Model (
   Happening(..),
   )
 
-import Data.Graph.Inductive.Graph (labNodes, labEdges)
-import Data.Graph.Inductive.PatriciaTree (Gr)
-import Data.Map (Map, fromListWith, unionsWith, insertWith, foldrWithKey, mapWithKey)
-import qualified Data.Map as Map(map, toList, (!))
-import Data.Set (Set, union, singleton)
-import qualified Data.Set (map, foldr)
-import Control.Monad (liftM)
-import Data.Maybe (fromJust)
+import Data.Map (Map, empty, insert, fromListWith, unionsWith, insertWith, foldrWithKey)
+import qualified Data.Map as Map(map, lookup, toList, (!))
+import Control.Monad.State (State, evalState)
+import Control.Monad (foldM)
 
 -- external interface
 data Binding = External | Unresolved | Resolved
@@ -46,14 +43,15 @@ data Ty = Void
         | Unary Binding Ty Ty
     deriving (Show, Eq, Ord)
 
-type UnfilteredSymbolTable = Map TaggedName (Set Ty)
-
 newtype SymbolTable = SymbolTable SymTab
     deriving (Show, Eq, Ord, Monoid)
 
+elaboratePoly :: [(StateMachine TaggedName, [(WholeState TaggedName)])] -> SymbolTable
+elaboratePoly = SymbolTable . defModule empty
+
 -- Old table, Name, args, return type, new table
 insertExternalSymbol :: SymbolTable -> Name -> [Name] -> Name -> SymbolTable
-insertExternalSymbol (SymbolTable gamma) fname args returnType = SymbolTable $ Data.Map.insertWith simplifyDefinitely name ty gamma
+insertExternalSymbol (SymbolTable gamma) fname args returnType = SymbolTable $ Data.Map.insertWith simplifyFunc name ty gamma
     where
           name = (TagFunction $ qualify fname)
           ty = (Unary External
@@ -70,41 +68,49 @@ toList (SymbolTable gamma) = Map.toList gamma
 -- internal implementation
 type SymTab = Map TaggedName Ty
 
-symbols :: (StateMachine TaggedName, Gr EnterExitState Happening) -> UnfilteredSymbolTable
-symbols (Annotated _ sm, gr) =
-    fromListWith union $ [(n, singleton $ Unary (bnd f) (param (event h) se) (result se))
-                          | (_, _, h) <- labEdges gr, se@(n, f) <- sideEffects h]
-                         ++ [(n, singleton $ Unary (bnd f) (tparam se) (result se))
-                             | (_, EnterExitState {en, ex}) <- labNodes gr, se@(n, f) <- en ++ ex]
-                         ++ [(retag e, singleton $ Unary Resolved (Ty Resolved e) Void)
-                             | (_, _, Happening {event = (Event e)}) <- labEdges gr]
-    where
-        retag (TagEvent n) = (TagFunction n)
-        bndQE (sm', _) | sm == sm' = Resolved
-        bndQE _                    = Unresolved
-        bnd (FuncEvent qe) = bndQE qe
-        bnd _              = External
-        param _           (_, FuncEvent qe@(_, (Event e))) = Ty (bndQE qe) e
-        param _           (_, FuncEvent (_, _)) = undefined
-        param (Event e)   _                     = Ty Resolved e
-        param _           _                     = Void
-        tparam (_, FuncEvent qe@(_, (Event e))) = Ty (bndQE qe) e
-        tparam (_, FuncEvent (_, _)) = undefined
-        tparam _                     = Void
-        result (_, FuncTyped qe@(_, (Event e))) = Ty (bndQE qe) e
-        result (_, FuncTyped (_, _)) = undefined
-        result _                     = Void
+typefor :: TaggedName -> Ty
+typefor = Ty Resolved
 
-passGraphWithSymbols :: [(StateMachine TaggedName, Gr EnterExitState Happening)] ->
-                        ([(StateMachine TaggedName, Gr EnterExitState Happening)], UnfilteredSymbolTable)
-passGraphWithSymbols sms = (sms, unionsWith union $ map symbols sms)
+-- definition rules
+defModule :: SymTab -> [(StateMachine TaggedName, [(WholeState TaggedName)])] -> SymTab
+defModule gamma ms = resolve gammaN
+    where gammaN = evalState (foldM defMachine gamma ms) 0
+
+defMachine :: SymTab -> (StateMachine TaggedName, [(WholeState TaggedName)]) -> State Int SymTab
+defMachine gamma (_, qs) = foldM defState gamma qs
+
+defState :: SymTab -> WholeState TaggedName -> State Int SymTab
+defState gamma (_, _, en, eh, ex) =
+    do gamma'   <- foldM (defName Void)  gamma   en
+       gamma''  <- foldM defEvent gamma'  eh
+       gamma''' <- foldM (defName Void)  gamma'' ex
+       return gamma'''
+
+defEvent :: SymTab -> EventHandler TaggedName -> State Int SymTab
+defEvent gamma (ev, ds, _) = foldM (defName (tyof ev)) gamma' fs
+    where retag (TagEvent n) = (TagFunction n)
+          tyof (Event a) = typefor a
+          tyof         _ = Void
+          fs = [(retag a, FuncEvent (undefined, Event a)) | (Event a) <- [ev]] ++ ds
+          gamma' = foldl (\g x -> insert x (typefor x) g) gamma [a | (Event a) <- [ev]]
+
+defName :: Ty -> SymTab -> (TaggedName, Function TaggedName) -> State Int SymTab
+defName ty gamma (x, f) = do let ty' = case (Map.lookup x gamma) of
+                                       Just ty' -> (simplifyFunc (funTy ty f) ty')
+                                       Nothing -> (funTy ty f)
+                             return $ insert x ty' gamma
+
+funTy :: Ty -> Function TaggedName -> Ty
+funTy ty FuncVoid = Unary External ty Void
+funTy ty (FuncTyped (_, Event a')) = Unary External ty (Ty Unresolved a')
+funTy _  (FuncEvent (_, Event a')) = Unary Unresolved (Ty Unresolved a') Void
 
 -- a result is simpler than no result
-simplifyReturn :: Ty -> Ty -> Maybe Ty
-simplifyReturn a    b | a == b = Just a
-simplifyReturn a    Void       = Just a
-simplifyReturn Void b          = Just b
-simplifyReturn _    _          = Nothing
+simplifyReturn :: Ty -> Ty -> Ty
+simplifyReturn a    b | a == b = a
+simplifyReturn a    Void       = a
+simplifyReturn Void b          = b
+simplifyReturn _    _          = Void
 
 -- no parameters is simpler than parameters
 simplifyParam :: Ty -> Ty -> Ty
@@ -118,34 +124,23 @@ resolveBinding Resolved   Unresolved        = Resolved
 resolveBinding Unresolved Resolved          = Resolved
 resolveBinding _          _                 = undefined
 
-simplifyFunc :: Maybe Ty -> Maybe Ty -> Maybe Ty
-simplifyFunc (Just (Unary ab ap ar)) (Just (Unary bb bp br)) = liftM (Unary (resolveBinding ab bb) (simplifyParam ap bp)) (simplifyReturn ar br)
-simplifyFunc _                        _                      = Nothing
+simplifyFunc :: Ty -> Ty -> Ty
+simplifyFunc (Unary ab ap ar) (Unary bb bp br) = Unary (resolveBinding ab bb) (simplifyParam ap bp) (simplifyReturn ar br)
+simplifyFunc _                _                = undefined
 
-simplifyDefinitely :: Ty -> Ty -> Ty
-simplifyDefinitely a b = fromJust (simplifyFunc (Just a) (Just b))
-
-mapJust :: Ord a => Set a -> Set (Maybe a)
-mapJust = Data.Set.map Just
-
-resolve :: UnfilteredSymbolTable -> UnfilteredSymbolTable
-resolve t = mapWithKey (\ n ts -> Data.Set.map (rn n) ts) t
-    where bindings = foldrWithKey findAllBindings mempty t
+resolve :: SymTab -> SymTab
+resolve gamma = Map.map (\ty -> rty ty) gamma
+    where bindings = foldrWithKey findAllBindings mempty gamma
           findAllBindings n ts rs = unionsWith resolveBinding [findSomeBindings n ts, rs]
-          findSomeBindings n ts = fromListWith resolveBinding (Data.Set.foldr (\ ty a -> a ++ bn n ty) [] ts)
+          findSomeBindings n ty = fromListWith resolveBinding (bn n ty)
           rty Void           = Void
           rty (Ty _ n)       = Ty (bindings Map.! n) n
-          rty (Unary b t t') = Unary b (rty t) (rty t')
-          rn n ty@(Unary _ t t') = rty $ Unary (bindings Map.! n) t t'
-          rn _ ty                = rty ty
+          rty (Unary b t t') = Unary (rb b (rty t)) (rty t) (rty t')
+          rb Unresolved (Ty Resolved _) = Resolved
+          rb b _ = b
           bty Void           = []
           bty (Ty b n)       = [(n, b)]
           bty (Unary _ t t') = bty t ++ bty t'
           bn _ Void             = []
           bn n ty@(Ty b _)      = [(n, b)] ++ bty ty
           bn n ty@(Unary b _ _) = [(n, b)] ++ bty ty
-
-passUniqueSymbols :: ([(StateMachine TaggedName, Gr EnterExitState Happening)], UnfilteredSymbolTable) ->
-                        ([(StateMachine TaggedName, Gr EnterExitState Happening)], SymbolTable)
-passUniqueSymbols (sms, ust) = (sms, SymbolTable $ Map.map (fromJust . foldr1 simplifyFunc . mapJust) $ resolve ust)
-

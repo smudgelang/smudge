@@ -11,8 +11,7 @@ import Model (
   passWholeStateToGraph,
   )
 import Semantics.Solver (
-  passGraphWithSymbols,
-  passUniqueSymbols
+  elaboratePoly,
   )
 import Parsers.Smudge (state_machine, smudgle)
 import Semantics.Semantic (Severity(..), Fault(..), fatal)
@@ -92,13 +91,13 @@ processFile fileName = do
             mapM (putStrLn . show) fs
             when (any fatal fs) $ report_failure $ length fs
 
+            let st = elaboratePoly sms'''
             let gs = passWholeStateToGraph sms'''
             let fs = concat $ map make_passes gs
             mapM (putStrLn . show) fs
             when (any fatal fs) $ report_failure $ length fs
 
-            let gswst = passGraphWithSymbols gs
-            return $ passUniqueSymbols gswst
+            return (gs, st)
         report_failure n =
             print_exit ("Exiting with " ++ show n ++ " error" ++ (if n == 1 then "" else "s"))
         print_exit e = do
@@ -107,13 +106,13 @@ processFile fileName = do
             return mempty
 
 --make_output :: String -> [Options] -> ([(StateMachine, Gr EnterExitState Happening)], SymbolTable) -> IO ()
-make_output fileName os gswust = do
+make_output fileName os gswst = do
     let gvos = [a | GraphVizOption a <- os]
-    outputNames <- generate gvos gswust fileName
+    outputNames <- generate gvos gswst fileName
     mapM_ putStrLn $ do outputName <- outputNames
                         ["Wrote file \"" ++ outputName ++ "\""]
     let csos = [a | CStaticOption a <- os]
-    outputNames <- generate csos gswust fileName
+    outputNames <- generate csos gswst fileName
     mapM_ putStrLn $ do outputName <- outputNames
                         ["Wrote file \"" ++ outputName ++ "\""]
 

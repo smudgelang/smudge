@@ -149,7 +149,7 @@ handleStateEventFunction sm@(StateMachineDeclarator smName) st h st' syms =
         call_enter = (#:) (apply enter_f []) (:#)
 
         isEventTy :: Ty -> Event TaggedName -> Bool
-        isEventTy (Ty _ a) (Event e) = a == e
+        isEventTy a (Event e) = a == (syms ! e)
         isEventTy _ _ = False
 
         psOf (Unary _ Void _) = []
@@ -334,20 +334,18 @@ makeEnum smName ss =
     (fromList [Enumerator s Nothing | s <- ss])
     RIGHTCURLY))
 
-eventStruct :: StateMachineDeclarator TaggedName -> Event TaggedName -> Declaration
-eventStruct (StateMachineDeclarator smName) (Event evName) =
+eventStruct :: TaggedName -> Ty -> Declaration
+eventStruct name (Ty Resolved ty) =
     Declaration
     (fromList [A TYPEDEF,
-               B (makeStruct event_type [])])
-    (Just $ fromList [InitDeclarator (Declarator Nothing (IDirectDeclarator event_type)) Nothing])
+               B (makeStruct (mangleTName ty) [])])
+    (Just $ fromList [InitDeclarator (Declarator Nothing (IDirectDeclarator $ mangleTName name)) Nothing])
     SEMICOLON
-    where
-        event_type = mangleTName evName
 
 makeStruct :: Identifier -> [(SpecifierQualifierList, Identifier)] -> TypeSpecifier
-makeStruct smName [] = STRUCT (Left $ smName)
-makeStruct smName ss = 
-    STRUCT (Right (Quad (Just $ smName)
+makeStruct name [] = STRUCT (Left $ name)
+makeStruct name ss = 
+    STRUCT (Right (Quad (Just $ name)
     LEFTCURLY
     (fromList [StructDeclaration sqs (fromList [StructDeclarator $ This $ Declarator Nothing $ IDirectDeclarator id]) SEMICOLON | (sqs, id) <- ss])
     RIGHTCURLY))
@@ -401,7 +399,7 @@ instance Backend CStaticOption where
         where src = fromList $ concat tus
               ext = fromList tue
               hdr = fromList tuh
-              tuh = [ExternalDeclaration $ Right $ eventStruct sm e | (sm, g) <- gs'', e <- events g]
+              tuh = [ExternalDeclaration $ Right $ eventStruct name ty | (name, ty@(Ty Resolved _)) <- Solver.toList syms]
                     ++ [ExternalDeclaration $ Right $ makeFunctionDeclaration name ftype | (name, ftype@(Unary Resolved _ _)) <- Solver.toList syms]
                     ++ [ExternalDeclaration $ Right $ makeFunctionDeclaration name ftype | (name, ftype) <- externs]
               tue = [ExternalDeclaration $ Right $ makeFunctionDeclaration name ftype | (name, ftype@(Unary External _ _)) <- Solver.toList syms]

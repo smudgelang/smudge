@@ -44,7 +44,9 @@ During definition, each module is inspected, and names are collected and
 assigned types in the type environment $\Gamma$.
 
 The functions \texttt{typefor}, \texttt{resolve}, and \texttt{simplify} are not
-specified, but must be deterministic.  All names are fully-qualified.
+specified, but must be deterministic.
+
+All names are fully-qualified.
 \[
     \inference[ModuleDef]
     {\yield{m_1,\Gamma}{\Gamma_1}&\ldots&\yield{m_n,\Gamma_{n-1}}{\Gamma_n}}
@@ -65,9 +67,9 @@ specified, but must be deterministic.  All names are fully-qualified.
 
 \[
     \inference[EventDef]
-    {\yield{\textsc{name}(a),\Gamma}{\Gamma'}&\yield{\textsc{name}(x_{\delta_a}),\Gamma'}{\Gamma''}\\
-     \yield{\textsc{name}(x_1),\Gamma''}{\Gamma_1}&\ldots&\yield{\textsc{name}(x_n),\Gamma_{n-1}}{\Gamma_n}}
-    {\yield{\textsc{event}(a,\tuple{x_1,\check{\delta_1},\ldots,x_n,\check{\delta_n}}),\Gamma}{\Gamma_n}}
+    {\yield{x_a,\Gamma}{\Gamma'}&\yield{x_{\delta_a},\Gamma'}{\Gamma''}\\
+     \yield{x_{\check{\delta}_1},\Gamma''}{\Gamma_1}&\ldots&\yield{x_{\check{\delta}_n},\Gamma_{n-1}}{\Gamma_n}}
+    {\yield{\textsc{event}(x_a,\tuple{\check{\delta}_1,\ldots,\check{\delta}_n}),\Gamma}{\Gamma_n}}
 \]
 
 \[
@@ -90,11 +92,11 @@ general than either of two other types, such that these two types are subtypes
 of it.
 \[
     \inference[SimplifyNonDeterministic]
-    {\hastype{\Gamma}{\check{\delta_1}}{\tau_1\times\ldots\times\tau_n\rightarrow\tau}\\
-     \hastype{\Gamma}{\check{\delta_2}}{\tau_1'\times\ldots\times\tau_m'\rightarrow\tau'}\\
+    {\hastype{\Gamma}{\check{\delta}_1}{\tau_1\times\ldots\times\tau_n\rightarrow\tau}\\
+     \hastype{\Gamma}{\check{\delta}_2}{\tau_1'\times\ldots\times\tau_m'\rightarrow\tau'}\\
      \tau_1\times\ldots\times\tau_n\rightarrow\tau\instantiates\tau_1''\times\ldots\times\tau_k''\rightarrow\tau''\\
      \tau_1'\times\ldots\times\tau_m'\rightarrow\tau'\instantiates\tau_1''\times\ldots\times\tau_k''\rightarrow\tau''}
-    {\hastype{\Gamma}{\textsc{simplify}(\check{\delta_1}, \check{\delta_2})}{\tau_1''\times\ldots\times\tau_k''\rightarrow\tau''}}
+    {\hastype{\Gamma}{\textsc{simplify}(\check{\delta}_1, \check{\delta}_2)}{\tau_1''\times\ldots\times\tau_k''\rightarrow\tau''}}
 \]
 
 However, this definition is insufficient to specify the actual result of type

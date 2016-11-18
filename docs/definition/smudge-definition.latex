@@ -5,13 +5,14 @@
 \newcommand{\dom}{\operatorname{dom}}
 \newcommand{\instantiates}{\operatorname{<:}}
 
-\newcommand{\hastype}[3]{#1 \vdash #2 : #3}
+\newcommand{\proves}[2]{#1 \vdash #2}
+\newcommand{\hastype}[3]{\proves{#1}{#2 : #3}}
 \newcommand{\tuple}[1]{\left\langle #1 \right\rangle}
 \newcommand{\yield}[2]{\tuple{#1} \rightarrow \tuple{#2}}
 
 \begin{document}
-\section*{Type inference in smudge}
-The types of events and side effects in smudge can be both explicit and
+\section*{Type inference in Smudge}
+The types of events and side effects in Smudge can be both explicit and
 implicit, as functions can be supplied both with and without type hints.
 Accordingly, types within a single module are inferred using a deterministic
 type simplification algorithm.

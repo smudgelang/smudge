@@ -4,6 +4,10 @@
 
 \newcommand{\dom}{\operatorname{dom}}
 \newcommand{\instantiates}{\operatorname{<:}}
+\newcommand{\issatisfied}{\operatorname{is\, satisfied}}
+\newcommand{\isfresh}{\operatorname{is\, fresh}}
+
+\newcommand{\void}{\texttt{void}}
 
 \newcommand{\proves}[2]{#1 \vdash #2}
 \newcommand{\hastype}[3]{\proves{#1}{#2 : #3}}
@@ -15,7 +19,8 @@
 The types of events and side effects in Smudge can be both explicit and
 implicit, as functions can be supplied both with and without type hints.
 Accordingly, types within a single module are inferred using a deterministic
-type simplification algorithm.
+constraint solver.  Constraints are satisfied through subtype polymorphic
+unification.
 
 To construct these rules, both the notation of natural deduction for type
 inference and the notation for automata are useful here, with a slight
@@ -27,7 +32,10 @@ statements, whose types can be non-uniform.  For clarity, the following
 conventions are used:
 \begin{itemize}
     \item $\Gamma$ refers to the environment of types
-    \item $\tau$ refers to a type
+    \item $\tau$ refers to either a type or a type variable
+    \item $\alpha$ refers to a type variable
+    \item $C$ refers to the set of constraints
+    \item $\theta$ refers to the substitutions
     \item $x$ refers to an identifier
 
     \item $m$ refers to a single state machine
@@ -37,20 +45,20 @@ conventions are used:
     \item $\check{\delta}$ refers to a named side-effectful partial transition
 \end{itemize}
 
-The definition phase initiates elaboration, and is followed by resolution.
+The definition phase initiates elaboration, which is followed by constraint
+inference, then by unification, and finally by instantiation.
 
 \subsection*{Definition rules}
 During definition, each module is inspected, and names are collected and
-assigned types in the type environment $\Gamma$.
-
-The functions \texttt{typefor}, \texttt{resolve}, and \texttt{simplify} are not
-specified, but must be deterministic.
+assigned type variables in the type environment $\Gamma$.
 
 All names are fully-qualified.
 \[
     \inference[ModuleDef]
-    {\yield{m_1,\Gamma}{\Gamma_1}&\ldots&\yield{m_n,\Gamma_{n-1}}{\Gamma_n}}
-    {\yield{\textsc{module}(\tuple{m_1,\ldots,m_n}),\Gamma}{\texttt{resolve}(\Gamma_n)}}
+    {\yield{m_1,\Gamma}{\Gamma_1}&\ldots&\yield{m_n,\Gamma_{n-1}}{\Gamma_n}\\
+     \hastype{C,\Gamma_n}{m_1,\ldots,m_n}{\tau_1,\ldots,\tau_n}\\
+     \theta C\issatisfied&\theta\Gamma=\Gamma}
+    {\yield{\textsc{module}(\tuple{m_1,\ldots,m_n}),\Gamma}{\theta\Gamma_n}}
 \]
 
 \[
@@ -74,14 +82,70 @@ All names are fully-qualified.
 
 \[
     \inference[NameDef]
-    {x\not\in\dom\Gamma}
-    {\yield{\textsc{name}(x),\Gamma}{\Gamma\left\{x\mapsto\texttt{typefor}(x)\right\}}}
+    {x\not\in\dom\Gamma&\alpha\isfresh}
+    {\yield{\textsc{name}(x),\Gamma}{\Gamma\left\{x\mapsto\alpha\right\}}}
 \]
 
 \[
     \inference[NameDefAlready]
     {x\in\dom\Gamma}
-    {\yield{\textsc{name}(x),\Gamma}{\Gamma\left\{x\mapsto\texttt{simplify}(\texttt{typefor}(x),\Gamma(x))\right\}}}
+    {\yield{\textsc{name}(x),\Gamma}{\Gamma}}
+\]
+
+\subsection*{Constraint rules}
+Constraints are accumulated over the elaboration of a module, and then
+satisfied during unification.  The function \texttt{typefor} is not specified,
+but must be a deterministic, bijective mapping of names to types.
+\[
+    \inference[StateMachine]
+    {\proves{C,\Gamma}{q_1,\ldots,q_n}}
+    {\proves{C,\Gamma}{\textsc{statemachine}(m,\tuple{q_1,\ldots,q_n})}}
+\]
+
+\[
+    \inference[State]
+    {\proves{C,\Gamma}{a_1,\ldots,a_n}}
+    {\proves{C,\Gamma}{\textsc{state}(q,\tuple{a_1,\ldots,a_n})}}
+\]
+
+\[
+    \inference[Event]
+    {\proves{C,\Gamma,x_a}{\delta_a,\check{\delta}_1,\ldots,\check{\delta}_n}&\tau=\texttt{typefor}(x_a)}
+    {\proves{\tau\instantiates\Gamma(x_a)\land C,\Gamma}
+             {\textsc{event}(x_a,\tuple{\check{\delta}_1,\ldots,\check{\delta}_n})}}
+\]
+
+\[
+    \inference[SideEffectFunction]
+    {\Gamma(x_a)=\tau_{a}}
+    {\proves{\tau_{a}\rightarrow\void\instantiates\Gamma(x_\delta),\Gamma,x_a}{\tuple{x_\delta,\textsc{function}}}}
+\]
+
+\[
+    \inference[SideEffectTyped]
+    {\Gamma(x_a)=\tau_{a}\\
+     x_{a'}\in\dom\Gamma&\Gamma(x_{a'})=\tau_{a'}}
+    {\proves{\tau_{a}\rightarrow\tau_{a'}\instantiates\Gamma(x_\delta),\Gamma,x_a}{\tuple{x_\delta,\textsc{typed}(x_{a'})}}}
+\]
+
+\[
+    \inference[SideEffectEvent]
+    {x_{a'}\in\dom\Gamma&\Gamma(x_{a'})=\tau_{a'}}
+    {\proves{\tau_{a'}\rightarrow\void\instantiates\Gamma(x_\delta),\Gamma,x_a}{\tuple{x_\delta,\textsc{eventfunction}(x_{a'})}}}
+\]
+
+\subsection*{Monomorphic unification rules}
+These rules dictate type resolution in the case where the types must match.
+
+\[
+    \inference[SubtypeEqual]
+    {\tau_1=\tau_2}{\tau_1\instantiates\tau_2}
+\]
+
+\[
+    \inference[Conjoin]
+    {C_1\issatisfied&C_2\issatisfied}
+    {C_1\land C_2\issatisfied}
 \]
 
 \subsection*{Subtype polymorphic unification rules}
@@ -100,5 +164,80 @@ of it.
 \]
 
 However, this definition is insufficient to specify the actual result of type
-unification, which requires a constraint solver.
+unification.  For this, the accumulated constraints must be resolved into a
+supertype through additional rules that build on top of the monomorphic ones.
+
+These include the basic subtyping rules that dictate structural relationships
+directly between types.  For clarity the n-ary rule is included, although it is
+implicit in the arrow rule.
+
+A key detail worth drawing attention to in these rules is that function return
+and parameter types are generalized in the opposite direction --- return types
+covariantly, and parameter types contravariantly.  This is because for a
+function, a concrete return type is actually a more general type.
+
+\[
+    \inference[SubtypeVoid]
+    {}{\void\instantiates\tau}
+\]
+
+\[
+    \inference[SubtypeReflexive]
+    {}{\tau\instantiates\tau}
+\]
+
+\[
+    \inference[SubtypeArrow]
+    {\tau''\instantiates\tau&\tau'\instantiates\tau'''}
+    {\tau\rightarrow\tau'\instantiates\tau''\rightarrow\tau'''}
+\]
+
+\[
+    \inference[SubtypeN-ary]
+    {\tau_1'\instantiates\tau_1&\tau_2\times\ldots\times\tau_n\rightarrow\tau\instantiates\tau_2'\times\ldots\times\tau_n'\rightarrow\tau'}
+    {\tau_1\times\tau_2\times\ldots\times\tau_n\rightarrow\tau\instantiates\tau_1'\times\tau_2'\times\ldots\times\tau_n'\rightarrow\tau'}
+\]
+
+In addition, meet and join rules dictate relationships that are use-dependent.
+Although Smudge is only capable of directly inferring joins, meet rules are
+required to resolve parameter contravariance.
+
+\[
+    \inference[SubtypeMeetLeft]
+    {}{\tau_1\land\tau_2\instantiates\tau_1}
+\]
+
+\[
+    \inference[SubtypeMeetRight]
+    {}{\tau_1\land\tau_2\instantiates\tau_2}
+\]
+
+\[
+    \inference[SubtypeMeet]
+    {\tau\instantiates\tau_1&\tau\instantiates\tau_2}
+    {\tau\instantiates\tau_1\land\tau_2}
+\]
+
+\[
+    \inference[SubtypeJoinLeft]
+    {}{\tau_1\instantiates\tau_1\lor\tau_2}
+\]
+
+\[
+    \inference[SubtypeJoinRight]
+    {}{\tau_2\instantiates\tau_1\lor\tau_2}
+\]
+
+\[
+    \inference[SubtypeJoin]
+    {\tau_1\instantiates\tau&\tau_2\instantiates\tau}
+    {\tau_1\lor\tau_2\instantiates\tau}
+\]
+
+\[
+    \inference[SubtypeJoinArrow]
+    {}
+    {\tau\rightarrow\tau'\lor\tau''\rightarrow\tau'''\instantiates
+     (\tau''\land\tau)\rightarrow(\tau'\lor\tau''')}
+\]
 \end{document}

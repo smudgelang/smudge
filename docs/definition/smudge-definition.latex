@@ -56,7 +56,7 @@ All names are fully-qualified.
 \[
     \inference[ModuleDef]
     {\yield{m_1,\Gamma}{\Gamma_1}&\ldots&\yield{m_n,\Gamma_{n-1}}{\Gamma_n}\\
-     \hastype{C,\Gamma_n}{m_1,\ldots,m_n}{\tau_1,\ldots,\tau_n}\\
+     \proves{C,\Gamma_n}{m_1,\ldots,m_n}\\
      \theta C\issatisfied&\theta\Gamma=\Gamma}
     {\yield{\textsc{module}(\tuple{m_1,\ldots,m_n}),\Gamma}{\theta\Gamma_n}}
 \]

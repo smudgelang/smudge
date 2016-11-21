@@ -144,10 +144,10 @@ defFun gamma (FuncTyped (_, Event x_a')) = defName gamma x_a'
 defFun gamma (FuncEvent (_, Event x_a')) = defName gamma x_a'
 
 defName :: SymTab -> TaggedName -> State Int SymTab
-defName gamma x = do if member x gamma
-                        then return gamma
-                        else do alpha <- fresh
-                                return $ Map.insert x alpha gamma
+defName gamma x = if member x gamma
+                     then return gamma
+                     else do alpha <- fresh
+                             return $ Map.insert x alpha gamma
 
 -- constraint rules
 inferMachine :: SymTab -> (StateMachine TaggedName, [(WholeState TaggedName)]) -> Constraint

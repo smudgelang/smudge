@@ -1,0 +1,14 @@
+Title: Duration is Complicated.
+
+Events may need to be deallocated by Smudge and not user-written code while
+users will need to allocate them.
+
+As a prerequisite to #13, require users to implement free function, and make
+use of that inside smudge.
+
+SMUDGE_FreeEvent(void *pointer); <- This is going to have to be
+                                    implemented by users. It's for
+                                    freeing things like event1 and
+                                    event2.
+
+Also: typed functions need to have their events' space allocated.

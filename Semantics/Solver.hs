@@ -9,6 +9,7 @@ module Semantics.Solver (
     toList,
     (!),
 
+    elaborateMono,
     elaboratePoly,
 ) where
 
@@ -29,7 +30,7 @@ import Model (
 import Data.Map (Map, unionWith, findWithDefault, member)
 import qualified Data.Map as Map(map, null, empty, singleton, insert, union, partition, toList, (!))
 import Data.Set (Set, empty, singleton, insert, union, intersection, partition, findMin, minView)
-import qualified Data.Set as Set(map, null, size)
+import qualified Data.Set as Set(map, filter, null, size)
 import Data.Graph.Inductive.Query.Monad (mapFst)
 import Data.Char (ord, chr)
 import Control.Monad.State (State, evalState, get, put)
@@ -53,8 +54,11 @@ data Ty =
 newtype SymbolTable = SymbolTable SymTab
     deriving (Show, Eq, Ord, Monoid)
 
+elaborateMono :: [(StateMachine TaggedName, [(WholeState TaggedName)])] -> SymbolTable
+elaborateMono = SymbolTable . Map.map  canonicalize . defModule Map.empty
+
 elaboratePoly :: [(StateMachine TaggedName, [(WholeState TaggedName)])] -> SymbolTable
-elaboratePoly = SymbolTable . defModule Map.empty
+elaboratePoly = SymbolTable . Map.map (canonicalize . bottomToVoid . voidToBottom) . defModule Map.empty
 
 insertExternalSymbol :: SymbolTable -> Name -> [Name] -> Name -> SymbolTable
 insertExternalSymbol (SymbolTable gamma) fname args returnType = SymbolTable $ Map.map (instantiate theta) gamma'
@@ -204,16 +208,12 @@ boundWith op s =
 join :: Ty -> Ty -> Ty
 (Unary b t t') `join` (Unary b' t'' t''') = Unary (resolveBinding b b') (t'' `meet` t) (t' `join` t''')
 (Tyset taus)   `join` (Tyset taus')       = Tyset $ leastUpperBound $ union taus taus'
-Void           `join` tau                 = Tyset empty           `join` tau
-tau            `join` Void                = tau                   `join` Tyset empty
 (Tyset taus)   `join` tau                 = Tyset taus            `join` Tyset (singleton tau)
 tau            `join` (Tyset taus)        = Tyset (singleton tau) `join` Tyset taus
 tau            `join` tau'                = Tyset (singleton tau) `join` Tyset (singleton tau')
 
 meet :: Ty -> Ty -> Ty
 (Tyset taus) `meet` (Tyset taus') = Tyset $ greatestLowerBound $ intersection taus taus'
-Void         `meet` tau           = Tyset empty           `meet` tau
-tau          `meet` Void          = tau                   `meet` Tyset empty
 (Tyset taus) `meet` tau           = Tyset taus            `meet` Tyset (singleton tau)
 tau          `meet` (Tyset taus)  = Tyset (singleton tau) `meet` Tyset taus
 tau          `meet` tau'          = Tyset (singleton tau) `meet` Tyset (singleton tau')
@@ -266,8 +266,15 @@ finished (Unary _ tau tau') = finished tau && finished tau'
 finished (Tyvar _) = False
 finished (Tyset taus) = foldr ((&&) . finished) True taus
 
+subst :: TySubst -> TySubst
+subst theta = case Map.partition finished theta of
+              (theta_r, theta_u) | Map.null theta_u -> theta_r
+              (theta_r, theta_u) | Map.null theta_r -> error "Unable to complete substitution.  This is a bug in smudge.\n"
+              (theta_r, theta_u)                    -> Map.union theta_r (subst $ Map.map (instantiate theta_r) theta_u)
+
+
+-- canonicalization
 canonicalize :: Ty -> Ty
-canonicalize (Tyset taus) | Set.null taus = Void
 canonicalize (Tyset taus) | Set.size taus == 1 = findMin taus
 canonicalize (Unary b tau tau') = Unary (rb b tau'') tau'' (canonicalize tau')
     where tau'' = canonicalize tau
@@ -275,8 +282,12 @@ canonicalize (Unary b tau tau') = Unary (rb b tau'') tau'' (canonicalize tau')
           rb b _ = b
 canonicalize tau = tau
 
-subst :: TySubst -> TySubst
-subst theta = case Map.partition finished $ Map.map canonicalize theta of
-              (theta_r, theta_u) | Map.null theta_u -> theta_r
-              (theta_r, theta_u) | Map.null theta_r -> error "Unable to complete substitution.  This is a bug in smudge.\n"
-              (theta_r, theta_u)                    -> Map.union theta_r (subst $ Map.map (instantiate theta_r) theta_u)
+voidToBottom :: Ty -> Ty
+voidToBottom (Tyset taus) = Tyset $ Set.filter (/= Void) taus
+voidToBottom (Unary b t t') = Unary b (voidToBottom t) (voidToBottom t')
+voidToBottom tau = tau
+
+bottomToVoid :: Ty -> Ty
+bottomToVoid (Tyset taus) | Set.null taus = Void
+bottomToVoid (Unary b t t') = Unary b (bottomToVoid t) (bottomToVoid t')
+bottomToVoid tau = tau

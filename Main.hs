@@ -11,6 +11,7 @@ import Model (
   passWholeStateToGraph,
   )
 import Semantics.Solver (
+  elaborateMono,
   elaboratePoly,
   )
 import Parsers.Smudge (state_machine, smudgle)
@@ -42,6 +43,7 @@ subcommand name f os = map makeSub os
 
 data SystemOption = Version
                   | Help
+                  | Strict
                   | OutDir FilePath
     deriving (Show, Eq)
 
@@ -56,6 +58,7 @@ header = "Usage: " ++ app_name ++ " [OPTIONS] file\n" ++
 sysopts :: [OptDescr SystemOption]
 sysopts = [Option ['v'] ["version"] (NoArg Version) "Version information.",
            Option ['h'] ["help"] (NoArg Help) "Print this message.",
+           Option []    ["strict"] (NoArg Strict) "Require all types to match strictly",
            Option []    ["outdir"] (ReqArg OutDir "DIR") "Output directory."]
 
 data Options = SystemOption SystemOption | GraphVizOption GraphVizOption | CStaticOption CStaticOption
@@ -73,8 +76,8 @@ printVersion :: IO ()
 printVersion = putStrLn (app_name ++ " version: " ++
                          (showVersion $ packageVersion packageInfo))
 
---processFile :: String -> IO ([(StateMachine, Gr EnterExitState Happening)], SymbolTable)
-processFile fileName = do
+--processFile :: String -> [Options] -> IO ([(StateMachine, Gr EnterExitState Happening)], SymbolTable)
+processFile fileName os = do
     compilationUnit <-
         if fileName == "-"
             then getContents
@@ -91,7 +94,9 @@ processFile fileName = do
             mapM (putStrLn . show) fs
             when (any fatal fs) $ report_failure $ length fs
 
-            let st = elaboratePoly sms'''
+            let st = if elem (SystemOption Strict) os
+                     then elaborateMono sms'''
+                     else elaboratePoly sms'''
             let gs = passWholeStateToGraph sms'''
             let fs = concat $ map make_passes gs
             mapM (putStrLn . show) fs
@@ -128,6 +133,6 @@ main = do
                 prefix [] = dropFileName fileName
                 prefix ((SystemOption (OutDir p)):_) = p
                 prefix (_:t) = prefix t
-            in processFile fileName >>= make_output outputTarget os
+            in processFile fileName os >>= make_output outputTarget os
 
         (_,              _,  _) -> printUsage

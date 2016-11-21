@@ -19,8 +19,8 @@
 The types of events and side effects in Smudge can be both explicit and
 implicit, as functions can be supplied both with and without type hints.
 Accordingly, types within a single module are inferred using a deterministic
-constraint solver.  Constraints are satisfied through subtype polymorphic
-unification.
+constraint solver.  Constraints are satisfied through monomorphic or subtype
+polymorphic unification, depending on the flags supplied at invocation.
 
 To construct these rules, both the notation of natural deduction for type
 inference and the notation for automata are useful here, with a slight
@@ -136,6 +136,8 @@ but must be a deterministic, bijective mapping of names to types.
 
 \subsection*{Monomorphic unification rules}
 These rules dictate type resolution in the case where the types must match.
+This behavior can be selected by supplying a flag at invocation.  It resolves
+conflicting constraints by rejecting the module as ill-formed.
 
 \[
     \inference[SubtypeEqual]

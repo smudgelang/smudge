@@ -149,13 +149,13 @@ handleStateEventFunction sm@(StateMachineDeclarator smName) st h st' syms =
         call_enter = (#:) (apply enter_f []) (:#)
 
         isEventTy :: Ty -> Event TaggedName -> Bool
-        isEventTy a (Event e) = a == (syms ! e)
+        isEventTy a (Event e) = a == snd (syms ! e)
         isEventTy _ _ = False
 
-        psOf (Unary _ Void _) = []
-        psOf (Unary _ p    _) = [if isEventTy p (event h) then event_ex else (#:) "0" (:#)]
+        psOf (Void :-> _) = []
+        psOf (p    :-> _) = [if isEventTy p (event h) then event_ex else (#:) "0" (:#)]
         apply_se (f, FuncTyped _) = undefined -- See ticket #15, harder than it seems at first.
-        apply_se (f, _) = (#:) (apply ((#:) (mangleTName f) (:#)) (psOf (syms ! f))) (:#)
+        apply_se (f, _) = (#:) (apply ((#:) (mangleTName f) (:#)) (psOf (snd $ syms ! f))) (:#)
         side_effects = case h of
                           (Happening _ ses [])                        -> [apply_se se | se <- ses] ++ [call_exit, assign_state, call_enter]
                           (Happening _ ses fs) | elem NoTransition fs -> [apply_se se | se <- ses]
@@ -335,7 +335,7 @@ makeEnum smName ss =
     RIGHTCURLY))
 
 eventStruct :: TaggedName -> Ty -> Declaration
-eventStruct name (Ty Resolved ty) =
+eventStruct name (Ty ty) =
     Declaration
     (fromList [A TYPEDEF,
                B (makeStruct (mangleTName ty) [])])
@@ -359,20 +359,20 @@ makeFunctionDeclarator ps f_name params =
           (Just $ Left $ ParameterTypeList (fromList params) Nothing)
           RIGHTPAREN
 
-makeFunctionDeclaration :: TaggedName -> Ty -> Declaration
-makeFunctionDeclaration n (Unary b p r) =
+makeFunctionDeclaration :: TaggedName -> (Binding, Ty) -> Declaration
+makeFunctionDeclaration n (b, p :-> r) =
     Declaration
     (fromList $ binding ++ [B result])
     (Just $ fromList [InitDeclarator (makeFunctionDeclarator ps f_name params) Nothing])
     SEMICOLON
     where
         binding = case b of External -> [A EXTERN]; _ -> []
-        result = case r of Void -> VOID; Ty _ t -> TypeSpecifier $ mangleTName t
+        result = case r of Void -> VOID; Ty t -> TypeSpecifier $ mangleTName t
         ps = case r of Void -> []; _ -> [POINTER Nothing]
         f_name = mangleTName n
         params = case p of
                     Void -> [ParameterDeclaration (fromList [B VOID]) Nothing]
-                    Ty _ t -> [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier $ mangleTName t])
+                    Ty t -> [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier $ mangleTName t])
                                (Just $ Right $ AbstractDeclarator (This $ fromList [POINTER Nothing]))]
 
 makeFunction :: DeclarationSpecifiers -> [Pointer] -> Identifier -> [ParameterDeclaration] -> CompoundStatement -> FunctionDefinition
@@ -399,10 +399,10 @@ instance Backend CStaticOption where
         where src = fromList $ concat tus
               ext = fromList tue
               hdr = fromList tuh
-              tuh = [ExternalDeclaration $ Right $ eventStruct name ty | (name, ty@(Ty Resolved _)) <- Solver.toList syms]
-                    ++ [ExternalDeclaration $ Right $ makeFunctionDeclaration name ftype | (name, ftype@(Unary Resolved _ _)) <- Solver.toList syms]
-                    ++ [ExternalDeclaration $ Right $ makeFunctionDeclaration name ftype | (name, ftype) <- externs]
-              tue = [ExternalDeclaration $ Right $ makeFunctionDeclaration name ftype | (name, ftype@(Unary External _ _)) <- Solver.toList syms]
+              tuh = [ExternalDeclaration $ Right $ eventStruct name ty | (name, (Resolved, ty@(Ty _))) <- Solver.toList syms]
+                    ++ [ExternalDeclaration $ Right $ makeFunctionDeclaration name (Resolved, ftype) | (name, (Resolved, ftype@(_ :-> _))) <- Solver.toList syms]
+                    ++ [ExternalDeclaration $ Right $ makeFunctionDeclaration name (External, ftype) | (name, ftype) <- externs]
+              tue = [ExternalDeclaration $ Right $ makeFunctionDeclaration name (External, ftype) | (name, (External, ftype@(_ :-> _))) <- Solver.toList syms]
               tus = [[ExternalDeclaration $ Right $ stateEnum sm $ states g]
                      ++ [ExternalDeclaration $ Right $ stateVarDeclaration sm $ initial g]
                      ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration sm s EventExit | (_, EnterExitState {st = s@StateAny}) <- labNodes g]
@@ -427,7 +427,7 @@ instance Backend CStaticOption where
               gs = [(smd, g) | (Annotated _ smd, g) <- fst gswust]
               syms :: SymbolTable
               syms = insertExternalSymbol (snd gswust) "assert" [] ""
-              externs = [(TagFunction $ qualify (smName, "Current_state_name"), Unary External Void (Ty External (TagBuiltin $ qualify "const char"))) | ((StateMachineDeclarator smName), _) <- gs'']
+              externs = [(TagFunction $ qualify (smName, "Current_state_name"), Void :-> (Ty $ TagBuiltin $ qualify "const char")) | ((StateMachineDeclarator smName), _) <- gs'']
               initial g = head [st ese | (n, EnterExitState {st = StateEntry}) <- labNodes g, n' <- suc g n, (Just ese) <- [lab g n']]
               states g = [st ees | (_, ees) <- labNodes g]
               s_handlers e g = [(s, h) | (s, Just h@(State _, _)) <- toList (handlers e g)]

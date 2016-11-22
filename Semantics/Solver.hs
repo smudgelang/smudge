@@ -1,7 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Semantics.Solver (
-    Ty(Void, Ty, Unary),
+    Ty(Void, Ty, (:->)),
     Binding(..),
 
     SymbolTable,
@@ -27,11 +27,11 @@ import Model (
   TaggedName(..),
   )
 
-import Data.Map (Map, unionWith, findWithDefault, member)
+import Data.Map (Map, mapWithKey, unionWith, findWithDefault, member)
 import qualified Data.Map as Map(map, null, empty, singleton, insert, union, partition, toList, (!))
 import Data.Set (Set, empty, singleton, insert, union, intersection, partition, findMin, minView)
 import qualified Data.Set as Set(map, filter, null, size)
-import Data.Graph.Inductive.Query.Monad (mapFst)
+import Data.Graph.Inductive.Query.Monad (mapFst, mapSnd, (><))
 import Data.Char (ord, chr)
 import Control.Monad.State (State, evalState, get, put)
 import Control.Monad (foldM)
@@ -43,47 +43,50 @@ data Binding = External | Unresolved | Resolved
 data Ty =
         -- instantiable types
           Void
-        | Ty Binding TaggedName
-        | Unary Binding Ty Ty
+        | Ty TaggedName
+        | Ty :-> Ty
 
         -- non-instantiable types
         | Tyvar String
         | Tyset (Set Ty)
     deriving (Show, Eq, Ord)
 
+infixr 7 :->
+
 newtype SymbolTable = SymbolTable SymTab
     deriving (Show, Eq, Ord, Monoid)
 
 elaborateMono :: [(StateMachine TaggedName, [(WholeState TaggedName)])] -> SymbolTable
-elaborateMono = SymbolTable . Map.map  canonicalize . defModule Map.empty
+elaborateMono = SymbolTable . Map.map (mapSnd canonicalize) . defModule Map.empty
 
 elaboratePoly :: [(StateMachine TaggedName, [(WholeState TaggedName)])] -> SymbolTable
-elaboratePoly = SymbolTable . Map.map (canonicalize . bottomToVoid . voidToBottom) . defModule Map.empty
+elaboratePoly = SymbolTable . Map.map (mapSnd (canonicalize . bottomToVoid . voidToBottom)) . defModule Map.empty
 
 insertExternalSymbol :: SymbolTable -> Name -> [Name] -> Name -> SymbolTable
-insertExternalSymbol (SymbolTable gamma) fname args returnType = SymbolTable $ Map.map (instantiate theta) gamma'
+insertExternalSymbol (SymbolTable gamma) fname args returnType = SymbolTable $ mapWithKey ((>< instantiate theta) . rebind btheta) gamma'
     where gamma' = evalState (defName gamma name) 0  -- BUG: 0 is probably wrong
           name = (TagFunction $ qualify fname)
-          ty = (Unary External
                       -- TODO: args is variable arity, but for now only unary is possible.
-                      (if null args then Void else Ty External (TagBuiltin $ qualify $ head args))
-                      (if null returnType then Void else Ty External (TagBuiltin $ qualify returnType)))
-          theta = solve (ty :<: gamma' Map.! name)
+          ty = (if null args then Void else Ty $ TagBuiltin $ qualify $ head args)
+               :-> (if null returnType then Void else Ty $ TagBuiltin $ qualify returnType)
+          (btheta, theta) = solve (External :@ name :/\ ty :<: gamma' !> name)
 
-toList :: SymbolTable -> [(TaggedName, Ty)]
+toList :: SymbolTable -> [(TaggedName, (Binding, Ty))]
 toList (SymbolTable gamma) = Map.toList gamma
 
-(!) :: SymbolTable -> TaggedName -> Ty
+(!) :: SymbolTable -> TaggedName -> (Binding, Ty)
 (SymbolTable gamma) ! name = gamma Map.! name
 
 -- internal implementation
-type SymTab = Map TaggedName Ty
+type SymTab = Map TaggedName (Binding, Ty)
 
 data Constraint = Ty :<: Ty
+                | Binding :@ TaggedName
                 | Constraint :/\ Constraint
                 | Trivial
     deriving (Show, Eq, Ord)
 
+infixl 5 :@
 infixl 5 :<:
 infixl 4 :/\
 
@@ -93,10 +96,7 @@ conjoin [c] = c
 conjoin (c:cs) = c :/\ conjoin cs
 
 typefor :: TaggedName -> Ty
-typefor = Ty Resolved
-
-unknown :: TaggedName -> Ty
-unknown = Ty Unresolved
+typefor = Ty
 
 fresh :: State Int Ty
 fresh = do n <- get
@@ -106,12 +106,19 @@ fresh = do n <- get
                     then [chr $ ord 'a' + n]
                     else 'a' : show n
 
+(!>) :: SymTab -> TaggedName -> Ty
+gamma !> x = snd $ gamma Map.! x
+
+(!?) :: SymTab -> Maybe TaggedName -> Ty
+gamma !? (Just x) = gamma !> x
+_ !? _ = Void
+
 -- definition rules
 defModule :: SymTab -> [(StateMachine TaggedName, [(WholeState TaggedName)])] -> SymTab
-defModule gamma ms = Map.map (instantiate theta) gammaN
+defModule gamma ms = mapWithKey ((>< instantiate theta) . rebind btheta) gammaN
     where gammaN = evalState (foldM defMachine gamma ms) 0
           c      = conjoin $ map (inferMachine gammaN) ms
-          theta  = subst $ solve c
+          (btheta, theta) = mapSnd subst $ solve c
 
 defMachine :: SymTab -> (StateMachine TaggedName, [(WholeState TaggedName)]) -> State Int SymTab
 defMachine gamma (_, qs) = foldM defState gamma qs
@@ -147,7 +154,7 @@ defName :: SymTab -> TaggedName -> State Int SymTab
 defName gamma x = if member x gamma
                      then return gamma
                      else do alpha <- fresh
-                             return $ Map.insert x alpha gamma
+                             return $ Map.insert x (Unresolved, alpha) gamma
 
 -- constraint rules
 inferMachine :: SymTab -> (StateMachine TaggedName, [(WholeState TaggedName)]) -> Constraint
@@ -160,27 +167,25 @@ inferState gamma (_, _, en, eh, ex) = c_n :/\ c_h :/\ c_x
           c_x = inferEvent gamma (EventExit, ex, undefined)
 
 inferEvent :: SymTab -> EventHandler TaggedName -> Constraint
-inferEvent gamma (Event x_a, ds, _) = typefor x_a :<: gamma Map.! x_a :/\ c
+inferEvent gamma (Event x_a, ds, _) = Resolved :@ x_a :/\ Resolved :@ x_d :/\ typefor x_a :<: tau_a :/\ c
     where retag (TagEvent n) = (TagFunction n)
-          d_a = (retag x_a, FuncEvent (undefined, Event x_a))
+          tau_a = gamma !> x_a
+          x_d = retag x_a
+          d_a = (x_d, FuncEvent (undefined, Event x_a))
           c = conjoin $ map (inferSE gamma (Just x_a)) (d_a:ds)
 inferEvent gamma (        _, ds, _) = c
     where c = conjoin $ map (inferSE gamma Nothing ) ds
 
-(!?) :: SymTab -> Maybe TaggedName -> Ty
-gamma !? (Just a) = gamma Map.! a
-_ !? _ = Void
-
 inferSE :: SymTab -> Maybe TaggedName -> SideEffect TaggedName -> Constraint
 inferSE gamma x_a (x_d, f) =
     let tau = (gamma !? x_a)
-        tau' = gamma Map.! x_d
+        tau' = gamma !> x_d
         inferFun :: Function TaggedName -> Constraint
-        inferFun FuncVoid = Unary External tau Void :<: tau'
-        inferFun (FuncTyped (_, Event x_a')) = Unary External tau tau_a' :<: tau' :/\ unknown x_a' :<: tau_a'
-            where tau_a' = (gamma Map.! x_a')
-        inferFun (FuncEvent (_, Event x_a')) = Unary Unresolved tau_a' Void :<: tau' :/\ unknown x_a' :<: tau_a'
-            where tau_a' = (gamma Map.! x_a')
+        inferFun FuncVoid = External :@ x_d :/\ tau :-> Void :<: tau'
+        inferFun (FuncTyped (_, Event x_a')) = External :@ x_d :/\ tau :-> tau_a' :<: tau' :/\ typefor x_a' :<: tau_a'
+            where tau_a' = gamma !> x_a'
+        inferFun (FuncEvent (_, Event x_a')) = tau_a' :-> Void :<: tau' :/\ typefor x_a' :<: tau_a'
+            where tau_a' = gamma !> x_a'
     in  inferFun f
 
 -- subtyping rules
@@ -192,25 +197,18 @@ greatestLowerBound = boundWith meet
 
 boundWith :: (Ty -> Ty -> Ty) -> Set Ty -> Set Ty
 boundWith op s =
-    let isFun (Unary _ _ _) = True
-        isFun             _ = False
-        eqName n (Ty _ n') = n == n'
-        eqName _ _ = False
-        resolveTy (Ty b n) (Ty b' n') = Ty (resolveBinding b b') n
-        rTy t@(Ty b n) ts = case partition (eqName n) ts of
-                            (ts', ts'') -> insert (foldr resolveTy t ts') ts''
-        rTy t          ts = insert t ts
-        resolveAll s = foldr rTy empty s
+    let isFun (_ :-> _) = True
+        isFun         _ = False
     in  case mapFst minView $ partition isFun s of
-        (Nothing, s')      -> resolveAll s'
-        (Just (f, fs), s') -> insert (foldr op f fs) (resolveAll s')
+        (Nothing, s')      -> s'
+        (Just (f, fs), s') -> insert (foldr op f fs) s'
 
 join :: Ty -> Ty -> Ty
-(Unary b t t') `join` (Unary b' t'' t''') = Unary (resolveBinding b b') (t'' `meet` t) (t' `join` t''')
-(Tyset taus)   `join` (Tyset taus')       = Tyset $ leastUpperBound $ union taus taus'
-(Tyset taus)   `join` tau                 = Tyset taus            `join` Tyset (singleton tau)
-tau            `join` (Tyset taus)        = Tyset (singleton tau) `join` Tyset taus
-tau            `join` tau'                = Tyset (singleton tau) `join` Tyset (singleton tau')
+(t :-> t')   `join` (t'' :-> t''') = t'' `meet` t :-> t' `join` t'''
+(Tyset taus) `join` (Tyset taus')  = Tyset $ leastUpperBound $ union taus taus'
+(Tyset taus) `join` tau            = Tyset taus            `join` Tyset (singleton tau)
+tau          `join` (Tyset taus)   = Tyset (singleton tau) `join` Tyset taus
+tau          `join` tau'           = Tyset (singleton tau) `join` Tyset (singleton tau')
 
 meet :: Ty -> Ty -> Ty
 (Tyset taus) `meet` (Tyset taus') = Tyset $ greatestLowerBound $ intersection taus taus'
@@ -218,42 +216,47 @@ meet :: Ty -> Ty -> Ty
 tau          `meet` (Tyset taus)  = Tyset (singleton tau) `meet` Tyset taus
 tau          `meet` tau'          = Tyset (singleton tau) `meet` Tyset (singleton tau')
 
--- an external binding cannot be resolved
-resolveBinding :: Binding -> Binding -> Binding
-resolveBinding a          b        | a == b = a
-resolveBinding Resolved   Unresolved        = Resolved
-resolveBinding Unresolved Resolved          = Resolved
-resolveBinding _          _                 = undefined
-
 -- unification rules
 
+type BindSubst = Map TaggedName Binding
 type TySubst = Map String Ty
 
-(|-->) :: String -> Ty -> TySubst
-tau |--> theta = Map.singleton tau theta
+(|-->) :: a -> b -> Map a b
+x |--> v = Map.singleton x v
 infixr 5 |-->
 
-identity :: TySubst
+identity :: Map a b
 identity = Map.empty
 
 merge :: TySubst -> TySubst -> TySubst
 merge = unionWith join
 
-solve :: Constraint -> TySubst
-solve Trivial = identity
-solve (tau :<: tau') | tau == tau' = identity
-solve (tau :<: Tyvar alpha) = alpha |--> tau
-solve (c1 :/\ c2) = merge theta1 theta2
-    where theta1 = solve c1
-          theta2 = solve c2
+bmerge :: BindSubst -> BindSubst -> BindSubst
+bmerge = unionWith resolveBinding
+
+solve :: Constraint -> (BindSubst, TySubst)
+solve Trivial = (identity, identity)
+solve (tau :<: tau') | tau == tau' = (identity, identity)
+solve (tau :<: Tyvar alpha) = (identity, alpha |--> tau)
+solve (b :@ name) = (name |--> b, identity)
+solve (c1 :/\ c2) = (bmerge btheta1 btheta2, merge theta1 theta2)
+    where (btheta1, theta1) = solve c1
+          (btheta2, theta2) = solve c2
 solve c = error $ "Tried to solve '" ++ show c ++ "'.  This is a bug in smudge.\n"
+
+-- an external binding cannot be resolved
+resolveBinding :: Binding -> Binding -> Binding
+resolveBinding a          b        | a == b = a
+resolveBinding a          Unresolved        = a
+resolveBinding Unresolved b                 = b
+resolveBinding _          _                 = undefined
 
 -- instantiation
 instantiate :: TySubst -> Ty -> Ty
 instantiate theta tau =
     let setof (Tyset taus) = taus
         setof tau = singleton tau
-        inst (Unary b tau tau') = Unary b (inst tau) (inst tau')
+        inst (tau :-> tau')     = inst tau :-> inst tau'
         inst tau@(Tyvar alpha)  = findWithDefault tau alpha theta
         inst (Tyset taus)       = Tyset $ leastUpperBound $ foldr union empty $ Set.map (setof . inst) taus
         inst tau                = tau
@@ -261,8 +264,8 @@ instantiate theta tau =
 
 finished :: Ty -> Bool
 finished Void = True
-finished (Ty _ _) = True
-finished (Unary _ tau tau') = finished tau && finished tau'
+finished (Ty _) = True
+finished (tau :-> tau') = finished tau && finished tau'
 finished (Tyvar _) = False
 finished (Tyset taus) = foldr ((&&) . finished) True taus
 
@@ -272,22 +275,21 @@ subst theta = case Map.partition finished theta of
               (theta_r, theta_u) | Map.null theta_r -> error "Unable to complete substitution.  This is a bug in smudge.\n"
               (theta_r, theta_u)                    -> Map.union theta_r (subst $ Map.map (instantiate theta_r) theta_u)
 
+rebind :: BindSubst -> TaggedName -> Binding -> Binding
+rebind theta k b = findWithDefault b k theta
 
 -- canonicalization
 canonicalize :: Ty -> Ty
 canonicalize (Tyset taus) | Set.size taus == 1 = findMin taus
-canonicalize (Unary b tau tau') = Unary (rb b tau'') tau'' (canonicalize tau')
-    where tau'' = canonicalize tau
-          rb Unresolved (Ty Resolved _) = Resolved
-          rb b _ = b
+canonicalize (tau :-> tau') = canonicalize tau :-> canonicalize tau'
 canonicalize tau = tau
 
 voidToBottom :: Ty -> Ty
 voidToBottom (Tyset taus) = Tyset $ Set.filter (/= Void) taus
-voidToBottom (Unary b t t') = Unary b (voidToBottom t) (voidToBottom t')
+voidToBottom (t :-> t') = voidToBottom t :-> voidToBottom t'
 voidToBottom tau = tau
 
 bottomToVoid :: Ty -> Ty
 bottomToVoid (Tyset taus) | Set.null taus = Void
-bottomToVoid (Unary b t t') = Unary b (bottomToVoid t) (bottomToVoid t')
+bottomToVoid (t :-> t') = bottomToVoid t :-> bottomToVoid t'
 bottomToVoid tau = tau

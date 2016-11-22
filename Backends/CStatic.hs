@@ -367,13 +367,18 @@ makeFunctionDeclaration n (b, p :-> r) =
     SEMICOLON
     where
         binding = case b of External -> [A EXTERN]; _ -> []
-        result = case r of Void -> VOID; Ty t -> TypeSpecifier $ mangleTName t
-        ps = case r of Void -> []; _ -> [POINTER Nothing]
         f_name = mangleTName n
-        params = case p of
-                    Void -> [ParameterDeclaration (fromList [B VOID]) Nothing]
-                    Ty t -> [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier $ mangleTName t])
+        xlate_r (_ :-> Void) = (VOID, [])
+        xlate_r (_ :-> Ty t) = (TypeSpecifier $ mangleTName t, [POINTER Nothing])
+        xlate_r (_ :-> p')   = xlate_r p'
+        xlate_ps (Void) = [ParameterDeclaration (fromList [B VOID]) Nothing]
+        xlate_ps (Ty t) = [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier $ mangleTName t])
                                (Just $ Right $ AbstractDeclarator (This $ fromList [POINTER Nothing]))]
+        xlate_ps (p :-> Void) = xlate_ps p
+        xlate_ps (p :-> Ty _) = xlate_ps p
+        xlate_ps (p :-> p')   = xlate_ps p ++ xlate_ps p'
+        translate t = (xlate_ps t, xlate_r t)
+        (params, (result, ps)) = translate (p :-> r)
 
 makeFunction :: DeclarationSpecifiers -> [Pointer] -> Identifier -> [ParameterDeclaration] -> CompoundStatement -> FunctionDefinition
 makeFunction dss ps f_name params body =
@@ -426,7 +431,8 @@ instance Backend CStaticOption where
                       | (sm, g) <- gs]
               gs = [(smd, g) | (Annotated _ smd, g) <- fst gswust]
               syms :: SymbolTable
-              syms = insertExternalSymbol (snd gswust) "assert" [] ""
+              syms = insertExternalSymbol "printf_assert" ["char", "char", "char"] "" $
+                     insertExternalSymbol "assert" [] "" (snd gswust)
               externs = [(TagFunction $ qualify (smName, "Current_state_name"), Void :-> (Ty $ TagBuiltin $ qualify "const char")) | ((StateMachineDeclarator smName), _) <- gs'']
               initial g = head [st ese | (n, EnterExitState {st = StateEntry}) <- labNodes g, n' <- suc g n, (Just ese) <- [lab g n']]
               states g = [st ees | (_, ees) <- labNodes g]

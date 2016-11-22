@@ -62,13 +62,15 @@ elaborateMono = SymbolTable . Map.map (mapSnd canonicalize) . defModule Map.empt
 elaboratePoly :: [(StateMachine TaggedName, [(WholeState TaggedName)])] -> SymbolTable
 elaboratePoly = SymbolTable . Map.map (mapSnd (canonicalize . bottomToVoid . voidToBottom)) . defModule Map.empty
 
-insertExternalSymbol :: SymbolTable -> Name -> [Name] -> Name -> SymbolTable
-insertExternalSymbol (SymbolTable gamma) fname args returnType = SymbolTable $ mapWithKey ((>< instantiate theta) . rebind btheta) gamma'
+insertExternalSymbol :: Name -> [Name] -> Name -> SymbolTable -> SymbolTable
+insertExternalSymbol fname args returnType (SymbolTable gamma) = SymbolTable $ mapWithKey ((>< instantiate theta) . rebind btheta) gamma'
     where gamma' = evalState (defName gamma name) 0  -- BUG: 0 is probably wrong
           name = (TagFunction $ qualify fname)
-                      -- TODO: args is variable arity, but for now only unary is possible.
-          ty = (if null args then Void else Ty $ TagBuiltin $ qualify $ head args)
-               :-> (if null returnType then Void else Ty $ TagBuiltin $ qualify returnType)
+          makeFun [] rty = Void :-> rty
+          makeFun [pty] rty = pty :-> rty
+          makeFun (pty:ptys) rty = pty :-> makeFun ptys rty
+          makeTy = Ty . TagBuiltin . qualify
+          ty = makeFun (map makeTy args) $ if null returnType then Void else makeTy returnType
           (btheta, theta) = solve (External :@ name :/\ ty :<: gamma' !> name)
 
 toList :: SymbolTable -> [(TaggedName, (Binding, Ty))]

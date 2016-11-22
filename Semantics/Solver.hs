@@ -3,6 +3,7 @@
 module Semantics.Solver (
     Ty(Void, Ty, (:->)),
     Binding(..),
+    resultOf,
 
     SymbolTable,
     insertExternalSymbol,
@@ -52,6 +53,10 @@ data Ty =
     deriving (Show, Eq, Ord)
 
 infixr 7 :->
+
+resultOf :: Ty -> Ty
+resultOf (_ :-> tau') = resultOf tau'
+resultOf tau = tau
 
 newtype SymbolTable = SymbolTable SymTab
     deriving (Show, Eq, Ord, Monoid)

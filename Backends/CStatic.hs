@@ -25,7 +25,14 @@ import Model (
   qName,
   )
 import Semantics.Operation (handlers, finalStates)
-import Semantics.Solver (Ty(..), Binding(..), SymbolTable, insertExternalSymbol, (!))
+import Semantics.Solver (
+  Ty(..), 
+  Binding(..), 
+  resultOf,
+  SymbolTable, 
+  insertExternalSymbol, 
+  (!),
+  )
 import qualified Semantics.Solver as Solver(toList)
 import Trashcan.FilePath (relPath)
 import Unparsers.C89 (renderPretty)
@@ -368,16 +375,15 @@ makeFunctionDeclaration n (b, p :-> r) =
     where
         binding = case b of External -> [A EXTERN]; _ -> []
         f_name = mangleTName n
-        xlate_r (_ :-> Void) = (VOID, [])
-        xlate_r (_ :-> Ty t) = (TypeSpecifier $ mangleTName t, [POINTER Nothing])
-        xlate_r (_ :-> p')   = xlate_r p'
+        xlate_r  Void  = (VOID, [])
+        xlate_r (Ty t) = (TypeSpecifier $ mangleTName t, [POINTER Nothing])
         xlate_ps (Void) = [ParameterDeclaration (fromList [B VOID]) Nothing]
         xlate_ps (Ty t) = [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier $ mangleTName t])
                                (Just $ Right $ AbstractDeclarator (This $ fromList [POINTER Nothing]))]
         xlate_ps (p :-> Void) = xlate_ps p
         xlate_ps (p :-> Ty _) = xlate_ps p
         xlate_ps (p :-> p')   = xlate_ps p ++ xlate_ps p'
-        translate t = (xlate_ps t, xlate_r t)
+        translate t = (xlate_ps t, xlate_r $ resultOf t)
         (params, (result, ps)) = translate (p :-> r)
 
 makeFunction :: DeclarationSpecifiers -> [Pointer] -> Identifier -> [ParameterDeclaration] -> CompoundStatement -> FunctionDefinition

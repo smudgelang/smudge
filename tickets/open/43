@@ -7,5 +7,9 @@ input, which would be nondeterministic (really, it just doesn't compile):
 
 sm { *st [ ev --, ev --> st ] }
 
+This includes any, and identical handlers; e.g., produced by abnfgen:
+
+sm { *st [ _ --, _ -- ] } 
+
 Smudge doesn't give an error for this, and it could be caught in a semantic
 pass check.

@@ -1,6 +1,7 @@
 \documentclass{article}
 \usepackage{amsmath}
 \usepackage{semantic}
+\usepackage{syntax}
 
 \newcommand{\dom}{\operatorname{dom}}
 \newcommand{\instantiates}{\operatorname{<:}}
@@ -14,7 +15,29 @@
 \newcommand{\tuple}[1]{\left\langle #1 \right\rangle}
 \newcommand{\yield}[2]{\tuple{#1} \rightarrow \tuple{#2}}
 
+\title{The Smudge Language Definition}
+
 \begin{document}
+
+\maketitle
+
+\section*{Grammar of Smudge}
+Smudge's syntax is comprised of top-level modules composed of one or more state
+machines, in turn composed of one or more comma-separated transient- or
+non-transient states.  Non-transient states are made up of zero or more enter
+and exit side effects and one or more comma-separated event handlers.  Event
+handlers are either "arrow" (transitioning) or "dash" (non-transitioning)
+declarations, whose side effects can either be host functions or Smudge events.
+All identifiers can contain any character (when quoted) except host functions,
+which are conservatively limited to C-style identifiers.
+
+The rules are as follows:
+
+\setlength{\grammarindent}{6em}
+\begin{grammar}
+\input{syntax.latex}
+\end{grammar}
+
 \section*{Type inference in Smudge}
 The types of events and side effects in Smudge can be both explicit and
 implicit, as functions can be supplied both with and without type hints.

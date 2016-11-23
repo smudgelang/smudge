@@ -2,7 +2,8 @@ module = state-machine empty *(state-machine empty)
 state-machine = state-machine-name empty state-machine-spec empty
 state-machine-spec = "{" empty state-list empty "}"
 state-list = state *(empty "," empty state) [empty ","]
-state = state-title spacesep to-state / state-title empty enter-exit-function empty event-handler-spec empty enter-exit-function
+state = state-title spacesep to-state
+      / state-title empty enter-exit-function empty event-handler-spec empty enter-exit-function
 event-handler-spec = "[" empty event-handler-list empty "]"
 event-handler-list = event-handler *(empty "," empty event-handler) [empty ","]
 enter-exit-function = [side-effect-container]
@@ -22,17 +23,19 @@ state-name = identifier
 event-name = identifier
 any = "_"
 comment = "//" *non-newline eol
-identifier = 1*(ALPHA / DIGIT / "-") / 2*(ALPHA / DIGIT / sep) / quoted
+identifier = 1*(alphanum / "-") / 2*(alphanum / sep) / quoted
 c-identifier = nondigit *(nondigit / DIGIT)
 sep = "-" / "_"
-symbol = "!" / "#" / "$" / "%" / "&" / "'" / "(" / ")" / "*" / "+" / "," / "." / "/" / "{" / "|" / "}" / "~" / "[" / "\" / "]" / "^" / "`" / "<" / ">" / ";" / "="
+symbol = "!" / "#" / "$" / "%" / "&" / "'" / "(" / ")" / "*" / "+" / "," / "." / "/"
+       / "{" / "|" / "}" / "~" / "[" / "\" / "]" / "^" / "`" / "<" / ">" / ";" / "="
 eol = LF
 spaces = *(WSP / eol)
 empty = spaces comment empty / spaces
 spacesep = (WSP / eol / comment) empty
 nondigit = ALPHA / "_"
-non-newline = ALPHA / WSP / DIGIT / sep / symbol
-quoted = DQUOTE 1*(ALPHA / WSP / DIGIT / sep / symbol) DQUOTE
+alphanum = ALPHA / DIGIT
+non-newline = alphanum / WSP / sep / symbol
+quoted = DQUOTE 1*(alphanum / WSP / sep / symbol) DQUOTE
 
 ;ALPHA = %x41-5A / %x61-7A
 ;DIGIT = %x30-39

@@ -53,8 +53,8 @@ Executable smudge
   -- Modules not exported by this package.
   Other-modules:     Backends.Backend Backends.CStatic Backends.GraphViz
                      Grammars.C89 Grammars.Smudge
-                     Semantics Semantics.Semantic Semantics.NoTransientStateCycles Semantics.UniqueStateNames
-                     Semantics.DeclaredStateNames Semantics.DeclaredEventNames
+                     Semantics Semantics.Semantic Semantics.OneInitialState Semantics.NoTransientStateCycles
+                     Semantics.DeclaredStateNames Semantics.UniqueStateNames Semantics.DeclaredEventNames
                      Model Semantics.Solver Semantics.Operation
                      Trashcan.FilePath Trashcan.Graph
                      Parsers.Smudge Unparsers.C89

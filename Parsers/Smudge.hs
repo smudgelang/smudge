@@ -35,7 +35,7 @@ state_list :: Parser [WholeState Name]
 state_list = sepEndBy (state <* empty) (char ',' >> empty)
 
 state :: Parser (WholeState Name)
-state = try (uncurry (,,,,) <$> state_title <* empty <*> pure []
+state = try (uncurry (,,,,) <$> state_title <* spacesep <*> pure []
                             <*> ((\ (ses, s) -> [(EventEnter, ses, s)]) <$> to_state) <*> pure [])
          <|> uncurry (,,,,) <$> state_title <* empty <*> enter_exit_function <* empty
                             <*> event_handler_spec <* empty <*> enter_exit_function
@@ -64,7 +64,7 @@ arrow = dash <* (char '>')
 event_handler :: Parser (EventHandler Name)
 event_handler =
     do ev <- event_name <|> event_any
-       empty
+       spacesep
        try ((\ (ses, s) -> (ev, ses, s)) <$> to_state)
         <|> (dash <* empty >>= \ses -> return (ev, ses, StateSame))
         <?> "state transition for event \"" ++ show ev ++ "\""
@@ -135,6 +135,9 @@ id_char = (alphaNum <|> sep)
 
 empty :: Parser ()
 empty = try (spaces *> comment *> empty) <|> spaces
+
+spacesep :: Parser ()
+spacesep = (space >> empty) <|> (comment >> empty)
 
 nondigit :: Parser Char
 nondigit = letter <|> char '_'

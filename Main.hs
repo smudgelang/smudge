@@ -16,7 +16,7 @@ import Semantics.Solver (
   )
 import Parsers.Smudge (state_machine, smudgle)
 import Semantics.Semantic (Severity(..), Fault(..), fatal)
-import Semantics (make_passes, name_passes)
+import Semantics (make_passes, name_passes, type_passes)
 import Trashcan.Graph
 
 import Control.Monad (when)
@@ -97,6 +97,12 @@ processFile fileName os = do
             let st = if elem (SystemOption Strict) os
                      then elaborateMono sms'''
                      else elaboratePoly sms'''
+            -- This is a bit of a hack around the definition of Passable
+            let types = take 1 (zip (map fst sms''') (repeat st))
+            let fs = concat $ map type_passes types
+            mapM (putStrLn . show) fs
+            when (any fatal fs) $ report_failure $ length fs
+
             let gs = passWholeStateToGraph sms'''
             let fs = concat $ map make_passes gs
             mapM (putStrLn . show) fs

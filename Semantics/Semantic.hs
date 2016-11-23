@@ -4,6 +4,7 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module Semantics.Semantic (
+    AbstractFoldable(..),
     Passable(..),
     Severity(..),
     Fault(..),

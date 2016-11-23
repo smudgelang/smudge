@@ -1,9 +1,11 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Semantics.Solver (
     Ty(Void, Ty, (:->)),
     Binding(..),
     resultOf,
+    instantiable,
 
     SymbolTable,
     insertExternalSymbol,
@@ -25,14 +27,17 @@ import Grammars.Smudge (
   )
 import Model (
   qualify,
+  mangleWith,
   TaggedName(..),
   )
+import Semantics.Semantic (AbstractFoldable(..))
 
-import Data.Map (Map, mapWithKey, unionWith, findWithDefault, member)
+import Data.Map (Map, mapWithKey, foldrWithKey, unionWith, findWithDefault, member)
 import qualified Data.Map as Map(map, null, empty, singleton, insert, union, partition, toList, (!))
-import Data.Set (Set, empty, singleton, insert, union, intersection, partition, findMin, minView)
+import Data.Set (Set, elems, empty, singleton, insert, union, intersection, partition, findMin, minView)
 import qualified Data.Set as Set(map, filter, null, size)
 import Data.Graph.Inductive.Query.Monad (mapFst, mapSnd, (><))
+import Data.List (intercalate)
 import Data.Char (ord, chr)
 import Control.Monad.State (State, evalState, get, put)
 import Control.Monad (foldM)
@@ -50,7 +55,14 @@ data Ty =
         -- non-instantiable types
         | Tyvar String
         | Tyset (Set Ty)
-    deriving (Show, Eq, Ord)
+    deriving (Eq, Ord)
+
+instance Show Ty where
+    show Void = "void"
+    show (Ty n) = mangleWith ((++) . (++ ".")) id $ qualify n
+    show (tau :-> tau') = show tau ++ " -> " ++ show tau'
+    show (Tyvar n) = n
+    show (Tyset tys) = "{" ++ intercalate ", " (map show (elems tys)) ++ "}"
 
 infixr 7 :->
 
@@ -58,8 +70,18 @@ resultOf :: Ty -> Ty
 resultOf (_ :-> tau') = resultOf tau'
 resultOf tau = tau
 
+instantiable :: Ty -> Bool
+instantiable      Void  = True
+instantiable     (Ty _) = True
+instantiable (t :-> t') = instantiable t && instantiable t'
+instantiable         _  = False
+
 newtype SymbolTable = SymbolTable SymTab
     deriving (Show, Eq, Ord, Monoid)
+
+instance AbstractFoldable SymbolTable where
+    type FoldContext SymbolTable = (TaggedName, (Binding, Ty))
+    afold f a (SymbolTable gamma) = foldrWithKey (curry f) a gamma
 
 elaborateMono :: [(StateMachine TaggedName, [(WholeState TaggedName)])] -> SymbolTable
 elaborateMono = SymbolTable . Map.map (mapSnd canonicalize) . defModule Map.empty
@@ -270,11 +292,9 @@ instantiate theta tau =
     in inst tau
 
 finished :: Ty -> Bool
-finished Void = True
-finished (Ty _) = True
 finished (tau :-> tau') = finished tau && finished tau'
-finished (Tyvar _) = False
 finished (Tyset taus) = foldr ((&&) . finished) True taus
+finished tau = instantiable tau
 
 subst :: TySubst -> TySubst
 subst theta = case Map.partition finished theta of

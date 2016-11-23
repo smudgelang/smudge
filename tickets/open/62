@@ -1,0 +1,5 @@
+Title: Vim mis-highlights parenthesis in name.
+
+This sm created by abnfgen doesn't highlight correctly:
+
+sm { st [ ev -( ")".ev )-> st  ] }

@@ -1,0 +1,7 @@
+UninstantiableTypes
+{
+  * A [
+        x -(@bad:x, @bad:y)-,
+        y --
+    ]
+}

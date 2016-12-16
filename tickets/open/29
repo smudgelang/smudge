@@ -20,3 +20,37 @@ that list into the generated _ext.h file.
 Update: There's code now that crams the assert symbol into the symbol
 table so it gets generated. It works around this when --c-no-debug is
 set, but this ticket should still get addressed.
+
+Update 2:
+These are the 7 possible solutions to this problem, and their issues:
+* Predefined names without a namespace
+    Risks of collisions
+    Introduces symbols without consent
+    User can't override
+* Predefined names with a namespace
+    Same as previous
+* User defined names without a namespace
+    Bad user design; forces new users to supply flags
+* User defined names with a namespace
+    Same as previous
+* Use the C standard library directly.
+    Too many dependencies
+    Embedded systems w/o standard library
+    Possible issues with future non-C backends
+    User can't override
+* User overrideable names without a namespace
+    Granular control, but you don't get anything for free
+* User overrideable names with a namespace
+    Names for free, but no granular control
+
+
+After discussing it, we opted for a blend of the last two, in two
+parts:
+* A default namespace, with a namespace flag to override
+* Default names within that namespace, with a flag to replace any symbol
+
+The flags are not backend-dependent.  The default namespace, as above is
+SMUDGE.
+
+The namespace flag is --namespace="NEW".
+The symbol flag is --rename="SMUDGE_func new_name"

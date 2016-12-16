@@ -44,7 +44,7 @@ event_handler_spec :: Parser [EventHandler Name]
 event_handler_spec = (char '[' >> empty) *> event_handler_list <* (empty >> char ']')
 
 event_handler_list :: Parser [EventHandler Name]
-event_handler_list = sepEndBy (event_handler <* empty) (char ',' >> empty)
+event_handler_list = sepEndBy1 (event_handler <* empty) (char ',' >> empty)
 
 enter_exit_function :: Parser [SideEffect Name]
 enter_exit_function = option [] side_effect_container

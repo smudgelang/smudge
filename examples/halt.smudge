@@ -9,8 +9,11 @@ halt {
     ] (@forceExit)
 }
 
-anynamedhalt {
-  * anynamedhalt [
+anynamedhalt
+{
+    * anynamedhalt
+    [
+        _ --
     ] (@forceExit),
 
     _ [
@@ -32,8 +35,11 @@ namedanyhalt {
     ] (@forceExit)
 }
 
-anyanyhalt {
-  * anyanyhalt [
+anyanyhalt
+{
+    * anyanyhalt
+    [
+        ticket39 --
     ] (@forceExit),
 
     unused [
@@ -58,6 +64,7 @@ nohalt {
 
 anynamednohalt {
   * anynamednohalt [
+        _ --
     ] (@forceExit),
 
     _ [
@@ -81,6 +88,7 @@ namedanynohalt {
 
 anyanynohalt {
   * anyanynohalt [
+        ticket39 --
     ] (@forceExit),
 
     unused [

@@ -7,3 +7,8 @@ Wrote file "-.dot"
 smudge: Listish values cannot be empty.
 
 It is worth discussing whether this construct has value.
+
+Update:
+
+After discussing, we feel that it does not have value because
+"st [ _ -(@panic)- ]" is superior.

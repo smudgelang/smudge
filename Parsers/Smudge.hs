@@ -17,10 +17,28 @@ import Grammars.Smudge (
   StateFlag(..),
   WholeState
   )
+import Parsers.Id (
+  identifier,
+  c_identifier,
+  )
 
-import Text.ParserCombinators.Parsec hiding (State)
-import Control.Applicative hiding ((<|>), empty, many)
-import Data.Foldable (toList)
+import Text.ParserCombinators.Parsec (
+  Parser,
+  getPosition,
+  sepEndBy,
+  sepEndBy1,
+  many1,
+  option,
+  noneOf,
+  skipMany,
+  try,
+  (<|>),
+  (<?>),
+  char,
+  string,
+  space,
+  spaces,
+  )
 
 smudgle :: Parser [(StateMachine Name, [WholeState Name])]
 smudgle = many1 state_machine
@@ -116,31 +134,8 @@ event_any = char '_' *> return EventAny
 comment :: Parser ()
 comment = string "//" >> skipMany (noneOf "\r\n")
 
-identifier :: Parser Name
-identifier = try ((:) <$> id_char <*> (many1 id_char))
-             <|> many1 (alphaNum <|> (char '-'))
-             <|> quoted
-
-c_identifier :: Parser Name
-c_identifier = (:) <$> nondigit <*> many (nondigit <|> digit)
-
-sep :: Parser Char
-sep = oneOf "-_"
-
-symbol :: Parser Char
-symbol = oneOf "!#$%&'()*+,./{|}~[\\]^`<>;="
-
-id_char :: Parser Char
-id_char = (alphaNum <|> sep)
-
 empty :: Parser ()
 empty = try (spaces *> comment *> empty) <|> spaces
 
 spacesep :: Parser ()
 spacesep = (space >> empty) <|> (comment >> empty)
-
-nondigit :: Parser Char
-nondigit = letter <|> char '_'
-
-quoted :: Parser Name
-quoted = ((char '"') *> many1 (id_char <|> space <|> symbol) <* (char '"'))

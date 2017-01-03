@@ -27,7 +27,6 @@ import Grammars.Smudge (
   )
 import Model (
   qualify,
-  mangleWith,
   TaggedName(..),
   )
 import Semantics.Semantic (AbstractFoldable(..))
@@ -59,7 +58,7 @@ data Ty =
 
 instance Show Ty where
     show Void = "void"
-    show (Ty n) = mangleWith ((++) . (++ ".")) id $ qualify n
+    show (Ty n) = show $ qualify n
     show (tau :-> tau') = show tau ++ " -> " ++ show tau'
     show (Tyvar n) = n
     show (Tyset tys) = "{" ++ intercalate ", " (map show (elems tys)) ++ "}"

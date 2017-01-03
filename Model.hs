@@ -34,12 +34,16 @@ import Grammars.Smudge (
   StateFlag(..),
   WholeState
   )
+import Parsers.Id (
+  unquoted,
+  )
 
-import Prelude hiding (foldr1)
+import Text.ParserCombinators.Parsec (parse, eof)
 import Data.Graph.Inductive.Graph (mkGraph, Node)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Map (Map, fromList, (!))
-import Data.Foldable (foldr1, asum)
+import Data.List (intercalate)
+import Data.Foldable (asum)
 import Control.Applicative (Alternative)
 
 data EnterExitState = EnterExitState {
@@ -58,17 +62,19 @@ data Happening = Happening {
     } deriving (Show, Eq, Ord)
 
 data Identifier = RawId Name | CookedId Name
-    deriving (Show, Eq, Ord)
+    deriving (Eq, Ord)
 
-cookWith :: (Name -> Name) -> Identifier -> Identifier
-cookWith f (RawId name) = CookedId $ f name
-cookWith _ id           = id
-
-serve :: Identifier -> Name
-serve (CookedId name) = name
+instance Show Identifier where
+    show (RawId name) = case parse (unquoted <* eof) "" name of
+                          Right _ -> name
+                          Left _ -> show name
+    show (CookedId name) = '@' : name
 
 newtype Qualified a = Qualified [a]
-    deriving (Show, Eq, Ord, Applicative, Alternative, Functor, Monad)
+    deriving (Eq, Ord, Applicative, Alternative, Functor, Monad)
+
+instance Show a => Show (Qualified a) where
+    show (Qualified as) = intercalate "." $ map show as
 
 type QualifiedName = Qualified Identifier
 
@@ -87,9 +93,13 @@ instance Qualifiable Name where
 instance (Qualifiable s, Qualifiable n) => Qualifiable (s, n) where
     qualify (s, n) = asum $ (qualify s) : [qualify n]
 
+mangle :: (Name -> Name) -> Identifier -> Name
+mangle f (RawId name) = f name
+mangle _ (CookedId name) = name
+
 mangleWith :: (Name -> Name -> Name) -> (Name -> Name) -> QualifiedName -> Name
 mangleWith _  _ (Qualified []) = ""
-mangleWith ff f q = foldr1 ff $  map (serve . cookWith f) $ (\(Qualified ids) -> ids) q
+mangleWith ff f (Qualified ns) = foldr1 ff $ fmap (mangle f) ns
 
 disqualify :: QualifiedName -> Name
 disqualify = mangleWith seq id

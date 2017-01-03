@@ -6,7 +6,7 @@ module Semantics.UninstantiableTypes (
 ) where
 
 import Grammars.Smudge (Annotated(..))
-import Model (TaggedName, mangleWith, qualify)
+import Model (TaggedName, qualify)
 import Semantics.Solver (Ty, instantiable, SymbolTable)
 import Semantics.Semantic (Passable(..), Severity(..), Fault(..))
 
@@ -24,4 +24,4 @@ instance Passable UninstantiableTypes where
         case tys of
         [] -> []
         ts -> [Fault ERROR pos $ "uninstantiable type: " ++
-               mangleWith ((++) . (++ ".")) id (qualify n) ++ " : " ++ show t | (n, t) <- ts]
+               show (qualify n) ++ " : " ++ show t | (n, t) <- ts]

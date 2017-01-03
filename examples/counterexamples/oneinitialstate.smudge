@@ -1,12 +1,12 @@
 
 NoInitialState
 {
-    A [],
-    B []
+    A [_ --],
+    B [_ --]
 }
 
 TwoInitialStates
 {
-  * A [],
-  * B []
+  * A [_ --],
+  * B [_ --]
 }

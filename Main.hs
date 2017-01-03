@@ -22,7 +22,7 @@ import Trashcan.Graph
 import Control.Monad (when)
 import Control.Applicative ((<$>), (<*>))
 import Distribution.Package (packageVersion, packageName, PackageName(..))
-import Text.ParserCombinators.Parsec (parse, ParseError)
+import Text.ParserCombinators.Parsec (parse, eof)
 import System.Console.GetOpt (usageInfo, getOpt, OptDescr(..), ArgDescr(..), ArgOrder(..))
 import System.Environment (getArgs)
 import System.FilePath (joinPath, takeFileName, dropFileName, normalise)
@@ -82,7 +82,7 @@ processFile fileName os = do
         if fileName == "-"
             then getContents
             else readFile fileName
-    case parse smudgle fileName compilationUnit of
+    case parse (smudgle <* eof) fileName compilationUnit of
         Left err -> print_exit (show err)
         Right sms -> m sms
     where

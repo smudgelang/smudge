@@ -20,8 +20,11 @@ import Text.ParserCombinators.Parsec (
   letter,
   digit,
   space,
+  spaces,
   alphaNum,
   )
+
+import Data.Either (rights)
 
 type Name = String
 
@@ -35,13 +38,11 @@ instance Show Identifier where
     show (CookedId name) = '@' : name
 
 instance Read Identifier where
-    readsPrec d = readParen (d > app_prec)
-                    (\r -> either (const []) id $
-                                parse ident "" r)
-        where app_prec = 10
-              ident = do  id <- c_identifier <|> identifier
+    readsPrec d = readParen False
+                    (\r -> rights [parse ident "" r])
+        where ident = do  id <- spaces *> (c_identifier <|> identifier)
                           rest <- getInput
-                          return [(id, rest)]
+                          return (id, rest)
 
 mangle :: (Name -> Name) -> Identifier -> Name
 mangle f (RawId name) = f name

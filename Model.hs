@@ -69,11 +69,10 @@ instance Show a => Show (Qualified a) where
     show (Qualified as) = intercalate "." $ map show as
 
 instance Read a => Read (Qualified a) where
-    readsPrec d = readParen (d > app_prec)
+    readsPrec d = readParen False
                     (\r -> map (first Qualified) $ readA r)
-        where app_prec = 9
-              readA r = do
-                    (a, s) <- readsPrec (app_prec + 1) r
+        where readA r = do
+                    (a, s) <- readsPrec d r
                     case s of
                         '.' : s -> map (first (a:)) $ readA s
                         otherwise -> [([a], s)]

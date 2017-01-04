@@ -1,5 +1,4 @@
 module Grammars.Smudge (
-    Name,
     Annotated(..),
     Module(..),
     StateMachineDeclarator(..),
@@ -15,8 +14,6 @@ module Grammars.Smudge (
 ) where
 
 import Text.ParserCombinators.Parsec (SourcePos) -- Sorry.
-
-type Name = String
 
 data Annotated a = Annotated SourcePos a
     deriving (Show, Eq, Ord)

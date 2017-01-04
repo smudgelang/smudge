@@ -369,14 +369,14 @@ makeFunctionDeclarator ps f_name params =
 makeFunctionDeclaration :: TaggedName -> (Binding, Ty) -> Declaration
 makeFunctionDeclaration n (b, p :-> r) =
     Declaration
-    (fromList $ binding ++ [B result])
+    (fromList $ binding ++ result)
     (Just $ fromList [InitDeclarator (makeFunctionDeclarator ps f_name params) Nothing])
     SEMICOLON
     where
         binding = case b of External -> [A EXTERN]; _ -> []
         f_name = mangleTName n
-        xlate_r  Void  = (VOID, [])
-        xlate_r (Ty t) = (TypeSpecifier $ mangleTName t, [POINTER Nothing])
+        xlate_r  Void  = ([B VOID], [])
+        xlate_r (Ty t) = ([C CONST, B $ TypeSpecifier $ mangleTName t], [POINTER Nothing])
         xlate_ps (Void) = [ParameterDeclaration (fromList [B VOID]) Nothing]
         xlate_ps (Ty t) = [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier $ mangleTName t])
                                (Just $ Right $ AbstractDeclarator (This $ fromList [POINTER Nothing]))]
@@ -439,7 +439,7 @@ instance Backend CStaticOption where
               syms :: SymbolTable
               syms = insertExternalSymbol "printf_assert" ["char", "char", "char"] "" $
                      insertExternalSymbol "assert" [] "" (snd gswust)
-              externs = [(TagFunction $ qualify (smName, "Current_state_name"), Void :-> (Ty $ TagBuiltin $ qualify "const char")) | ((StateMachineDeclarator smName), _) <- gs'']
+              externs = [(TagFunction $ qualify (smName, "Current_state_name"), Void :-> (Ty $ TagBuiltin $ qualify "char")) | ((StateMachineDeclarator smName), _) <- gs'']
               initial g = head [st ese | (n, EnterExitState {st = StateEntry}) <- labNodes g, n' <- suc g n, (Just ese) <- [lab g n']]
               states g = [st ees | (_, ees) <- labNodes g]
               s_handlers e g = [(s, h) | (s, Just h@(State _, _)) <- toList (handlers e g)]

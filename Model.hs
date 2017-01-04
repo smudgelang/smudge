@@ -22,7 +22,6 @@ module Model (
 ) where
 
 import Grammars.Smudge (
-  Name,
   Annotated(..),
   StateMachine(..),
   StateMachineDeclarator(..),
@@ -35,16 +34,18 @@ import Grammars.Smudge (
   WholeState
   )
 import Parsers.Id (
-  unquoted,
+  Name,
+  Identifier,
+  mangle,
   )
 
-import Text.ParserCombinators.Parsec (parse, eof)
 import Data.Graph.Inductive.Graph (mkGraph, Node)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Map (Map, fromList, (!))
 import Data.List (intercalate)
 import Data.Foldable (asum)
 import Control.Applicative (Alternative)
+import Control.Arrow (first)
 
 data EnterExitState = EnterExitState {
         en :: [SideEffect TaggedName],
@@ -61,20 +62,21 @@ data Happening = Happening {
         flags       :: [HappeningFlag]
     } deriving (Show, Eq, Ord)
 
-data Identifier = RawId Name | CookedId Name
-    deriving (Eq, Ord)
-
-instance Show Identifier where
-    show (RawId name) = case parse (unquoted <* eof) "" name of
-                          Right _ -> name
-                          Left _ -> show name
-    show (CookedId name) = '@' : name
-
 newtype Qualified a = Qualified [a]
     deriving (Eq, Ord, Applicative, Alternative, Functor, Monad)
 
 instance Show a => Show (Qualified a) where
     show (Qualified as) = intercalate "." $ map show as
+
+instance Read a => Read (Qualified a) where
+    readsPrec d = readParen (d > app_prec)
+                    (\r -> map (first Qualified) $ readA r)
+        where app_prec = 9
+              readA r = do
+                    (a, s) <- readsPrec (app_prec + 1) r
+                    case s of
+                        '.' : s -> map (first (a:)) $ readA s
+                        otherwise -> [([a], s)]
 
 type QualifiedName = Qualified Identifier
 
@@ -88,14 +90,10 @@ instance Qualifiable Identifier where
     qualify n = Qualified [n]
 
 instance Qualifiable Name where
-    qualify = qualify . CookedId
+    qualify = read . ('@':)
 
 instance (Qualifiable s, Qualifiable n) => Qualifiable (s, n) where
     qualify (s, n) = asum $ (qualify s) : [qualify n]
-
-mangle :: (Name -> Name) -> Identifier -> Name
-mangle f (RawId name) = f name
-mangle _ (CookedId name) = name
 
 mangleWith :: (Name -> Name -> Name) -> (Name -> Name) -> QualifiedName -> Name
 mangleWith _  _ (Qualified []) = ""
@@ -122,7 +120,7 @@ instance Qualifiable TaggedName where
 disqualifyTag :: TaggedName -> Name
 disqualifyTag = disqualify . qualify
 
-passInitialState :: [(StateMachine Name, [WholeState Name])] -> [(StateMachine Name, [WholeState Name])]
+passInitialState :: [(StateMachine Identifier, [WholeState Identifier])] -> [(StateMachine Identifier, [WholeState Identifier])]
 passInitialState sms = map (\(sm, wss) -> (sm, foldr init [] wss)) sms
     where init ws@(s, fs, en, es, ex) wss | elem Initial fs = (StateEntry, [], [], [(EventEnter, [], s)], []) : (s, filter (/= Initial) fs, en, es, ex) : wss
           init ws wss = ws : wss    
@@ -132,27 +130,27 @@ pickSm _ s@(StateMachineDeclarator _) = s
 pickSm s@(StateMachineDeclarator _) _ = s
 pickSm StateMachineSame _ = undefined
 
-instance Qualifiable (StateMachineDeclarator Name) where
-    qualify (StateMachineDeclarator n) = qualify $ RawId n
+instance Qualifiable (StateMachineDeclarator Identifier) where
+    qualify (StateMachineDeclarator n) = qualify n
     qualify StateMachineSame           = undefined
 
-instance Qualifiable (State Name) where
-    qualify (State s) = qualify $ RawId s
+instance Qualifiable (State Identifier) where
+    qualify (State s) = qualify s
     qualify _         = undefined
 
-instance Qualifiable (Event Name) where
-    qualify (Event e) = qualify $ RawId e
+instance Qualifiable (Event Identifier) where
+    qualify (Event e) = qualify e
     qualify _         = undefined
 
-qQE :: StateMachineDeclarator Name -> QEvent Name -> QualifiedName
+qQE :: StateMachineDeclarator Identifier -> QEvent Identifier -> QualifiedName
 qQE sm (sm', ev) = qualify (pickSm sm sm', ev)
 
-qName :: StateMachineDeclarator Name -> SideEffect Name -> QualifiedName
+qName :: StateMachineDeclarator Identifier -> SideEffect Identifier -> QualifiedName
 qName _  (s, FuncVoid)    = qualify s
 qName _  (s, FuncTyped _) = qualify s
 qName sm (_, FuncEvent e) = qQE sm e
 
-passFullyQualify :: [(StateMachine Name, [WholeState Name])] -> [(StateMachine QualifiedName, [WholeState QualifiedName])]
+passFullyQualify :: [(StateMachine Identifier, [WholeState Identifier])] -> [(StateMachine QualifiedName, [WholeState QualifiedName])]
 passFullyQualify sms = map qual sms
     where qual (Annotated a sm, wss) = (Annotated a $ qual_sm sm, map qual_ws wss)
             where qual_sm = StateMachineDeclarator . qualify

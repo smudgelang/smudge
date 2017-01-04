@@ -17,7 +17,6 @@ module Semantics.Solver (
 ) where
 
 import Grammars.Smudge (
-  Name,
   StateMachine,
   Event(..),
   Function(..),
@@ -29,6 +28,7 @@ import Model (
   qualify,
   TaggedName(..),
   )
+import Parsers.Id (Name)
 import Semantics.Semantic (AbstractFoldable(..))
 
 import Data.Map (Map, mapWithKey, foldrWithKey, unionWith, findWithDefault, member)

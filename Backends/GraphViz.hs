@@ -134,7 +134,8 @@ instance Backend GraphVizOption where
     generate os gswust inputName = sequence [(runner os) (runGraphviz d) (format os) (outputName os)]
         where d = (graphToDot (smudgeParams renderSE renderNT (length gs > 1) inputName entryNodes) g') {graphID = Just (toGraphID " ")}
               g' = gfold gs
-              gs = [(smd, g) | (Annotated _ smd, g) <- fst gswust]
+              gs = [(smd, g) | (Annotated _ smd, g) <- gs_]
+              (gs_, _, _) = gswust
               entryNodes = [n | (n, (_, EnterExitState {st = StateEntry})) <- G.labNodes g']
               renderSE = not $ SuppressSideEffects `elem` os
               renderNT = not $ SuppressNoTransition `elem` os

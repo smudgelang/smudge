@@ -89,7 +89,7 @@ rename s = case map (second reads) $ reads s of
             [(a, [(b, "")])] -> Right (a, b)
             otherwise      -> Left s
 
---processFile :: String -> [Options] -> IO ([(StateMachine, Gr EnterExitState Happening)], SymbolTable)
+--processFile :: String -> [Options] -> IO ([(StateMachine, Gr EnterExitState Happening)], Alias, SymbolTable)
 processFile fileName os = do
     mapM (putStrLn . ("Parse error in rename flag: " ++)) (lefts renames)
     when (any isLeft renames) exitFailure
@@ -111,7 +111,7 @@ processFile fileName os = do
             mapM (putStrLn . show) fs
             when (any fatal fs) $ report_failure $ length fs
 
-            let basis = bindBasis mempty
+            let basis = bindBasis aliases
             let st = if elem (SystemOption Strict) os
                      then elaborateMono basis sms'''
                      else elaboratePoly basis sms'''
@@ -126,7 +126,7 @@ processFile fileName os = do
             mapM (putStrLn . show) fs
             when (any fatal fs) $ report_failure $ length fs
 
-            return (gs, st)
+            return (gs, aliases, st)
         report_failure n =
             print_exit ("Exiting with " ++ show n ++ " error" ++ (if n == 1 then "" else "s"))
         print_exit e = do
@@ -134,7 +134,7 @@ processFile fileName os = do
             exitFailure
             return mempty
 
---make_output :: String -> [Options] -> ([(StateMachine, Gr EnterExitState Happening)], SymbolTable) -> IO ()
+--make_output :: String -> [Options] -> ([(StateMachine, Gr EnterExitState Happening)], Alias, SymbolTable) -> IO ()
 make_output fileName os gswst = do
     let gvos = [a | GraphVizOption a <- os]
     outputNames <- generate gvos gswst fileName

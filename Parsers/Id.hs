@@ -1,7 +1,7 @@
 module Parsers.Id (
     Name,
     Identifier,
-    c_identifier,
+    host_identifier,
     identifier,
     mangle,
 ) where
@@ -40,7 +40,7 @@ instance Show Identifier where
 instance Read Identifier where
     readsPrec d = readParen False
                     (\r -> rights [parse ident "" r])
-        where ident = do  id <- spaces *> (c_identifier <|> identifier)
+        where ident = do  id <- spaces *> (host_identifier <|> identifier)
                           rest <- getInput
                           return (id, rest)
 
@@ -48,8 +48,11 @@ mangle :: (Name -> Name) -> Identifier -> Name
 mangle f (RawId name) = f name
 mangle _ (CookedId name) = name
 
+host_identifier :: Parser Identifier
+host_identifier = char '@' *> c_identifier
+
 c_identifier :: Parser Identifier
-c_identifier = CookedId <$> (char '@' *> ((:) <$> nondigit <*> many (nondigit <|> digit)))
+c_identifier = CookedId <$> ((:) <$> nondigit <*> many (nondigit <|> digit))
 
 identifier :: Parser Identifier
 identifier = RawId <$> (unquoted <|> quoted)

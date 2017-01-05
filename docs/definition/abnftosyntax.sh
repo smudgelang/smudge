@@ -6,4 +6,4 @@ sed -e 's/^;.*//' \
     -e 's/$/\n/' \
     -e 's/^ \+\/ / \\alt /' \
     -e 's/ \/ / | /g' \
-    $1 | sed -e 'N;N;s/\n \\alt/ \\alt/'
+    $1 | sed -e 's/^$//;ty;bn;:y;N;s/\n \\alt/ \\alt/;:n'

@@ -19,7 +19,7 @@ import Grammars.Smudge (
 import Parsers.Id (
   Identifier,
   identifier,
-  c_identifier,
+  host_identifier,
   )
 
 import Text.ParserCombinators.Parsec (
@@ -104,7 +104,7 @@ qualified_event = try ((,) <$> state_machine_name <* (char '.') <*> event_name)
                    <|> (,) <$> return StateMachineSame <*> event_name
 
 function_call :: Parser Identifier
-function_call = c_identifier
+function_call = host_identifier
 
 state_title :: Parser (State Identifier, [StateFlag])
 state_title = (,) <$> state_name <*> pure []

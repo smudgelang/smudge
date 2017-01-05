@@ -23,13 +23,29 @@ data Module a = Module String [StateMachine a]
 data StateMachineDeclarator a = StateMachineDeclarator a | StateMachineSame
     deriving (Show, Eq, Ord)
 
+instance Functor StateMachineDeclarator where
+    fmap f (StateMachineDeclarator a) = StateMachineDeclarator (f a)
+    fmap _ StateMachineSame           = StateMachineSame
+
 type StateMachine a = Annotated (StateMachineDeclarator a)
 
 data State a = State a | StateAny | StateSame | StateEntry
     deriving (Show, Eq, Ord)
 
+instance Functor State where
+    fmap f (State a)  = State (f a)
+    fmap _ StateAny   = StateAny
+    fmap _ StateSame  = StateSame
+    fmap _ StateEntry = StateEntry
+
 data Event a = Event a | EventAny | EventEnter | EventExit
     deriving (Show, Eq, Ord)
+
+instance Functor Event where
+    fmap f (Event a)  = Event (f a)
+    fmap _ EventAny   = EventAny
+    fmap _ EventEnter = EventEnter
+    fmap _ EventExit  = EventExit
 
 type QEvent a = (StateMachineDeclarator a, Event a)
 

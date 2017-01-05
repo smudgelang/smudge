@@ -133,10 +133,6 @@ instance Qualifiable (StateMachineDeclarator Identifier) where
     qualify (StateMachineDeclarator n) = qualify n
     qualify StateMachineSame           = undefined
 
-instance Qualifiable (State Identifier) where
-    qualify (State s) = qualify s
-    qualify _         = undefined
-
 instance Qualifiable (Event Identifier) where
     qualify (Event e) = qualify e
     qualify _         = undefined
@@ -152,17 +148,11 @@ qName sm (_, FuncEvent e) = qQE sm e
 passFullyQualify :: [(StateMachine Identifier, [WholeState Identifier])] -> [(StateMachine QualifiedName, [WholeState QualifiedName])]
 passFullyQualify sms = map qual sms
     where qual (Annotated a sm, wss) = (Annotated a $ qual_sm sm, map qual_ws wss)
-            where qual_sm = StateMachineDeclarator . qualify
+            where qual_sm = fmap qualify
                   qual_ws (st, fs, en, es, ex) = (qual_st st, fs, map qual_fn en, map qual_eh es, map qual_fn ex)
                   qual_eh (ev, ses, s) = (qual_ev ev, map qual_fn ses, qual_st s)
-                  qual_st st@(State _) = State $ qualify (sm, st)
-                  qual_st StateAny = StateAny
-                  qual_st StateSame = StateSame
-                  qual_st StateEntry = StateEntry
-                  qual_ev ev@(Event _) = Event $ qualify (sm, ev)
-                  qual_ev EventAny = EventAny
-                  qual_ev EventEnter = EventEnter
-                  qual_ev EventExit = EventExit
+                  qual_st = fmap (qualify . ((,) sm))
+                  qual_ev = fmap (qualify . ((,) sm))
                   qual_qe ev@(sm', _) = (qual_sm $ pickSm sm sm', Event $ qQE sm ev)
                   qual_fn fn@(_, FuncVoid)     = (qName sm fn, FuncVoid)
                   qual_fn fn@(_, FuncTyped qe) = (qName sm fn, FuncTyped $ qual_qe qe)
@@ -170,23 +160,13 @@ passFullyQualify sms = map qual sms
 
 passTagCategories :: [(StateMachine QualifiedName, [WholeState QualifiedName])] -> [(StateMachine TaggedName, [WholeState TaggedName])]
 passTagCategories sms = map tag sms
-    where tag (Annotated a sm, wss) = (Annotated a $ tag_sm sm, map tag_ws wss)
-          tag_sm (StateMachineDeclarator m) = StateMachineDeclarator (TagMachine m)
-          tag_sm m = undefined
-          tag_ws (st, fs, en, es, ex) = (tag_st st, fs, map tag_fn en, map tag_eh es, map tag_fn ex)
-          tag_eh (ev, ses, s) = (tag_ev ev, map tag_fn ses, tag_st s)
-          tag_st (State s) = State (TagState s)
-          tag_st StateAny = StateAny
-          tag_st StateSame = StateSame
-          tag_st StateEntry = StateEntry
-          tag_ev (Event e) = Event (TagEvent e)
-          tag_ev EventAny = EventAny
-          tag_ev EventEnter = EventEnter
-          tag_ev EventExit = EventExit
-          tag_qe (sm', ev) = (tag_sm sm', tag_ev ev)
-          tag_fn (n, FuncVoid)     = ((TagFunction n), FuncVoid)
-          tag_fn (n, FuncTyped qe) = ((TagFunction n), FuncTyped $ tag_qe qe)
-          tag_fn (n, FuncEvent qe) = ((TagFunction n), FuncEvent $ tag_qe qe)
+    where tag (Annotated a sm, wss) = (Annotated a $ fmap TagMachine sm, map tag_ws wss)
+          tag_ws (st, fs, en, es, ex) = (fmap TagState st, fs, map tag_fn en, map tag_eh es, map tag_fn ex)
+          tag_eh (ev, ses, s) = (fmap TagEvent ev, map tag_fn ses, fmap TagState s)
+          tag_qe (sm', ev) = (fmap TagMachine sm', fmap TagEvent ev)
+          tag_fn (n, FuncVoid)     = (TagFunction n, FuncVoid)
+          tag_fn (n, FuncTyped qe) = (TagFunction n, FuncTyped $ tag_qe qe)
+          tag_fn (n, FuncEvent qe) = (TagFunction n, FuncEvent $ tag_qe qe)
 
 smToGraph :: (StateMachine TaggedName, [WholeState TaggedName]) ->
                  Gr EnterExitState Happening

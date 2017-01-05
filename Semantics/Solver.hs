@@ -8,7 +8,7 @@ module Semantics.Solver (
     instantiable,
 
     SymbolTable,
-    insertExternalSymbol,
+    insertFunctions,
     toList,
     (!),
 
@@ -26,6 +26,7 @@ import Grammars.Smudge (
   )
 import Model (
   qualify,
+  QualifiedName,
   TaggedName(..),
   )
 import Parsers.Id (Name)
@@ -35,11 +36,11 @@ import Data.Map (Map, mapWithKey, foldrWithKey, unionWith, findWithDefault, memb
 import qualified Data.Map as Map(map, null, empty, singleton, insert, union, partition, toList, (!))
 import Data.Set (Set, elems, empty, singleton, insert, union, intersection, partition, findMin, minView)
 import qualified Data.Set as Set(map, filter, null, size)
-import Data.Graph.Inductive.Query.Monad (mapFst, mapSnd, (><))
 import Data.List (intercalate)
 import Data.Char (ord, chr)
 import Control.Monad.State (State, evalState, get, put)
 import Control.Monad (foldM)
+import Control.Arrow (first, second, (***), (>>>))
 
 -- external interface
 data Binding = External | Unresolved | Resolved
@@ -82,22 +83,24 @@ instance AbstractFoldable SymbolTable where
     type FoldContext SymbolTable = (TaggedName, (Binding, Ty))
     afold f a (SymbolTable gamma) = foldrWithKey (curry f) a gamma
 
-elaborateMono :: [(StateMachine TaggedName, [(WholeState TaggedName)])] -> SymbolTable
-elaborateMono = SymbolTable . Map.map (mapSnd canonicalize) . defModule Map.empty
+elaborateMono :: SymbolTable -> [(StateMachine TaggedName, [(WholeState TaggedName)])] -> SymbolTable
+elaborateMono (SymbolTable gamma) = SymbolTable . canonicalizeTabMono . defModule gamma
 
-elaboratePoly :: [(StateMachine TaggedName, [(WholeState TaggedName)])] -> SymbolTable
-elaboratePoly = SymbolTable . Map.map (mapSnd (canonicalize . bottomToVoid . voidToBottom)) . defModule Map.empty
+elaboratePoly :: SymbolTable -> [(StateMachine TaggedName, [(WholeState TaggedName)])] -> SymbolTable
+elaboratePoly (SymbolTable gamma) = SymbolTable . canonicalizeTabPoly . defModule gamma
 
-insertExternalSymbol :: Name -> [Name] -> Name -> SymbolTable -> SymbolTable
-insertExternalSymbol fname args returnType (SymbolTable gamma) = SymbolTable $ mapWithKey ((>< instantiate theta) . rebind btheta) gamma'
-    where gamma' = evalState (defName gamma name) 0  -- BUG: 0 is probably wrong
-          name = (TagFunction $ qualify fname)
+insertFunctions :: SymbolTable -> [(QualifiedName, ([Name], Name))] -> SymbolTable
+insertFunctions (SymbolTable gamma) fs =
+    SymbolTable $ canonicalizeTabPoly $ mapWithKey ((*** instantiate theta) . rebind btheta) gamma'
+    where gamma' = evalState (foldM defName gamma $ map fst fs') 0  -- BUG: 0 is probably wrong
+          fs' = map (TagFunction *** funTy) fs
+          funTy = map makeTy *** makeTy >>> uncurry makeFun
           makeFun [] rty = Void :-> rty
           makeFun [pty] rty = pty :-> rty
           makeFun (pty:ptys) rty = pty :-> makeFun ptys rty
-          makeTy = Ty . TagBuiltin . qualify
-          ty = makeFun (map makeTy args) $ if null returnType then Void else makeTy returnType
-          (btheta, theta) = solve (External :@ name :/\ ty :<: gamma' !> name)
+          makeTy "" = Void
+          makeTy ty = Ty $ TagBuiltin $ qualify ty
+          (btheta, theta) = solve $ conjoin [(External :@ n :/\ ty :<: gamma' !> n) | (n, ty) <- fs']
 
 toList :: SymbolTable -> [(TaggedName, (Binding, Ty))]
 toList (SymbolTable gamma) = Map.toList gamma
@@ -143,10 +146,10 @@ _ !? _ = Void
 
 -- definition rules
 defModule :: SymTab -> [(StateMachine TaggedName, [(WholeState TaggedName)])] -> SymTab
-defModule gamma ms = mapWithKey ((>< instantiate theta) . rebind btheta) gammaN
+defModule gamma ms = mapWithKey ((*** instantiate theta) . rebind btheta) gammaN
     where gammaN = evalState (foldM defMachine gamma ms) 0
           c      = conjoin $ map (inferMachine gammaN) ms
-          (btheta, theta) = mapSnd subst $ solve c
+          (btheta, theta) = second subst $ solve c
 
 defMachine :: SymTab -> (StateMachine TaggedName, [(WholeState TaggedName)]) -> State Int SymTab
 defMachine gamma (_, qs) = foldM defState gamma qs
@@ -227,7 +230,7 @@ boundWith :: (Ty -> Ty -> Ty) -> Set Ty -> Set Ty
 boundWith op s =
     let isFun (_ :-> _) = True
         isFun         _ = False
-    in  case mapFst minView $ partition isFun s of
+    in  case first minView $ partition isFun s of
         (Nothing, s')      -> s'
         (Just (f, fs), s') -> insert (foldr op f fs) s'
 
@@ -305,6 +308,13 @@ rebind :: BindSubst -> TaggedName -> Binding -> Binding
 rebind theta k b = findWithDefault b k theta
 
 -- canonicalization
+
+canonicalizeTabMono :: SymTab -> SymTab
+canonicalizeTabMono = Map.map (second canonicalize)
+
+canonicalizeTabPoly :: SymTab -> SymTab
+canonicalizeTabPoly = Map.map (second (canonicalize . bottomToVoid . voidToBottom))
+
 canonicalize :: Ty -> Ty
 canonicalize (Tyset taus) | Set.size taus == 1 = findMin taus
 canonicalize (tau :-> tau') = canonicalize tau :-> canonicalize tau'

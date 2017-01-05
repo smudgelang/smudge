@@ -39,10 +39,11 @@ import Parsers.Id (
   Identifier,
   mangle,
   )
+import Semantics.Alias (Alias, rename)
 
 import Data.Graph.Inductive.Graph (mkGraph, Node)
 import Data.Graph.Inductive.PatriciaTree (Gr)
-import Data.Map (Map, findWithDefault, fromList, (!))
+import Data.Map (Map, fromList, (!))
 import Data.List (intercalate)
 import Data.Foldable (asum)
 import Control.Applicative (Alternative)
@@ -159,16 +160,16 @@ passFullyQualify sms = map qual sms
                   qual_fn fn@(_, FuncTyped qe) = (qName sm fn, FuncTyped $ qual_qe qe)
                   qual_fn fn@(_, FuncEvent qe) = (qName sm fn, FuncEvent $ qual_qe qe)
 
-passRename :: Map QualifiedName QualifiedName -> [(StateMachine QualifiedName, [WholeState QualifiedName])] -> [(StateMachine QualifiedName, [WholeState QualifiedName])]
+passRename :: Alias QualifiedName -> [(StateMachine QualifiedName, [WholeState QualifiedName])] -> [(StateMachine QualifiedName, [WholeState QualifiedName])]
 passRename aliases sms = map ren sms
-    where rename n = findWithDefault n n aliases
-          ren (Annotated a sm, wss) = (Annotated a $ fmap rename sm, map ren_ws wss)
-          ren_ws (st, fs, en, es, ex) = (fmap rename st, fs, map ren_fn en, map ren_eh es, map ren_fn ex)
-          ren_eh (ev, ses, s) = (fmap rename ev, map ren_fn ses, fmap rename s)
-          ren_qe (sm, ev) = (fmap rename sm, fmap rename ev)
-          ren_fn (n, FuncVoid)     = (rename n, FuncVoid)
-          ren_fn (n, FuncTyped qe) = (rename n, FuncTyped $ ren_qe qe)
-          ren_fn (n, FuncEvent qe) = (rename n, FuncEvent $ ren_qe qe)
+    where rename' = rename aliases
+          ren (Annotated a sm, wss) = (Annotated a $ fmap rename' sm, map ren_ws wss)
+          ren_ws (st, fs, en, es, ex) = (fmap rename' st, fs, map ren_fn en, map ren_eh es, map ren_fn ex)
+          ren_eh (ev, ses, s) = (fmap rename' ev, map ren_fn ses, fmap rename' s)
+          ren_qe (sm, ev) = (fmap rename' sm, fmap rename' ev)
+          ren_fn (n, FuncVoid)     = (rename' n, FuncVoid)
+          ren_fn (n, FuncTyped qe) = (rename' n, FuncTyped $ ren_qe qe)
+          ren_fn (n, FuncEvent qe) = (rename' n, FuncEvent $ ren_qe qe)
 
 passTagCategories :: [(StateMachine QualifiedName, [WholeState QualifiedName])] -> [(StateMachine TaggedName, [WholeState TaggedName])]
 passTagCategories sms = map tag sms

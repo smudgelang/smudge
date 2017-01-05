@@ -17,6 +17,7 @@ import Semantics.Solver (
   elaboratePoly,
   )
 import Parsers.Smudge (state_machine, smudgle)
+import Semantics.Basis (bindBasis)
 import Semantics.Semantic (Severity(..), Fault(..), fatal)
 import Semantics (make_passes, name_passes, type_passes)
 import Trashcan.Graph
@@ -110,9 +111,10 @@ processFile fileName os = do
             mapM (putStrLn . show) fs
             when (any fatal fs) $ report_failure $ length fs
 
+            let basis = bindBasis mempty
             let st = if elem (SystemOption Strict) os
-                     then elaborateMono sms'''
-                     else elaboratePoly sms'''
+                     then elaborateMono basis sms'''
+                     else elaboratePoly basis sms'''
             -- This is a bit of a hack around the definition of Passable
             let types = take 1 (zip (map fst sms''') (repeat st))
             let fs = concat $ map type_passes types

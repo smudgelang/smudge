@@ -30,7 +30,6 @@ import Semantics.Solver (
   Binding(..), 
   resultOf,
   SymbolTable, 
-  insertExternalSymbol, 
   (!),
   )
 import qualified Semantics.Solver as Solver(toList)
@@ -217,7 +216,7 @@ unhandledEventFunction debug handler (StateMachineDeclarator smName) e@(Event ev
         f_name = qualifyMangle (qualify (smName, "UNHANDLED_EVENT"), evAlone)
         event_type = mangleTName evName
         event_var = "e"
-        assert_f = (#:) (if debug then "printf_assert" else "assert") (:#)
+        assert_f = (#:) (if debug then "panic_print" else "panic") (:#)
         assert_s = (#:) (show (disqualifyTag smName ++ "[%s]: Unhandled event \"%s\"\n")) (:#)
         sname_f  = (#:) (qualifyMangle (smName, "State_name")) (:#)
         state_var = (#:) (qualifyMangle (smName, "state")) (:#)
@@ -436,9 +435,7 @@ instance Backend CStaticOption where
                                      | (n, EnterExitState {st = State _, ex}) <- labNodes $ delNodes (finalStates g ++ [n | n <- nodes g, (_, _, Happening EventExit _ _) <- out g n]) g] g)
                       | (sm, g) <- gs]
               gs = [(smd, g) | (Annotated _ smd, g) <- fst gswust]
-              syms :: SymbolTable
-              syms = insertExternalSymbol "printf_assert" ["char", "char", "char"] "" $
-                     insertExternalSymbol "assert" [] "" (snd gswust)
+              syms = snd gswust
               externs = [(TagFunction $ qualify (smName, "Current_state_name"), Void :-> (Ty $ TagBuiltin $ qualify "char")) | ((StateMachineDeclarator smName), _) <- gs'']
               initial g = head [st ese | (n, EnterExitState {st = StateEntry}) <- labNodes g, n' <- suc g n, (Just ese) <- [lab g n']]
               states g = [st ees | (_, ees) <- labNodes g]

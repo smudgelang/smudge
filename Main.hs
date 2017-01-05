@@ -17,7 +17,8 @@ import Semantics.Solver (
   elaboratePoly,
   )
 import Parsers.Smudge (state_machine, smudgle)
-import Semantics.Basis (bindBasis)
+import Semantics.Alias (merge)
+import Semantics.Basis (basisAlias, bindBasis)
 import Semantics.Semantic (Severity(..), Fault(..), fatal)
 import Semantics (make_passes, name_passes, type_passes)
 import Trashcan.Graph
@@ -50,6 +51,7 @@ subcommand name f os = map makeSub os
 data SystemOption = Version
                   | Help
                   | Strict
+                  | Namespace String
                   | Rename String
                   | OutDir FilePath
     deriving (Show, Eq)
@@ -66,6 +68,7 @@ sysopts :: [OptDescr SystemOption]
 sysopts = [Option ['v'] ["version"] (NoArg Version) "Version information.",
            Option ['h'] ["help"] (NoArg Help) "Print this message.",
            Option []    ["strict"] (NoArg Strict) "Require all types to match strictly",
+           Option []    ["namespace"] (ReqArg Namespace "NEW") "Replace namespace.",
            Option []    ["rename"] (ReqArg Rename "\"OLD NEW\"") "Replace identifier.",
            Option []    ["outdir"] (ReqArg OutDir "DIR") "Output directory."]
 
@@ -102,7 +105,8 @@ processFile fileName os = do
         Right sms -> m sms
     where
         renames = map rename [r | SystemOption (Rename r) <- os]
-        aliases = fromList $ rights renames
+        namespace = last $ "SMUDGE" : [n | SystemOption (Namespace n) <- os]
+        aliases = merge (basisAlias namespace) $ fromList $ rights renames
         m sms = do
             let sms' = passInitialState sms
             let sms'' = passRename aliases $ passFullyQualify sms'

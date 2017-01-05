@@ -54,3 +54,6 @@ SMUDGE.
 
 The namespace flag is --namespace="NEW".
 The symbol flag is --rename="SMUDGE_func new_name"
+
+Internally, this is accomplished by having an symbol-alias table, where the
+mappings for the renamed symbols are stored.

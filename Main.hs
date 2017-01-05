@@ -7,8 +7,10 @@ import Backends.CStatic (CStaticOption(..))
 import Model (
   passInitialState,
   passFullyQualify,
+  passRename,
   passTagCategories,
   passWholeStateToGraph,
+  QualifiedName,
   )
 import Semantics.Solver (
   elaborateMono,
@@ -20,6 +22,7 @@ import Semantics (make_passes, name_passes, type_passes)
 import Trashcan.Graph
 
 import Control.Monad (when)
+import Control.Arrow (second)
 import Control.Applicative ((<$>), (<*>))
 import Distribution.Package (packageVersion, packageName, PackageName(..))
 import Text.ParserCombinators.Parsec (parse, eof)
@@ -27,6 +30,8 @@ import System.Console.GetOpt (usageInfo, getOpt, OptDescr(..), ArgDescr(..), Arg
 import System.Environment (getArgs)
 import System.FilePath (joinPath, takeFileName, dropFileName, normalise)
 import System.Exit (exitFailure)
+import Data.Either (lefts, rights, isLeft)
+import Data.Map (fromList)
 import Data.Version (showVersion)
 import Data.Monoid (mempty)
 
@@ -44,6 +49,7 @@ subcommand name f os = map makeSub os
 data SystemOption = Version
                   | Help
                   | Strict
+                  | Rename String
                   | OutDir FilePath
     deriving (Show, Eq)
 
@@ -59,6 +65,7 @@ sysopts :: [OptDescr SystemOption]
 sysopts = [Option ['v'] ["version"] (NoArg Version) "Version information.",
            Option ['h'] ["help"] (NoArg Help) "Print this message.",
            Option []    ["strict"] (NoArg Strict) "Require all types to match strictly",
+           Option []    ["rename"] (ReqArg Rename "\"OLD NEW\"") "Replace identifier.",
            Option []    ["outdir"] (ReqArg OutDir "DIR") "Output directory."]
 
 data Options = SystemOption SystemOption | GraphVizOption GraphVizOption | CStaticOption CStaticOption
@@ -76,8 +83,15 @@ printVersion :: IO ()
 printVersion = putStrLn (app_name ++ " version: " ++
                          (showVersion $ packageVersion packageInfo))
 
+rename :: String -> Either String (QualifiedName, QualifiedName)
+rename s = case map (second reads) $ reads s of
+            [(a, [(b, "")])] -> Right (a, b)
+            otherwise      -> Left s
+
 --processFile :: String -> [Options] -> IO ([(StateMachine, Gr EnterExitState Happening)], SymbolTable)
 processFile fileName os = do
+    mapM (putStrLn . ("Parse error in rename flag: " ++)) (lefts renames)
+    when (any isLeft renames) exitFailure
     compilationUnit <-
         if fileName == "-"
             then getContents
@@ -86,9 +100,11 @@ processFile fileName os = do
         Left err -> print_exit (show err)
         Right sms -> m sms
     where
+        renames = map rename [r | SystemOption (Rename r) <- os]
+        aliases = fromList $ rights renames
         m sms = do
             let sms' = passInitialState sms
-            let sms'' = passFullyQualify sms'
+            let sms'' = passRename aliases $ passFullyQualify sms'
             let sms''' = passTagCategories sms''
             let fs = concat $ map name_passes sms'''
             mapM (putStrLn . show) fs
@@ -141,4 +157,4 @@ main = do
                 prefix (_:t) = prefix t
             in processFile fileName os >>= make_output outputTarget os
 
-        (_,              _,  _) -> printUsage
+        (_,              _, es) -> putStr (concat es) >> printUsage

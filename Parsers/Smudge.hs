@@ -91,13 +91,9 @@ side_effect_list :: Parser [SideEffect Identifier]
 side_effect_list = sepEndBy (side_effect <* empty) (char ',' >> empty)
 
 side_effect :: Parser (SideEffect Identifier)
-side_effect = try typed_function_call
-              <|> try ((,) <$> function_call <*> pure FuncVoid)
+side_effect = try ((,) <$> function_call <*> pure FuncVoid)
               <|> ((\q@(s, Event e) -> (e, FuncEvent q)) <$> qualified_event)
               <?> "side effect"
-
-typed_function_call :: Parser (SideEffect Identifier)
-typed_function_call = (,) <$> function_call <* (empty >> char ':' >> empty) <*> (FuncTyped <$> qualified_event)
 
 qualified_event :: Parser (QEvent Identifier)
 qualified_event = try ((,) <$> state_machine_name <* (char '.') <*> event_name)

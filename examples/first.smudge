@@ -30,9 +30,7 @@ SM_NAME // This is the name of a state machine.
 // @functionName is the syntax for side effect functions. It will be
 // up to you to implement these functions in your program. Smudge will
 // generate a header for you to include with the declaration of
-// functionName. If your side effect function generates an event, you
-// can specify it as "@functionName:event" and it will need to return
-// an instance of the event to send.
+// functionName.
 
 // The --> and -- operators both take an optional list of side effects:
 // -(sideEffect1, sideEffect2, ...)-> Valid side effects include

@@ -1,0 +1,25 @@
+Title: Event converters
+
+Typed at-functions were a quagmire, and so they were removed.  The replacement
+is the event converter, whose most basic concrete syntax (it is open whether
+more complex concrete syntax can be used to specify more complex behavior) is:
+
+    event@converter
+
+The semantics of this are to use 'converter' to emit 'event', somehow.  How is
+this different from typed at-functions, you ask?  There are nuances available
+with these semantics, such as: 1) the possibility to add operators akin to
+regular expressions, including "event?" and "(event1|event2)", and 2)
+intermediate instantiable types (i.e., nominal supertypes), 3) if 'converter' is
+injective, a special case is that they are the equivalent type - this would
+require new concrete syntax.
+
+This can be solved in a few ways, but some issues are: 1) signaling validity as
+a null pointer conflicts with the ability to send null events, which would
+require dynamic memory even for empty events, 2) any sort of polymorphism in C
+is fraught with issues, because to eliminate the supertype requires the user to
+operate on a discriminated union enum, 3) unless we used closures, which
+requires dynamic memory and constructor functions.
+
+WRT dynamic memory, one possibility would be to use an 'arena' flag, where
+Smudge generates an allocator; another would be to use the default allocator.

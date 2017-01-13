@@ -3,7 +3,7 @@
 #include "turnstyle.h"
 #include "turnstyle_ext.h"
 
-void assert(void)
+void SMUDGE_panic(void)
 {
     printf("Game over!\n");
     exit(-1);

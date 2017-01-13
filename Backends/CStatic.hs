@@ -218,18 +218,18 @@ unhandledEventFunction aliases debug handler (StateMachineDeclarator smName) e@(
         f_name = qualifyMangle aliases (qualify (smName, "UNHANDLED_EVENT"), evAlone)
         event_type = mangleTName aliases evName
         event_var = "e"
-        assert_f = (#:) (qualifyMangle aliases $ if debug then "panic_print" else "panic") (:#)
-        assert_s = (#:) (show (disqualifyTag smName ++ "[%s]: Unhandled event \"%s\"\n")) (:#)
+        panic_f = (#:) (qualifyMangle aliases $ if debug then "panic_print" else "panic") (:#)
+        panic_s = (#:) (show (disqualifyTag smName ++ "[%s]: Unhandled event \"%s\"\n")) (:#)
         sname_f  = (#:) (qualifyMangle aliases (smName, "State_name")) (:#)
         state_var = (#:) (qualifyMangle aliases (smName, "state")) (:#)
         call_sname_f = (#:) (apply sname_f [state_var]) (:#)
-        call_assert_f = (#:) (apply assert_f (if debug then [assert_s, call_sname_f, name_ex] else [])) (:#)
+        call_panic_f = (#:) (apply panic_f (if debug then [panic_s, call_sname_f, name_ex] else [])) (:#)
         handle_f s e = (#:) (qualifyMangle aliases (sName smName s, mangleEv e)) (:#)
         esOf EventAny = []
         esOf e' | e == e' = [(#:) event_var (:#)]
         call_handler_f = case handler of
                          [(s, e)] -> (#:) (apply (handle_f s e) (esOf e)) (:#)
-                         [] -> call_assert_f
+                         [] -> call_panic_f
 
 stateNameFunction :: Alias QualifiedName -> StateMachineDeclarator TaggedName -> [State TaggedName] -> FunctionDefinition
 stateNameFunction aliases (StateMachineDeclarator smName) ss =

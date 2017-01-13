@@ -18,7 +18,7 @@ lock itself. Here's a nice drawing of the basic state machine:
 
 The source for this state machine is available in the
 1/turnstyle.smudge. You can see the essential elements of a smudge
-state machine. The word _turnstyle_ is the name of the state
+state machine. The word *turnstyle* is the name of the state
 machine. The part inside the curly braces after the state machine's
 name is its definition.
 
@@ -38,7 +38,7 @@ state machine that's in *unlocked*.
 :: 
 
     Caveat!
-    Smudge version 0.3 is a work in progress. The next section will assume
+    Smudge version 0.4 is a work in progress. The next section will assume
     that smudge is run with the --c-no-debug flag because that's what
     works without modifications right now.
 
@@ -60,7 +60,7 @@ Use it
 ------
 
 To use the generated C code, make a main.c file that defines the
-assert function whose prototype is in turnstyle_ext.h.
+SMUDGE_panic function whose prototype is in turnstyle_ext.h.
 
 Now you can send the coin and person events by calling the appropriate
 event functions. Pass NULL as the argument for now, we'll discuss what
@@ -89,7 +89,7 @@ by **)->**. The **-->** syntax we've been using is shorthand for
 **-()->**.
 
 Now run Smudge again and look at turnstyle_ext.h. Note that in
-addition to assert, there are prototypes for flashLEDs and
+addition to SMUDGE_panic, there are prototypes for flashLEDs and
 soundOkay. These functions have to be added to main.c.
 
 Event Payloads

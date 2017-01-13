@@ -24,7 +24,7 @@ static void *sendValidCoin(void *unused)
     return NULL;
 }
 
-void assert(void)
+void SMUDGE_panic(void)
 {
     printf("Game over!\n");
     exit(-1);

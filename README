@@ -9,6 +9,15 @@ comments to describe what it's doing.
 There's also a tutorial called tutorial.pdf.
 
 -- Revision History --
+v0.3.1: This minor release improves certain error messages, and corrects
+      handling of flags overriding output file locations.
+
+      Tickets:
+
+      25: Resolve conflict between QualifiedName [] and QualifiedName [""]
+      48: Map.!: given key is not an element in the map
+      51: Fix output path messiness.
+
 v0.3: This release is much polished compared to 0.2, and suitable for
       even broader use.
 

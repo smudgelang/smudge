@@ -9,6 +9,35 @@ comments to describe what it's doing.
 There's also a tutorial called tutorial.pdf.
 
 -- Revision History --
+v0.4: A major release, that corrects some long-standing Smudge issues.
+
+      IMPORTANT: This includes a backwards-incompatible rename:
+                    assert        -> SMUDGE_panic
+                    printf_assert -> SMUDGE_panic_print
+
+      Features: Added --strict flag which only allows functions for
+      one event type.  The prototype for panic_print is now generated.  
+      Added --namespace flag, with a default namespace of SMUDGE.
+      Added --rename flag, which lets you rename symbols, e.g.:
+        smudge --rename="@SMUDGE.@panic @assert"
+
+      Architecture: Added a constraint solver type checker.  Added a
+      fleshed out language definition with a section on the grammar
+      and one on the type checker.  Removed the syntax for typed
+      functions (the semantics of which were never implemented).
+
+      Errata: A few minor parser bugs were fixed, including one that
+      permitted junk at the end of a smudgle, and another that allowed
+      empty event handler lists.
+
+      Tickets:
+
+      15: Typed function calls not implemented.
+      22: Semantic pass to reject conflicting side effect return types
+      23: Optional semantic pass to strictly reject conflicting side effects
+      29: Problems with assert and special functions.
+      39: States must have at least one event.
+
 v0.3.1: This minor release improves certain error messages, and corrects
       handling of flags overriding output file locations.
 

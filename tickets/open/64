@@ -1,0 +1,8 @@
+Title: PackageInfo warning
+
+`make clean && make` includes the following warning, which should be fixed:
+
+dist/build/autogen/PackageInfo.hs:6:131: Warning:
+    In the use of ‘versionTags’
+    (imported from Distribution.Version, but defined in Data.Version):
+    Deprecated: "See GHC ticket #2496"

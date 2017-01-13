@@ -5,7 +5,7 @@ payloads and events that can't have payloads. Our current model
 is that an @function is called, which sends an event with a
 payload somewhere:
 
-triggerEvent -(@sideEffect:OtherSM.event)-> WATEVER_STATE
+triggerEvent -(OtherSM.event@sideEffect)-> WATEVER_STATE
 
 That event is interpreted by a line in OtherSM like this:
 
@@ -13,7 +13,7 @@ event -(@interpretEvent)-
 
 where the interpretEvent function will generate one of several
 events for the state machine it's in. Smudge doesn't know about
-the payload, but the @functions both do. @interpretEvent currently looks lomething like this:
+the payload, but the @functions both do. @interpretEvent currently looks something like this:
 
 
 void interpretEvent(struct OtherSM_event *event)

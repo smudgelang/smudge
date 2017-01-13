@@ -1,5 +1,5 @@
 SRCS=$(wildcard *.smudge)
-COUNTEREXAMPLES=counterexamples/badsideeffectname.smudge counterexamples/badstatename.smudge counterexamples/fakestate.smudge counterexamples/notransientstatecycles.smudge counterexamples/oneinitialstate.smudge counterexamples/uniquestatenames.smudge
+COUNTEREXAMPLES=counterexamples/badsideeffectname.smudge counterexamples/badstatename.smudge counterexamples/notransientstatecycles.smudge counterexamples/oneinitialstate.smudge counterexamples/uniquestatenames.smudge
 UNINSTANTIABLE=counterexamples/uninstantiabletypes.smudge
 SMUDGE=../dist/build/smudge/smudge
 OBJS=$(addsuffix .svg, $(basename $(SRCS)))

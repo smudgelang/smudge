@@ -55,7 +55,8 @@ Executable smudge
                      Grammars.C89 Grammars.Smudge
                      Semantics Semantics.Semantic Semantics.OneInitialState Semantics.NoTransientStateCycles
                      Semantics.DeclaredStateNames Semantics.UniqueStateNames Semantics.DeclaredEventNames
-                     Model Semantics.Solver Semantics.Operation
+                     Semantics.UninstantiableTypes
+                     Model Semantics.Alias Semantics.Solver Semantics.Operation Semantics.Basis
                      Trashcan.FilePath Trashcan.Graph
                      Parsers.Smudge Parsers.Id Unparsers.C89
   

@@ -158,8 +158,11 @@ instance Listish CommaList where
 
 type Identifier = String
 
+isAsciiAlpha :: Char -> Bool
+isAsciiAlpha c = isAsciiLower c || isAsciiUpper c
+
 isAsciiAlphaNum :: Char -> Bool
-isAsciiAlphaNum c = isDigit c || isAsciiLower c || isAsciiUpper c
+isAsciiAlphaNum c = isDigit c || isAsciiAlpha c
 
 toAsciiCode :: Char -> String
 toAsciiCode = show . ord
@@ -169,9 +172,10 @@ mangleChar c | isAsciiAlphaNum c = [c]
 mangleChar c                     = '_' : (toAsciiCode c) ++ "_"
 
 mangleIdentifier :: String -> Identifier
-mangleIdentifier []     = "__"
-mangleIdentifier [c]    = mangleChar c
-mangleIdentifier (c:cs) = (mangleChar c) ++ (mangleIdentifier cs)
+mangleIdentifier [] = "__"
+mangleIdentifier cs = prefix ++ concatMap mangleChar cs
+    where valid c = c == '_' || isAsciiAlpha c
+          prefix = if valid $ head cs then "" else "_"
 
 -- A.1.1.4 Constants
 

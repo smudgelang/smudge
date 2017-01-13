@@ -40,7 +40,7 @@ import Unparsers.C89 (renderPretty)
 
 import Control.Monad (liftM)
 import Data.Graph.Inductive.Graph (labNodes, labEdges, lab, out, suc, insEdges, nodes, delNodes)
-import Data.List (intercalate, nub, sort, (\\))
+import Data.List (intercalate, nub, sort, (\\), dropWhileEnd)
 import Data.Map (empty, toList)
 import qualified Data.Map (null, (!))
 import Data.Text (replace)
@@ -66,7 +66,7 @@ apply f [] = APostfixExpression f LEFTPAREN Nothing RIGHTPAREN
 apply f ps = APostfixExpression f LEFTPAREN (Just $ fromList ps) RIGHTPAREN
 
 (+-+) :: Identifier -> Identifier -> Identifier
-a +-+ b = a ++ "_" ++ b
+a +-+ b = dropWhileEnd (== '_') a ++ "_" ++ dropWhile (== '_') b
 
 qualifyMangle :: Qualifiable q => Alias QualifiedName -> q -> Identifier
 qualifyMangle aliases q = mangleWith (+-+) mangleIdentifier $ rename aliases $ qualify q

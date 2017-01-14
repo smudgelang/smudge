@@ -1,0 +1,16 @@
+Title: Standardize on a properly injective mangling scheme
+
+As an emergency fix for a release-blocking bug in 0.4, underscores were added
+before identifiers beginning with characters that can't be used in C ids; in
+order to prevent needing to change code using this, underscores joining a nested
+id were coalesced.  Unfortunately, this introduced another unintended bug, e.g.:
+
+smudge - <<< "sm_ { *a[ b -- ] } sm { *a[ _b -- ] }"
+
+Note that an underscore is at the end of the sm name in the first, and the
+beginning of the event in the second.  This produces two functions with the same
+symbol name in the generated output: sm_95_b.  It also causes the event types to
+collide.
+
+The mangling algorithm needs to be replaced with an injective mapping; i.e., no
+two qualified input identifiers should yield the same output identifier.

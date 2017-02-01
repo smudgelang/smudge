@@ -14,3 +14,55 @@ collide.
 
 The mangling algorithm needs to be replaced with an injective mapping; i.e., no
 two qualified input identifiers should yield the same output identifier.
+
+Since the mangling scheme is unlikely to ever change again, and this change is
+guaranteed to break existing code, it is prudent to define further desirable
+properties, so that the mangling scheme can be not just adequate, but great!
+
+As such, we identified three requirements the mangling scheme should meet:
+    1) As mentioned above, it must be injective,
+    2) Mangled names should be as pretty as possible, given injectivity,
+    3) Names should be backwards compatible, or at least as close as possible.
+
+To meet these, we identified four cases:
+    1) ^[a-zA-Z][a-zA-Z0-9]+$
+    2) ^[0-9][a-zA-Z0-9]+$
+    3) ^[a-zA-Z][a-zA-Z0-9]*([_- ][a-zA-Z0-9]+)*[_- ]?$
+    4) ^.*$
+
+In plain English, case (1) represents alphanums with a leading letter.  Case
+(2) are alphanums with a leading number.  Case (3) is the interesting one: the
+class of names made up of letters, numbers, and underscores, dashes and spaces,
+with a leading letter, where all non-alphanums are separated by at least one
+alphanum.  Finally, case (4) represents everything else.
+
+To meet these requirements for these cases, we made some algorithm decisions,
+and proposed some possible options for the undecided parts.
+
+For case (1), the mapping should be identity.  For case (2), the mapping should
+be identity prepended by an underscore.  For case (3), it is advantageous to be
+pretty, as this will be a common case in real Smudge programs.  This leaves
+case (4), where the complexity can be offloaded to preserve injectivity, though
+it makes sense to be somewhat backwards compatible, e.g., by using ascii codes
+(or preferably utf-8 codes, assisting #42).
+
+We were so far unable to come up with an algorithm for case (3) that met the
+requirements.  The option we explored the longest was to use a prepended
+underscore followed by identity, and not include dashes or spaces.  This is
+pretty, and injective, but only when considering unqualified names.  When
+considering qualified names, we proved that this scheme is not injective by
+counterexample.
+
+Overall, the algorithm is a composition analogous to the following:
+
+mangle_qual = foldl1 mangle_join . map mangle_unqual
+
+While prettiness is subjective, injectivity is not.  In order to prove the
+injectivity of mangle_qual, one must prove the injectivity of both mangle_join
+and mangle_unqual.  There are a few ways to prove these injectivities, e.g.:
+    1) show that the mangled output is unambiguously parseable,
+    2) disprove by contradiction the contrapositive by referential transparency,
+    3) show that they are linear maps whose null space is only the empty string.
+
+There may be others depending on the exact manifestation of the mappings, but
+these are likely the simplest.

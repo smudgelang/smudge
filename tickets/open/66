@@ -1,0 +1,5 @@
+Title: Comment Blocks
+
+Add comment blocks to generated .c and .h files to discourage
+people from editing or committing them.
+

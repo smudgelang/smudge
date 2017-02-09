@@ -131,8 +131,8 @@ sName :: TaggedName -> State TaggedName -> QualifiedName
 sName _ (State s) = qualify s
 sName smName StateAny  = qualify (smName, "ANY_STATE")
 
-handleStateEventFunction :: Alias QualifiedName -> StateMachineDeclarator TaggedName -> State TaggedName -> Happening -> State TaggedName -> SymbolTable -> FunctionDefinition
-handleStateEventFunction aliases sm@(StateMachineDeclarator smName) st h st' syms =
+handleStateEventFunction :: Alias QualifiedName -> StateMachineDeclarator TaggedName -> State TaggedName -> Happening -> State TaggedName -> Bool -> SymbolTable -> FunctionDefinition
+handleStateEventFunction aliases sm@(StateMachineDeclarator smName) st h st' do_exit syms =
     makeFunction (fromList [A STATIC, B VOID]) [] f_name params
     (CompoundStatement
     LEFTCURLY
@@ -165,7 +165,7 @@ handleStateEventFunction aliases sm@(StateMachineDeclarator smName) st h st' sym
         apply_se (f, FuncTyped _) = undefined -- See ticket #15, harder than it seems at first.
         apply_se (f, _) = (#:) (apply ((#:) (mangleTName aliases f) (:#)) (psOf (snd $ syms ! f))) (:#)
         side_effects = case h of
-                          (Happening _ ses [])                        -> [apply_se se | se <- ses] ++ [call_exit, assign_state, call_enter]
+                          (Happening _ ses [])                        -> [apply_se se | se <- ses] ++ (if do_exit then [call_exit] else []) ++ [assign_state, call_enter]
                           (Happening _ ses fs) | elem NoTransition fs -> [apply_se se | se <- ses]
 
 handleEventFunction :: Alias QualifiedName -> StateMachineDeclarator TaggedName -> Event TaggedName -> [(State TaggedName, (State TaggedName, Event TaggedName))] -> [State TaggedName] -> FunctionDefinition
@@ -427,14 +427,14 @@ instance Backend CStaticOption where
                      ++ [ExternalDeclaration $ Left $ unhandledEventFunction aliases debug (any_handler e g) sm e | e <- events g]
                      ++ [ExternalDeclaration $ Left $ initializeFunction aliases sm $ initial g]
                      ++ [ExternalDeclaration $ Left $ handleEventFunction aliases sm e (s_handlers e g) (unhandled e g) | e <- events g]
-                     ++ [ExternalDeclaration $ Left $ handleStateEventFunction aliases sm s h s' syms
-                         | (n, EnterExitState {st = s}) <- labNodes g, (_, n', h) <- out g n, Just EnterExitState {st = s'} <- [lab g n'], case s of State _ -> True; StateAny -> True; _ -> False, case s' of State _ -> True; StateAny -> True; _ -> False]
+                     ++ [ExternalDeclaration $ Left $ handleStateEventFunction aliases sm s h s' (s == StateAny || not (null ex)) syms
+                         | (n, EnterExitState {st = s, ex}) <- labNodes g, (_, n', h) <- out g n, Just EnterExitState {st = s'} <- [lab g n'], case s of State _ -> True; StateAny -> True; _ -> False, case s' of State _ -> True; StateAny -> True; _ -> False]
                      | (sm, g) <- gs'']
               gs'' = [(sm, insEdges [(n, n, Happening EventEnter en [NoTransition])
                                      | (n, EnterExitState {en, st = State _}) <- labNodes $ delNodes [n | n <- nodes g, (_, _, Happening EventEnter _ _) <- out g n] g] g)
                       | (sm, g) <- gs']
               gs'  = [(sm, insEdges [(n, n, Happening EventExit ex [NoTransition])
-                                     | (n, EnterExitState {st = State _, ex}) <- labNodes $ delNodes (finalStates g ++ [n | n <- nodes g, (_, _, Happening EventExit _ _) <- out g n]) g] g)
+                                     | (n, EnterExitState {st = State _, ex = ex@(_:_)}) <- labNodes $ delNodes (finalStates g ++ [n | n <- nodes g, (_, _, Happening EventExit _ _) <- out g n]) g] g)
                       | (sm, g) <- gs]
               gs = [(smd, g) | (Annotated _ smd, g) <- gs_]
               (gs_, aliases, syms) = gswust

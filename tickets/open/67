@@ -1,0 +1,14 @@
+Title: Forbid nonsensical any states
+
+M { *A [ x --], _ (@enterAny) [ y -- ] (@exitAny) }
+
+M { *A [ x --], _ --> A }
+
+These two constructions are almost certainly nonsensical, but they are allowed
+by the syntax, and generate no useful behavior.
+
+These should be rejected as ill-formed.  As an argument, what would the
+semantics even mean?  An any state can't be entered - how could it be
+transient?  Do enter/exit events in any states happen before, after, or instead
+of enter/exit functions for each state?  Do they only happen when a state
+doesn't have enter/exit functions?

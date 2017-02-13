@@ -295,25 +295,12 @@ currentStateNameFunction aliases debug (StateMachineDeclarator smName) =
 
 handleStateEventDeclaration :: Alias QualifiedName -> StateMachineDeclarator TaggedName -> State TaggedName -> Event TaggedName -> Declaration
 handleStateEventDeclaration aliases (StateMachineDeclarator smName) st e =
-    Declaration spec (Just $ fromList [InitDeclarator declr Nothing]) SEMICOLON
-    where
-        (dspec, declr) = declare aliases (qualify (sName smName st, mangleEv e)) ty
-        spec = SimpleList (A STATIC) (Just dspec)
-        ty = case e of
-                    (Event t) -> Ty t :-> Void
-                    otherwise -> Void :-> Void
+    define aliases (qualify (sName smName st, mangleEv e)) (ty :-> Void) Nothing
+    where ty = case e of (Event t) -> Ty t; _ -> Void
 
 stateVarDeclaration :: Alias QualifiedName -> StateMachineDeclarator TaggedName -> State TaggedName -> Declaration
 stateVarDeclaration aliases (StateMachineDeclarator smName) (State s) =
-    Declaration
-    (fromList [A STATIC, B $ TypeSpecifier smEnum])
-    (Just $ fromList [InitDeclarator (Declarator Nothing (IDirectDeclarator state_var)) 
-                                     (Just $ Pair EQUAL $ AInitializer ((#:) sMangled (:#)))])
-    SEMICOLON
-    where
-        smEnum = qualifyMangle aliases (smName, "State")
-        sMangled = mangleTName aliases s
-        state_var = qualifyMangle aliases (smName, "state")
+    define aliases (qualify (smName, "state")) (Ty $ TagState $ qualify (smName, "State")) (Just $ (#:) (mangleTName aliases s) (:#))
 
 stateEnum :: Alias QualifiedName -> StateMachineDeclarator TaggedName -> [State TaggedName] -> Declaration
 stateEnum aliases (StateMachineDeclarator smName) ss =
@@ -383,6 +370,14 @@ makeFunction dss ps f_name params body =
           RIGHTPAREN)
     Nothing
     body
+
+define :: Alias QualifiedName -> QualifiedName -> Ty -> Maybe AssignmentExpression -> Declaration
+define aliases name ty init =
+    Declaration spec (Just $ fromList [InitDeclarator declr initializer]) SEMICOLON
+    where
+        (dspec, declr) = declare aliases name ty
+        spec = SimpleList (A STATIC) (Just dspec)
+        initializer = fmap (Pair EQUAL . AInitializer) init
 
 declare :: Alias QualifiedName -> QualifiedName -> Ty -> (DeclarationSpecifiers, Declarator)
 declare aliases = convertDeclarator

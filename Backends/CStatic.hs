@@ -20,6 +20,7 @@ import Model (
   QualifiedName,
   Qualifiable(qualify),
   TaggedName(..),
+  extractWith,
   mangleWith,
   disqualifyTag,
   qName,
@@ -75,11 +76,11 @@ mangleTName :: Alias QualifiedName -> TaggedName -> Identifier
 mangleTName aliases (TagEvent q) = qualifyMangle aliases q +-+ "t"
 mangleTName aliases t = qualifyMangle aliases t
 
-mangleEv :: Event TaggedName -> Identifier
-mangleEv (Event evName) = mangleIdentifier $ disqualifyTag evName
-mangleEv EventEnter = "enter"
-mangleEv EventExit = "exit"
-mangleEv EventAny = "any"
+mangleEv :: Event TaggedName -> QualifiedName
+mangleEv (Event evName) = extractWith seq qualify $ qualify evName
+mangleEv EventEnter = qualify "enter"
+mangleEv EventExit = qualify "exit"
+mangleEv EventAny = qualify "any"
 
 transitionFunction :: Alias QualifiedName -> StateMachineDeclarator TaggedName -> Event TaggedName -> [State TaggedName] -> FunctionDefinition
 transitionFunction aliases (StateMachineDeclarator smName) e@EventExit ss =

@@ -10,6 +10,7 @@ module Model (
     Happening(..),
     QualifiedName,
     Qualifiable(..),
+    extractWith,
     mangleWith,
     disqualify,
     disqualifyTag,
@@ -45,8 +46,8 @@ import Data.Graph.Inductive.Graph (mkGraph, Node)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Map (Map, fromList, (!))
 import Data.List (intercalate)
-import Data.Foldable (asum)
-import Control.Applicative (Alternative)
+import Data.List.NonEmpty (NonEmpty((:|)), toList, (<|))
+import Data.Semigroup (Semigroup, (<>))
 import Control.Arrow (first)
 
 data EnterExitState = EnterExitState {
@@ -64,20 +65,20 @@ data Happening = Happening {
         flags       :: [HappeningFlag]
     } deriving (Show, Eq, Ord)
 
-newtype Qualified a = Qualified [a]
-    deriving (Eq, Ord, Applicative, Alternative, Functor, Monad)
+newtype Qualified a = Qualified (NonEmpty a)
+    deriving (Eq, Ord, Semigroup, Functor, Applicative, Monad)
 
 instance Show a => Show (Qualified a) where
-    show (Qualified as) = intercalate "." $ map show as
+    show (Qualified as) = intercalate "." $ toList $ fmap show as
 
 instance Read a => Read (Qualified a) where
     readsPrec d = readParen False
-                    (\r -> map (first Qualified) $ readA r)
+                    (\r -> fmap (first Qualified) $ readA r)
         where readA r = do
                     (a, s) <- readsPrec d r
                     case s of
-                        '.' : s -> map (first (a:)) $ readA s
-                        otherwise -> [([a], s)]
+                        '.' : s -> fmap (first (a <|)) $ readA s
+                        otherwise -> [(a :| [], s)]
 
 type QualifiedName = Qualified Identifier
 
@@ -88,17 +89,19 @@ instance Qualifiable QualifiedName where
     qualify = id
 
 instance Qualifiable Identifier where
-    qualify n = Qualified [n]
+    qualify n = Qualified (n :| [])
 
 instance Qualifiable Name where
     qualify = read . ('@':)
 
 instance (Qualifiable s, Qualifiable n) => Qualifiable (s, n) where
-    qualify (s, n) = asum $ (qualify s) : [qualify n]
+    qualify (s, n) = qualify s <> qualify n
+
+extractWith :: (a -> a -> a) -> (Identifier -> a) -> QualifiedName -> a
+extractWith ff f (Qualified ns) = foldr1 ff $ fmap f ns
 
 mangleWith :: (Name -> Name -> Name) -> (Name -> Name) -> QualifiedName -> Name
-mangleWith _  _ (Qualified []) = ""
-mangleWith ff f (Qualified ns) = foldr1 ff $ fmap (mangle f) ns
+mangleWith ff f = extractWith ff (mangle f)
 
 disqualify :: QualifiedName -> Name
 disqualify = mangleWith seq id

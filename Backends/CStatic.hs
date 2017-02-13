@@ -37,8 +37,16 @@ import Semantics.Solver (
 import qualified Semantics.Solver as Solver(toList)
 import Semantics.Alias (Alias, rename)
 import Trashcan.FilePath (relPath)
+import Trashcan.These (
+  These(..),
+  maybeThis,
+  maybeThat,
+  theseAndThat,
+  fmapThat,
+  )
 import Unparsers.C89 (renderPretty)
 
+import Control.Arrow (second)
 import Control.Monad (liftM)
 import Data.Graph.Inductive.Graph (labNodes, labEdges, lab, out, suc, insEdges, nodes, delNodes)
 import Data.List (intercalate, nub, sort, (\\), dropWhileEnd)
@@ -261,7 +269,7 @@ stateNameFunction aliases (StateMachineDeclarator smName) ss =
         f_name = qualifyMangle aliases (smName, "State_name")
         names_size_e = (#:) (SIZEOF $ Right $ Trio LEFTPAREN (TypeName (fromList [Left $ TypeSpecifier names_var]) Nothing) RIGHTPAREN) (:#)
         ptr_size_e = (#:) (SIZEOF $ Right $ Trio LEFTPAREN (TypeName (fromList [Right CONST, Left CHAR])
-                                                                     (Just $ AbstractDeclarator $ This $ fromList [POINTER Nothing])) RIGHTPAREN) (:#)
+                                                                     (Just $ This $ fromList [POINTER Nothing])) RIGHTPAREN) (:#)
         names_count_e = (#:) (names_size_e `DIV` ptr_size_e) (:#)
         count_var_e = (#:) count_var (:#)
         state_var_e = (#:) state_var (:#)
@@ -287,16 +295,13 @@ currentStateNameFunction aliases debug (StateMachineDeclarator smName) =
 
 handleStateEventDeclaration :: Alias QualifiedName -> StateMachineDeclarator TaggedName -> State TaggedName -> Event TaggedName -> Declaration
 handleStateEventDeclaration aliases (StateMachineDeclarator smName) st e =
-    Declaration
-    (fromList [A STATIC, B VOID])
-    (Just $ fromList [InitDeclarator (makeFunctionDeclarator [] f_name params) Nothing])
-    SEMICOLON
+    Declaration spec (Just $ fromList [InitDeclarator declr Nothing]) SEMICOLON
     where
-        params = case e of
-                    (Event t) -> [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier $ mangleTName aliases t])
-                                  (Just $ Right $ AbstractDeclarator $ This $ fromList [POINTER Nothing])]
-                    otherwise -> [ParameterDeclaration (fromList [B VOID]) Nothing]
-        f_name = qualifyMangle aliases (sName smName st, mangleEv e)
+        (dspec, declr) = declare aliases (qualify (sName smName st, mangleEv e)) ty
+        spec = SimpleList (A STATIC) (Just dspec)
+        ty = case e of
+                    (Event t) -> Ty t :-> Void
+                    otherwise -> Void :-> Void
 
 stateVarDeclaration :: Alias QualifiedName -> StateMachineDeclarator TaggedName -> State TaggedName -> Declaration
 stateVarDeclaration aliases (StateMachineDeclarator smName) (State s) =
@@ -336,11 +341,11 @@ makeSwitch var cs ds =
         rest_stmt []     = []
 
 makeEnum :: Identifier -> [Identifier] -> TypeSpecifier
-makeEnum smName [] = ENUM (Left $ smName)
-makeEnum smName ss = 
-    ENUM (Right (Quad (if null smName then Nothing else Just $ smName)
+makeEnum x [] = ENUM (Left $ x)
+makeEnum x cs = 
+    ENUM (Right (Quad (if null x then Nothing else Just $ x)
     LEFTCURLY
-    (fromList [Enumerator s Nothing | s <- ss])
+    (fromList [Enumerator c Nothing | c <- cs])
     RIGHTCURLY))
 
 eventStruct :: Alias QualifiedName -> TaggedName -> Ty -> Declaration
@@ -359,42 +364,56 @@ makeStruct name ss =
     (fromList [StructDeclaration sqs (fromList [StructDeclarator $ This $ Declarator Nothing $ IDirectDeclarator id]) SEMICOLON | (sqs, id) <- ss])
     RIGHTCURLY))
 
-makeFunctionDeclarator :: [Pointer] -> Identifier -> [ParameterDeclaration] -> Declarator
-makeFunctionDeclarator ps f_name params =
-    Declarator (if null ps then Nothing else Just $ fromList ps)
-        $ PDirectDeclarator
-          (IDirectDeclarator f_name)
-          LEFTPAREN
-          (Just $ Left $ ParameterTypeList (fromList params) Nothing)
-          RIGHTPAREN
-
 makeFunctionDeclaration :: Alias QualifiedName -> TaggedName -> (Binding, Ty) -> Declaration
-makeFunctionDeclaration aliases n (b, p :-> r) =
-    Declaration
-    (fromList $ binding ++ result)
-    (Just $ fromList [InitDeclarator (makeFunctionDeclarator ps f_name params) Nothing])
-    SEMICOLON
+makeFunctionDeclaration aliases n (b, ty) =
+    Declaration spec (Just $ fromList [InitDeclarator declr Nothing]) SEMICOLON
     where
-        binding = case b of External -> [A EXTERN]; _ -> []
-        f_name = mangleTName aliases n
-        xlate_r  Void  = ([B VOID], [])
-        xlate_r (Ty t) = ([C CONST, B $ TypeSpecifier $ mangleTName aliases t], [POINTER Nothing])
-        xlate_ps (Void) = [ParameterDeclaration (fromList [B VOID]) Nothing]
-        xlate_ps (Ty t) = [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier $ mangleTName aliases t])
-                               (Just $ Right $ AbstractDeclarator (This $ fromList [POINTER Nothing]))]
-        xlate_ps (p :-> Void) = xlate_ps p
-        xlate_ps (p :-> Ty _) = xlate_ps p
-        xlate_ps (p :-> p')   = xlate_ps p ++ xlate_ps p'
-        translate t = (xlate_ps t, xlate_r $ resultOf t)
-        (params, (result, ps)) = translate (p :-> r)
+        (dspec, declr) = declare aliases (qualify n) ty
+        spec = case b of External -> SimpleList (A EXTERN) (Just dspec); _ -> dspec
 
 makeFunction :: DeclarationSpecifiers -> [Pointer] -> Identifier -> [ParameterDeclaration] -> CompoundStatement -> FunctionDefinition
 makeFunction dss ps f_name params body =
     Function
     (Just dss)
-    (makeFunctionDeclarator ps f_name params)
+    (Declarator (if null ps then Nothing else Just $ fromList ps)
+        $ PDirectDeclarator
+          (IDirectDeclarator f_name)
+          LEFTPAREN
+          (Just $ Left $ ParameterTypeList (fromList params) Nothing)
+          RIGHTPAREN)
     Nothing
     body
+
+declare :: Alias QualifiedName -> QualifiedName -> Ty -> (DeclarationSpecifiers, Declarator)
+declare aliases = convertDeclarator
+    where
+        constable (TagEvent _)   = True
+        constable (TagBuiltin _) = True
+        constable _              = False
+
+        convertAbsDeclarator :: Ty -> (DeclarationSpecifiers, Maybe AbstractDeclarator)
+        convertAbsDeclarator Void                 = (fromList [B VOID], Nothing)
+        convertAbsDeclarator (Ty t) | constable t = (fromList [C CONST, B $ TypeSpecifier $ convertTName t], Just $ This $ fromList [POINTER Nothing])
+        convertAbsDeclarator (Ty t)               = (fromList [B $ TypeSpecifier $ convertTName t], Nothing)
+        convertAbsDeclarator (p :-> r)            = (spec, Just absdec)
+            where ((spec, rabsdec), rparams) = convertF (p :-> r)
+                  params = ParameterTypeList (fromList rparams) Nothing
+                  pdeclr dad = PDirectAbstractDeclarator dad LEFTPAREN (Just params) RIGHTPAREN
+                  absdec = fmapThat pdeclr $ maybe (That Nothing) (theseAndThat Nothing Just) rabsdec
+                  toParam = uncurry ParameterDeclaration . second (fmap Right) . convertAbsDeclarator
+                  convertF (p :-> r) = second (toParam p :) $ convertF r
+                  convertF        r  = (convertAbsDeclarator r, [])
+
+        convertDeclarator :: QualifiedName -> Ty -> (DeclarationSpecifiers, Declarator)
+        convertDeclarator x = second inst . convertAbsDeclarator
+            where maybename = maybe (IDirectDeclarator $ convertQName x) instdir
+                  inst ad = Declarator (ad >>= maybeThis) (maybename $ ad >>= maybeThat)
+                  instdir (ADirectAbstractDeclarator LEFTPAREN a RIGHTPAREN)     = DDirectDeclarator LEFTPAREN (inst $ Just a) RIGHTPAREN
+                  instdir (CDirectAbstractDeclarator a LEFTSQUARE c RIGHTSQUARE) = CDirectDeclarator (maybename a) LEFTSQUARE c RIGHTSQUARE
+                  instdir (PDirectAbstractDeclarator a LEFTPAREN p RIGHTPAREN)   = PDirectDeclarator (maybename a) LEFTPAREN (fmap Left p) RIGHTPAREN
+
+        convertQName = qualifyMangle aliases
+        convertTName = mangleTName aliases
 
 instance Backend CStaticOption where
     options = ("c",

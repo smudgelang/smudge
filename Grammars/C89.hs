@@ -9,7 +9,6 @@ module Grammars.C89 (
     fromList,
 
     Choose(..),
-    These(..),
     Pair(..),
     Trio(..),
     Quad(..),
@@ -84,7 +83,7 @@ module Grammars.C89 (
     ParameterDeclaration(..),
     IdentifierList,
     TypeName(..),
-    AbstractDeclarator(..),
+    AbstractDeclarator,
     DirectAbstractDeclarator(..),
     TypedefName(..),
     Initializer(..),
@@ -104,6 +103,8 @@ module Grammars.C89 (
     ExternalDeclaration(..),
     FunctionDefinition(..),
 ) where
+
+import Trashcan.These (These(..))
 
 import Data.Char (isDigit, isAsciiLower, isAsciiUpper, ord)
 
@@ -133,7 +134,6 @@ class Listish l where
 
 data EndBrace = (:#)
 data Choose a b c = A a | B b | C c
-data These a b = This a | That b | These a b
 data Pair a b = Pair a b
 data Trio a b c = Trio a b c
 data Quad a b c d = Quad a b c d
@@ -411,7 +411,7 @@ type IdentifierList = CommaList Identifier
 
 data TypeName = TypeName SpecifierQualifierList (Maybe AbstractDeclarator)
 
-data AbstractDeclarator = AbstractDeclarator (These PointerList DirectAbstractDeclarator)
+type AbstractDeclarator = These PointerList DirectAbstractDeclarator
 
 data DirectAbstractDeclarator = ADirectAbstractDeclarator LEFTPAREN AbstractDeclarator RIGHTPAREN
                               | CDirectAbstractDeclarator (Maybe DirectAbstractDeclarator) LEFTSQUARE (Maybe ConstantExpression) RIGHTSQUARE

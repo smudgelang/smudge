@@ -57,7 +57,7 @@ Executable smudge
                      Semantics.DeclaredStateNames Semantics.UniqueStateNames Semantics.DeclaredEventNames
                      Semantics.UninstantiableTypes
                      Model Semantics.Alias Semantics.Solver Semantics.Operation Semantics.Basis
-                     Trashcan.FilePath Trashcan.Graph
+                     Trashcan.FilePath Trashcan.Graph Trashcan.These
                      Parsers.Smudge Parsers.Id Unparsers.C89
   
   -- Extra tools (e.g. alex, hsc2hs, ...) needed to build the source.

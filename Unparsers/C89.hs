@@ -10,7 +10,6 @@ import Grammars.C89 (
     fromList,
 
     Choose(..),
-    These(..),
     Pair(..),
     Trio(..),
     Quad(..),
@@ -85,7 +84,7 @@ import Grammars.C89 (
     ParameterDeclaration(..),
     IdentifierList,
     TypeName(..),
-    AbstractDeclarator(..),
+    AbstractDeclarator,
     DirectAbstractDeclarator(..),
     TypedefName(..),
     Initializer(..),
@@ -105,6 +104,8 @@ import Grammars.C89 (
     ExternalDeclaration(..),
     FunctionDefinition(..),
     )
+
+import Trashcan.These (These(..))
 
 import Text.PrettyPrint (
     Doc,
@@ -463,9 +464,6 @@ instance Prettyable IdentifierList where
 
 instance Prettyable TypeName where
     pretty (TypeName sql mad) = pretty sql <+> pretty mad
-
-instance Prettyable AbstractDeclarator where
-    pretty (AbstractDeclarator pordad) = pretty pordad
 
 instance Prettyable DirectAbstractDeclarator where
     pretty (ADirectAbstractDeclarator l ad r) = pretty l <> pretty ad <> pretty r

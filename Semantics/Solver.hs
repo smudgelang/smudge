@@ -43,7 +43,7 @@ import Control.Monad (foldM)
 import Control.Arrow (first, second, (***), (>>>))
 
 -- external interface
-data Binding = External | Unresolved | Resolved
+data Binding = External | Unresolved | Exported | Internal
     deriving (Show, Eq, Ord)
 
 data Ty =
@@ -198,7 +198,7 @@ inferState gamma (_, _, en, eh, ex) = c_n :/\ c_h :/\ c_x
           c_x = inferEvent gamma (EventExit, ex, undefined)
 
 inferEvent :: SymTab -> EventHandler TaggedName -> Constraint
-inferEvent gamma (Event x_a, ds, _) = Resolved :@ x_a :/\ Resolved :@ x_d :/\ typefor x_a :<: tau_a :/\ c
+inferEvent gamma (Event x_a, ds, _) = Exported :@ x_a :/\ Exported :@ x_d :/\ typefor x_a :<: tau_a :/\ c
     where retag (TagEvent n) = (TagFunction n)
           tau_a = gamma !> x_a
           x_d = retag x_a

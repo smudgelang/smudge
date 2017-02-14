@@ -426,8 +426,8 @@ instance Backend CStaticOption where
         where src = fromList $ concat tus
               ext = fromList tue
               hdr = fromList tuh
-              tuh = [ExternalDeclaration $ Right $ eventStruct aliases name ty | (name, (Resolved, ty@(Ty _))) <- Solver.toList syms]
-                    ++ [ExternalDeclaration $ Right $ makeFunctionDeclaration aliases name f | (name, f@(Resolved, _ :-> _)) <- Solver.toList syms]
+              tuh = [ExternalDeclaration $ Right $ eventStruct aliases name ty | (name, (Exported, ty@(Ty _))) <- Solver.toList syms]
+                    ++ [ExternalDeclaration $ Right $ makeFunctionDeclaration aliases name f | (name, f@(Exported, _ :-> _)) <- Solver.toList syms]
                     ++ [ExternalDeclaration $ Right $ makeFunctionDeclaration aliases name f | (name, f) <- Solver.toList externs]
               tue = [ExternalDeclaration $ Right $ makeFunctionDeclaration aliases name f | (name, f@(External, _ :-> _)) <- Solver.toList syms]
               tus = [[ExternalDeclaration $ Right $ stateEnum aliases sm $ states g]

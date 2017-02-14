@@ -6,6 +6,7 @@
 module Grammars.C89 (
     (#:),
     EndBrace(..),
+    (<:),
     fromList,
 
     Choose(..),
@@ -140,12 +141,12 @@ data Quad a b c d = Quad a b c d
 
 data SimpleList x = SimpleList x (Maybe (SimpleList x))
 instance Listish SimpleList where
-    x <: sl = SimpleList x (Just sl)
+    x <: xs = SimpleList x $ Just xs
     singleton = flip SimpleList Nothing
 
 data CommaList x = CommaList x (Maybe (Pair COMMA (CommaList x)))
 instance Listish CommaList where
-    x <: sl = CommaList x (Just (Pair COMMA sl))
+    x <: xs = CommaList x $ Just $ Pair COMMA xs
     singleton = flip CommaList Nothing
 
 -------------------

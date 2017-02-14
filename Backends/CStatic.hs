@@ -356,7 +356,7 @@ makeFunctionDeclaration aliases n (b, ty) =
     Declaration spec (Just $ fromList [InitDeclarator declr Nothing]) SEMICOLON
     where
         (dspec, declr) = declare aliases (qualify n) ty
-        spec = case b of External -> SimpleList (A EXTERN) (Just dspec); _ -> dspec
+        spec = case b of External -> A EXTERN <: dspec; _ -> dspec
 
 makeFunction :: DeclarationSpecifiers -> [Pointer] -> Identifier -> [ParameterDeclaration] -> CompoundStatement -> FunctionDefinition
 makeFunction dss ps f_name params body =
@@ -376,7 +376,7 @@ define aliases name ty init =
     Declaration spec (Just $ fromList [InitDeclarator declr initializer]) SEMICOLON
     where
         (dspec, declr) = declare aliases name ty
-        spec = SimpleList (A STATIC) (Just dspec)
+        spec = A STATIC <: dspec
         initializer = fmap (Pair EQUAL . AInitializer) init
 
 declare :: Alias QualifiedName -> QualifiedName -> Ty -> (DeclarationSpecifiers, Declarator)

@@ -4,57 +4,50 @@
 module Backends.CStatic where
 
 import Backends.Backend (Backend(..))
+import Backends.SmudgeIR (
+  SmudgeIR,
+  Def(..),
+  Dec(..),
+  Stmt(..),
+  Expr(..),
+  Lit(..),
+  lower,
+  lowerSymTab,
+  )
 import Grammars.Smudge (
   Annotated(..),
   StateMachineDeclarator(..),
-  State(..),
-  Event(..),
-  Function(..),
-  SideEffect(..),
   )
 import Grammars.C89
 import Model (
-  EnterExitState(..),
-  HappeningFlag(..),
-  Happening(..),
   QualifiedName,
   Qualifiable(qualify),
   TaggedName(..),
-  extractWith,
   mangleWith,
-  disqualifyTag,
-  qName,
   )
-import Semantics.Operation (handlers, finalStates)
 import Semantics.Solver (
   Ty(..), 
   Binding(..), 
-  resultOf,
-  SymbolTable, 
   insertFunctions,
+  filterBind,
   (!),
   )
-import qualified Semantics.Solver as Solver(toList)
 import Semantics.Alias (Alias, rename)
 import Trashcan.FilePath (relPath)
 import Trashcan.These (
   These(..),
   maybeThis,
   maybeThat,
+  fmapThis,
   theseAndThat,
-  fmapThat,
   )
 import Unparsers.C89 (renderPretty)
 
-import Control.Arrow (second)
+import Control.Arrow (first, second, (***), (&&&))
 import Control.Monad (liftM)
-import Data.Graph.Inductive.Graph (labNodes, labEdges, lab, out, suc, insEdges, nodes, delNodes)
-import Data.List (intercalate, nub, sort, (\\), dropWhileEnd)
-import Data.Map (empty, toList)
-import qualified Data.Map (null, (!))
-import Data.Text (replace)
+import Control.Monad.State (StateT, evalState, state)
+import Data.List (dropWhileEnd)
 import System.Console.GetOpt
-import System.IO.Unsafe (unsafePerformIO)
 import System.FilePath (
   FilePath,
   dropExtension,
@@ -70,248 +63,8 @@ data CStaticOption = OutFile FilePath
                    | NoDebug
     deriving (Show, Eq)
 
-apply :: PostfixExpression -> [AssignmentExpression] -> PostfixExpression
-apply f [] = APostfixExpression f LEFTPAREN Nothing RIGHTPAREN
-apply f ps = APostfixExpression f LEFTPAREN (Just $ fromList ps) RIGHTPAREN
-
 (+-+) :: Identifier -> Identifier -> Identifier
 a +-+ b = dropWhileEnd (== '_') a ++ "_" ++ dropWhile (== '_') b
-
-qualifyMangle :: Qualifiable q => Alias QualifiedName -> q -> Identifier
-qualifyMangle aliases q = mangleWith (+-+) mangleIdentifier $ rename aliases $ qualify q
-
-mangleTName :: Alias QualifiedName -> TaggedName -> Identifier
-mangleTName aliases (TagEvent q) = qualifyMangle aliases q +-+ "t"
-mangleTName aliases t = qualifyMangle aliases t
-
-mangleEv :: Event TaggedName -> QualifiedName
-mangleEv (Event evName) = extractWith seq qualify $ qualify evName
-mangleEv EventEnter = qualify "enter"
-mangleEv EventExit = qualify "exit"
-mangleEv EventAny = qualify "any"
-
-transitionFunction :: Alias QualifiedName -> StateMachineDeclarator TaggedName -> Event TaggedName -> [State TaggedName] -> FunctionDefinition
-transitionFunction aliases (StateMachineDeclarator smName) e@EventExit ss =
-    makeFunction (fromList [A STATIC, B VOID]) [] f_name params
-    (CompoundStatement
-    LEFTCURLY
-        Nothing
-        (Just $ fromList [makeSwitch (fromList [state_var]) cases []])
-    RIGHTCURLY)
-    where
-        evAlone = mangleEv e
-        f_name = qualifyMangle aliases (sName smName StateAny, evAlone)
-        params = case e of
-                    otherwise -> [ParameterDeclaration (fromList [B VOID]) Nothing]
-        state_var = (#:) (qualifyMangle aliases (smName, "state")) (:#)
-        call_ev_in s n vs = (#:) (apply ((#:) (qualifyMangle aliases (s, n)) (:#)) vs) (:#)
-        cases = [((#:) (mangleTName aliases s) (:#), [fromList [call_ev_in s evAlone []]]) | (State s) <- ss]
-
-initializeFunction :: Alias QualifiedName -> StateMachineDeclarator TaggedName -> State TaggedName -> FunctionDefinition
-initializeFunction aliases (StateMachineDeclarator smName) (State s) =
-    makeFunction (fromList [A STATIC, B VOID]) [] f_name [ParameterDeclaration (fromList [B VOID]) Nothing]
-    (CompoundStatement
-    LEFTCURLY
-        (Just $ fromList [Declaration
-                          (fromList [A STATIC, B (makeEnum "" [init_uninit, init_init])])
-                          (Just $ fromList [InitDeclarator (Declarator Nothing (IDirectDeclarator init_var)) (Just $ Pair EQUAL (AInitializer ((#:) init_uninit (:#))))])
-                           SEMICOLON])
-        (Just $ fromList [SStatement $ IF LEFTPAREN (fromList [init_check]) RIGHTPAREN (CStatement $ CompoundStatement
-                                       LEFTCURLY
-                                            Nothing
-                                            (Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [se]) SEMICOLON | se <- side_effects])
-                                       RIGHTCURLY)
-                                       Nothing])
-    RIGHTCURLY)
-    where
-        state_var = (#:) (qualifyMangle aliases (smName, "state")) (:#)
-        f_name = qualifyMangle aliases (smName, "initialize")
-        init_var = "initialized"
-        init_init = "INITIALIZED"
-        init_uninit = "UNINITIALIZED"
-        assign_state = state_var `ASSIGN` ((#:) (mangleTName aliases s) (:#))
-        enter_f = (#:) (qualifyMangle aliases (s, "enter")) (:#)
-        call_enter = (#:) (apply enter_f []) (:#)
-        init_check = (#:) ((#:) init_init (:#) `NOTEQUAL` (#:) init_var (:#)) (:#)
-        init_set = (#:) init_var (:#) `ASSIGN` (#:) init_init (:#)
-        side_effects = [assign_state, call_enter, init_set]
-
-sName :: TaggedName -> State TaggedName -> QualifiedName
-sName _ (State s) = qualify s
-sName smName StateAny  = qualify (smName, "ANY_STATE")
-
-handleStateEventFunction :: Alias QualifiedName -> StateMachineDeclarator TaggedName -> State TaggedName -> Happening -> State TaggedName -> Bool -> SymbolTable -> FunctionDefinition
-handleStateEventFunction aliases sm@(StateMachineDeclarator smName) st h st' do_exit syms =
-    makeFunction (fromList [A STATIC, B VOID]) [] f_name params
-    (CompoundStatement
-    LEFTCURLY
-        Nothing
-        (if null side_effects then Nothing else Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [se]) SEMICOLON | se <- side_effects])
-    RIGHTCURLY)
-    where
-        destStateMangledName = qualifyMangle aliases $ sName smName st'
-        params = case event h of
-                    (Event t) -> [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier $ mangleTName aliases t])
-                                  (Just $ Left $ Declarator (Just $ fromList [POINTER Nothing]) $ IDirectDeclarator event_var)]
-                    otherwise -> [ParameterDeclaration (fromList [B VOID]) Nothing]
-        f_name = qualifyMangle aliases (sName smName st, mangleEv $ event h)
-        event_var = "e"
-        event_ex = (#:) event_var (:#)
-        dest_state = (#:) destStateMangledName (:#)
-        state_var = (#:) (qualifyMangle aliases (smName, "state")) (:#)
-        assign_state = (state_var `ASSIGN` dest_state)
-        exit_f = (#:) (qualifyMangle aliases (sName smName st, "exit")) (:#)
-        enter_f = (#:) (qualifyMangle aliases (sName smName st', "enter")) (:#)
-        call_exit = (#:) (apply exit_f []) (:#)
-        call_enter = (#:) (apply enter_f []) (:#)
-
-        isEventTy :: Ty -> Event TaggedName -> Bool
-        isEventTy a (Event e) = a == snd (syms ! e)
-        isEventTy _ _ = False
-
-        psOf (Void :-> _) = []
-        psOf (p    :-> _) = [if isEventTy p (event h) then event_ex else (#:) "0" (:#)]
-        apply_se (f, FuncTyped _) = undefined -- See ticket #15, harder than it seems at first.
-        apply_se (f, _) = (#:) (apply ((#:) (mangleTName aliases f) (:#)) (psOf (snd $ syms ! f))) (:#)
-        side_effects = case h of
-                          (Happening _ ses [])                        -> [apply_se se | se <- ses] ++ (if do_exit then [call_exit] else []) ++ [assign_state, call_enter]
-                          (Happening _ ses fs) | elem NoTransition fs -> [apply_se se | se <- ses]
-
-handleEventFunction :: Alias QualifiedName -> StateMachineDeclarator TaggedName -> Event TaggedName -> [(State TaggedName, (State TaggedName, Event TaggedName))] -> [State TaggedName] -> FunctionDefinition
-handleEventFunction aliases (StateMachineDeclarator smName) e@(Event evName) ss unss =
-    makeFunction (fromList [B VOID]) [] f_name params
-    (CompoundStatement
-    LEFTCURLY
-        Nothing
-        (Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [call_initialize]) SEMICOLON,
-                          makeSwitch (fromList [state_var]) cases defaults])
-    RIGHTCURLY)
-    where
-        evAlone = mangleEv e
-        f_name = qualifyMangle aliases evName
-        params = case e of
-                    (Event t) -> [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier $ mangleTName aliases t])
-                                  (Just $ Left $ Declarator (Just $ fromList [POINTER Nothing]) $ IDirectDeclarator event_var)]
-        event_var = "e"
-        event_ex = (#:) event_var (:#)
-        state_var = (#:) (qualifyMangle aliases (smName, "state")) (:#)
-        unhandled = (#:) (qualifyMangle aliases (qualify (smName, "UNHANDLED_EVENT"), evAlone)) (:#)
-        initialize = (#:) (qualifyMangle aliases (smName, "initialize")) (:#)
-        call_unhandled = (#:) (apply unhandled [event_ex]) (:#)
-        call_initialize = (#:) (apply initialize []) (:#)
-        call_ev_in s ev vs = (#:) (apply ((#:) (qualifyMangle aliases (s, mangleEv ev)) (:#)) vs) (:#)
-        esOf EventAny = []
-        esOf e' | e == e' = [(#:) event_var (:#)]
-        cases = [((#:) (mangleTName aliases s) (:#), [fromList [call_ev_in s' ev (esOf ev)]]) | (State s, (State s', ev)) <- ss]
-             ++ [((#:) (mangleTName aliases s) (:#), [fromList [call_unhandled]]) | (State s) <- unss]
-        defaults = [fromList [call_unhandled]]
-
-unhandledEventFunction :: Alias QualifiedName -> Bool -> [(State TaggedName, Event TaggedName)] -> StateMachineDeclarator TaggedName -> Event TaggedName -> FunctionDefinition
-unhandledEventFunction aliases debug handler (StateMachineDeclarator smName) e@(Event evName) =
-    makeFunction (fromList [A STATIC, B VOID]) [] f_name [ParameterDeclaration (fromList [C CONST, B $ TypeSpecifier event_type])
-                                                          (Just $ Left $ Declarator (Just $ fromList [POINTER Nothing]) $ IDirectDeclarator event_var)]
-    (CompoundStatement
-    LEFTCURLY
-        (if (not $ null handler) || not debug then Nothing else
-          (Just $ fromList [Declaration (fromList [C CONST, B CHAR]) 
-                                        (Just $ fromList [InitDeclarator (Declarator (Just $ fromList [POINTER Nothing]) $ IDirectDeclarator name_var)
-                                                          (Just $ Pair EQUAL $ AInitializer evname_e)])
-                                        SEMICOLON]))
-        (Just $ fromList [EStatement $ ExpressionStatement (Just $ fromList [call_handler_f]) SEMICOLON])
-    RIGHTCURLY)
-    where
-        name_var = "event_name"
-        name_ex = (#:) name_var (:#)
-        evAlone = mangleEv e
-        evname_e = (#:) (show $ disqualifyTag evName) (:#)
-        f_name = qualifyMangle aliases (qualify (smName, "UNHANDLED_EVENT"), evAlone)
-        event_type = mangleTName aliases evName
-        event_var = "e"
-        panic_f = (#:) (qualifyMangle aliases $ if debug then "panic_print" else "panic") (:#)
-        panic_s = (#:) (show (disqualifyTag smName ++ "[%s]: Unhandled event \"%s\"\n")) (:#)
-        sname_f  = (#:) (qualifyMangle aliases (smName, "State_name")) (:#)
-        state_var = (#:) (qualifyMangle aliases (smName, "state")) (:#)
-        call_sname_f = (#:) (apply sname_f [state_var]) (:#)
-        call_panic_f = (#:) (apply panic_f (if debug then [panic_s, call_sname_f, name_ex] else [])) (:#)
-        handle_f s e = (#:) (qualifyMangle aliases (sName smName s, mangleEv e)) (:#)
-        esOf EventAny = []
-        esOf e' | e == e' = [(#:) event_var (:#)]
-        call_handler_f = case handler of
-                         [(s, e)] -> (#:) (apply (handle_f s e) (esOf e)) (:#)
-                         [] -> call_panic_f
-
-stateNameFunction :: Alias QualifiedName -> StateMachineDeclarator TaggedName -> [State TaggedName] -> FunctionDefinition
-stateNameFunction aliases (StateMachineDeclarator smName) ss =
-    makeFunction (fromList [A STATIC, C CONST, B CHAR]) [POINTER Nothing] f_name
-                                           [ParameterDeclaration (fromList [B $ TypeSpecifier smEnum])
-                                            (Just $ Left $ Declarator Nothing $ IDirectDeclarator state_var)] 
-    (CompoundStatement
-    LEFTCURLY
-        (Just $ fromList [Declaration (fromList [A STATIC, C CONST, B CHAR]) 
-                                      (Just $ fromList [InitDeclarator (Declarator (Just $ fromList [POINTER $ Just $ fromList [CONST]]) $
-                                                                        CDirectDeclarator (IDirectDeclarator names_var) LEFTSQUARE Nothing RIGHTSQUARE)
-                                                        (Just $ Pair EQUAL (LInitializer LEFTCURLY
-                                                                                         (fromList [AInitializer ((#:) (show $ disqualifyTag s) (:#)) | (State s) <- ss])
-                                                                                         Nothing
-                                                                                         RIGHTCURLY))])
-                                      SEMICOLON,
-                          Declaration (fromList [A STATIC, C CONST, B UNSIGNED, B INT])
-                                      (Just $ fromList [InitDeclarator (Declarator Nothing (IDirectDeclarator count_var))
-                                                        (Just $ Pair EQUAL (AInitializer names_count_e ))])
-                                      SEMICOLON])
-        (Just $ fromList [JStatement $ RETURN (Just $ fromList [safe_array_index_e]) SEMICOLON])
-    RIGHTCURLY)
-    where
-        smEnum = qualifyMangle aliases (smName, "State")
-        count_var = "state_count"
-        state_var = "s"
-        names_var = "state_name"
-        f_name = qualifyMangle aliases (smName, "State_name")
-        names_size_e = (#:) (SIZEOF $ Right $ Trio LEFTPAREN (TypeName (fromList [Left $ TypeSpecifier names_var]) Nothing) RIGHTPAREN) (:#)
-        ptr_size_e = (#:) (SIZEOF $ Right $ Trio LEFTPAREN (TypeName (fromList [Right CONST, Left CHAR])
-                                                                     (Just $ This $ fromList [POINTER Nothing])) RIGHTPAREN) (:#)
-        names_count_e = (#:) (names_size_e `DIV` ptr_size_e) (:#)
-        count_var_e = (#:) count_var (:#)
-        state_var_e = (#:) state_var (:#)
-        names_var_e = (#:) names_var (:#)
-        default_state = (#:) (show "INVALID_STATE") (:#)
-        bounds_check_e = (#:) (state_var_e `LESS_THAN` count_var_e) (:#)
-        array_index_e = (#:) (EPostfixExpression names_var_e LEFTSQUARE (fromList [(#:) state_var_e (:#)]) RIGHTSQUARE) (:#)
-        safe_array_index_e = (#:) (bounds_check_e `QUESTION` (Trio (fromList [array_index_e]) COLON default_state)) (:#)
-
-currentStateNameFunction :: Alias QualifiedName -> Bool -> StateMachineDeclarator TaggedName -> FunctionDefinition
-currentStateNameFunction aliases debug (StateMachineDeclarator smName) = 
-    makeFunction (fromList [C CONST, B CHAR]) [POINTER Nothing] f_name [ParameterDeclaration (fromList [B VOID]) Nothing]
-    (CompoundStatement
-    LEFTCURLY
-        Nothing
-        (Just $ fromList [JStatement $ RETURN (Just $ fromList [if debug then call_sname_f else ((#:) (show "") (:#))]) SEMICOLON])
-    RIGHTCURLY)
-    where
-        f_name = qualifyMangle aliases (smName, "Current_state_name")
-        sname_f  = (#:) (qualifyMangle aliases (smName, "State_name")) (:#)
-        state_var = (#:) (qualifyMangle aliases (smName, "state")) (:#)
-        call_sname_f = (#:) (apply sname_f [state_var]) (:#)
-
-handleStateEventDeclaration :: Alias QualifiedName -> StateMachineDeclarator TaggedName -> State TaggedName -> Event TaggedName -> Declaration
-handleStateEventDeclaration aliases (StateMachineDeclarator smName) st e =
-    define aliases (qualify (sName smName st, mangleEv e)) (ty :-> Void) Nothing
-    where ty = case e of (Event t) -> Ty t; _ -> Void
-
-stateVarDeclaration :: Alias QualifiedName -> StateMachineDeclarator TaggedName -> State TaggedName -> Declaration
-stateVarDeclaration aliases (StateMachineDeclarator smName) (State s) =
-    define aliases (qualify (smName, "state")) (Ty $ TagState $ qualify (smName, "State")) (Just $ (#:) (mangleTName aliases s) (:#))
-
-stateEnum :: Alias QualifiedName -> StateMachineDeclarator TaggedName -> [State TaggedName] -> Declaration
-stateEnum aliases (StateMachineDeclarator smName) ss =
-    Declaration
-    (fromList [A TYPEDEF,
-               B (makeEnum smEnum ssMangled)])
-    (Just $ fromList [InitDeclarator (Declarator Nothing (IDirectDeclarator smEnum)) Nothing])
-    SEMICOLON
-    where
-        smEnum = qualifyMangle aliases (smName, "State")
-        ssMangled = [mangleTName aliases s | (State s) <- ss]
 
 makeSwitch :: Expression -> [(ConstantExpression, [Expression])] -> [Expression] -> Statement
 makeSwitch var cs ds =
@@ -335,14 +88,6 @@ makeEnum x cs =
     (fromList [Enumerator c Nothing | c <- cs])
     RIGHTCURLY))
 
-eventStruct :: Alias QualifiedName -> TaggedName -> Ty -> Declaration
-eventStruct aliases name (Ty ty) =
-    Declaration
-    (fromList [A TYPEDEF,
-               B (makeStruct (mangleTName aliases ty) [])])
-    (Just $ fromList [InitDeclarator (Declarator Nothing (IDirectDeclarator $ mangleTName aliases name)) Nothing])
-    SEMICOLON
-
 makeStruct :: Identifier -> [(SpecifierQualifierList, Identifier)] -> TypeSpecifier
 makeStruct name [] = STRUCT (Left $ name)
 makeStruct name ss = 
@@ -351,37 +96,62 @@ makeStruct name ss =
     (fromList [StructDeclaration sqs (fromList [StructDeclarator $ This $ Declarator Nothing $ IDirectDeclarator id]) SEMICOLON | (sqs, id) <- ss])
     RIGHTCURLY))
 
-makeFunctionDeclaration :: Alias QualifiedName -> TaggedName -> (Binding, Ty) -> Declaration
-makeFunctionDeclaration aliases n (b, ty) =
-    Declaration spec (Just $ fromList [InitDeclarator declr Nothing]) SEMICOLON
-    where
-        (dspec, declr) = declare aliases (qualify n) ty
-        spec = case b of External -> A EXTERN <: dspec; _ -> dspec
+(<*$>) :: Applicative f => f (a -> b) -> a -> f b
+f <*$> a = f <*> pure a
+infixl 4 <*$>
 
-makeFunction :: DeclarationSpecifiers -> [Pointer] -> Identifier -> [ParameterDeclaration] -> CompoundStatement -> FunctionDefinition
-makeFunction dss ps f_name params body =
-    Function
-    (Just dss)
-    (Declarator (if null ps then Nothing else Just $ fromList ps)
-        $ PDirectDeclarator
-          (IDirectDeclarator f_name)
-          LEFTPAREN
-          (Just $ Left $ ParameterTypeList (fromList params) Nothing)
-          RIGHTPAREN)
-    Nothing
-    body
+(<*.>) :: Functor f => f (b -> c) -> (a -> b) -> f (a -> c)
+f <*.> a = (. a) <$> f
+infixl 4 <*.>
 
-define :: Alias QualifiedName -> QualifiedName -> Ty -> Maybe AssignmentExpression -> Declaration
-define aliases name ty init =
-    Declaration spec (Just $ fromList [InitDeclarator declr initializer]) SEMICOLON
-    where
-        (dspec, declr) = declare aliases name ty
-        spec = A STATIC <: dspec
-        initializer = fmap (Pair EQUAL . AInitializer) init
+pop :: Monad m => StateT [a] m a
+pop = state $ head &&& tail
 
-declare :: Alias QualifiedName -> QualifiedName -> Ty -> (DeclarationSpecifiers, Declarator)
-declare aliases = convertDeclarator
+convertIR :: Alias QualifiedName -> Bool -> SmudgeIR -> [ExternalDeclaration]
+convertIR aliases dodef ir = map (ExternalDeclaration . Right . convertDef) ir ++
+                             if dodef then concatMap (map (ExternalDeclaration . Left) . defineDef) ir else []
     where
+        defineDef (FunDef name ps (b, ty) ds es) = [defun (first (bind b) $ convertNamedDeclarator ps name ty) $ convertBlock ds es]
+        defineDef (DecDef _)                     = []
+
+        convertDef (FunDef name ps (b, ty) ds es) = define (first (bind b) $ convertDeclarator name ty) Nothing
+        convertDef (DecDef d)                     = convertDec d
+
+        convertDec (TyDec x ty)           = define (typedef x $ convertStruct ty) Nothing
+        convertDec (CaseDec x cs)         = define (typedef x $ convertEnum x cs) Nothing
+        convertDec (VarDec x (b, ty) e)   = define (first (bind b) $ convertDeclarator x ty) (Just $ AInitializer $ convertExpr e)
+        convertDec (ListDec x (b, ty) es) = define (first (bind b) $ convertDeclaratorList) (Just $ LInitializer LEFTCURLY (fromList $ map (AInitializer . convertExpr) es) Nothing RIGHTCURLY)
+            where convertDeclaratorList = second (convertFromAbsDeclarator x . Just . addList . theseAndThat Nothing id . sequence) $ convertAbsDeclarator ty
+                  addList = fmapThis (const $ fromList [POINTER $ Just $ fromList [CONST]]) . fmap (\a -> CDirectAbstractDeclarator a LEFTSQUARE Nothing RIGHTSQUARE)
+        convertDec (SizeDec x y)          = define (fromList [A STATIC, C CONST, B UNSIGNED, B INT], (Declarator Nothing (IDirectDeclarator $ convertQName x)))
+                                                        (Just $ AInitializer count_e)
+            where a_size_e = (#:) (SIZEOF $ Right $ Trio LEFTPAREN (TypeName (fromList [Left $ TypeSpecifier $ convertQName y]) Nothing) RIGHTPAREN) (:#)
+                  ptr_size_e = (#:) (SIZEOF $ Right $ Trio LEFTPAREN (TypeName (fromList [Right CONST, Left CHAR])
+                                                                               (Just $ This $ fromList [POINTER Nothing])) RIGHTPAREN) (:#)
+                  count_e = (#:) (a_size_e `DIV` ptr_size_e) (:#)
+
+        bind :: Binding -> DeclarationSpecifiers -> DeclarationSpecifiers
+        bind External   ds = A EXTERN <: ds
+        bind Unresolved ds = ds
+        bind Exported   ds = ds
+        bind Internal   ds = A STATIC <: ds
+
+        typedef :: TaggedName -> DeclarationSpecifiers -> (DeclarationSpecifiers, Declarator)
+        typedef x ds = (A TYPEDEF <: ds, Declarator Nothing (IDirectDeclarator $ convertTName x))
+
+        defun :: (DeclarationSpecifiers, Declarator) -> CompoundStatement -> FunctionDefinition
+        defun (spec, declr) body = Function (Just spec) declr Nothing body
+
+        define :: (DeclarationSpecifiers, Declarator) -> Maybe Initializer  -> Declaration
+        define (spec, declr) init = Declaration spec (Just $ fromList [InitDeclarator declr initializer]) SEMICOLON
+            where initializer = fmap (Pair EQUAL) init
+
+        convertEnum :: TaggedName -> [QualifiedName] -> DeclarationSpecifiers
+        convertEnum x cs = fromList [B $ makeEnum (convertTName x) (map convertQName cs)]
+
+        convertStruct :: TaggedName -> DeclarationSpecifiers
+        convertStruct x = fromList [B $ makeStruct (convertTName x) []]
+
         constable (TagEvent _)   = True
         constable (TagBuiltin _) = True
         constable _              = False
@@ -394,21 +164,67 @@ declare aliases = convertDeclarator
             where ((spec, rabsdec), rparams) = convertF (p :-> r)
                   params = ParameterTypeList (fromList rparams) Nothing
                   pdeclr dad = PDirectAbstractDeclarator dad LEFTPAREN (Just params) RIGHTPAREN
-                  absdec = fmapThat pdeclr $ maybe (That Nothing) (theseAndThat Nothing Just) rabsdec
+                  absdec = fmap pdeclr $ theseAndThat Nothing id $ sequence rabsdec
                   toParam = uncurry ParameterDeclaration . second (fmap Right) . convertAbsDeclarator
                   convertF (p :-> r) = second (toParam p :) $ convertF r
                   convertF        r  = (convertAbsDeclarator r, [])
 
         convertDeclarator :: QualifiedName -> Ty -> (DeclarationSpecifiers, Declarator)
-        convertDeclarator x = second inst . convertAbsDeclarator
+        convertDeclarator x = second (convertFromAbsDeclarator x) . convertAbsDeclarator
+
+        convertFromAbsDeclarator :: QualifiedName -> Maybe AbstractDeclarator -> Declarator
+        convertFromAbsDeclarator x = inst
             where maybename = maybe (IDirectDeclarator $ convertQName x) instdir
                   inst ad = Declarator (ad >>= maybeThis) (maybename $ ad >>= maybeThat)
                   instdir (ADirectAbstractDeclarator LEFTPAREN a RIGHTPAREN)     = DDirectDeclarator LEFTPAREN (inst $ Just a) RIGHTPAREN
                   instdir (CDirectAbstractDeclarator a LEFTSQUARE c RIGHTSQUARE) = CDirectDeclarator (maybename a) LEFTSQUARE c RIGHTSQUARE
                   instdir (PDirectAbstractDeclarator a LEFTPAREN p RIGHTPAREN)   = PDirectDeclarator (maybename a) LEFTPAREN (fmap Left p) RIGHTPAREN
 
-        convertQName = qualifyMangle aliases
-        convertTName = mangleTName aliases
+        convertNamedDeclarator :: [QualifiedName] -> QualifiedName -> Ty -> (DeclarationSpecifiers, Declarator)
+        convertNamedDeclarator names = (second (flip evalState names . namedr) .) . convertDeclarator
+            where namedr (Declarator ps dd) = Declarator ps <$> namedd dd
+                  namedd (IDirectDeclarator i)                          = return $ IDirectDeclarator i
+                  namedd (DDirectDeclarator LEFTPAREN a RIGHTPAREN)     = DDirectDeclarator LEFTPAREN <$> namedr a <*$> RIGHTPAREN
+                  namedd (CDirectDeclarator a LEFTSQUARE c RIGHTSQUARE) = CDirectDeclarator <$> namedd a <*$> LEFTSQUARE <*$> c <*$> RIGHTSQUARE
+                  namedd (PDirectDeclarator a LEFTPAREN p RIGHTPAREN)   = PDirectDeclarator <$> namedd a <*$> LEFTPAREN <*> mapM (either ((Left <$>) . nameptl) (return . Right)) p <*$> RIGHTPAREN
+                  nameptl (ParameterTypeList pl ell) = ParameterTypeList <$> namepl pl <*$> ell
+                  namepl (CommaList p ps) = CommaList <$> namep p <*> mapM (\(Pair COMMA p) -> Pair COMMA <$> namepl p) ps
+                  namep (ParameterDeclaration spec@(SimpleList (B VOID) _) declr) = ParameterDeclaration spec <$> fmap Left <$> mapM (either id <$> (convertFromAbsDeclarator <$> pop <*.> Just) <*$>) declr
+                  namep (ParameterDeclaration spec declr) = ParameterDeclaration spec <$> Just <$> Left <$> maybe (Declarator Nothing . IDirectDeclarator . convertQName) (either const (flip convertFromAbsDeclarator . Just)) declr <$> pop
+
+        convertBlock ds ss = CompoundStatement LEFTCURLY
+                                (if null ds then Nothing else Just $ fromList $ map convertDec ds)
+                                (if null ss then Nothing else Just $ fromList $ map convertStmt ss)
+                             RIGHTCURLY
+
+        convertStmt (Cases e cs ds) = makeSwitch (fromList [convertExpr e]) (map (convertToConstExpr *** map convertToExpression) cs) (map convertToExpression ds)
+        convertStmt (If e ss)       = SStatement $ IF LEFTPAREN (fromList [convertExpr e]) RIGHTPAREN (CStatement $ convertBlock [] ss) Nothing
+        convertStmt (Return e)      = JStatement $ RETURN (Just $ fromList [convertExpr e]) SEMICOLON
+        convertStmt (ExprS e)       = EStatement $ ExpressionStatement (Just $ fromList [convertExpr e]) SEMICOLON
+
+        convertToConstExpr q = (#:) (convertQName q) (:#)
+        convertToExpression = fromList . (:[]) . convertExpr
+
+        convertExpr (FunCall x es)      = (#:) (apply ((#:) (convertQName x) (:#)) (map convertExpr es)) (:#)
+        convertExpr (Literal (Strn v))  = (#:) (show v) (:#)
+        convertExpr (Literal (Nmbr v))  = (#:) (show v) (:#)
+        convertExpr (Value x)           = (#:) (convertQName x) (:#)
+        convertExpr (Assign x e)        = (#:) (convertQName x) (:#) `ASSIGN` convertExpr e
+        convertExpr (Neq x1 x2)         = (#:) (((#:) (convertQName x1) (:#)) `NOTEQUAL` ((#:) (convertQName x2) (:#))) (:#)
+        convertExpr (SafeIndex a i b d) = (#:) (bounds_check_e `QUESTION` (Trio (fromList [array_index_e]) COLON ((#:) (show d) (:#)))) (:#)
+            where bounds_check_e = (#:) (((#:) (convertQName i) (:#)) `LESS_THAN` ((#:) (convertQName b) (:#))) (:#)
+                  array_index_e = (#:) (EPostfixExpression ((#:) (convertQName a) (:#)) LEFTSQUARE (fromList [(#:) (convertQName i) (:#)]) RIGHTSQUARE) (:#)
+
+        convertQName :: Qualifiable q => q -> Identifier
+        convertQName q = mangleWith (+-+) mangleIdentifier $ rename aliases $ qualify q
+
+        convertTName :: TaggedName -> Identifier
+        convertTName (TagEvent q) = convertQName q +-+ "t"
+        convertTName t = convertQName t
+
+        apply :: PostfixExpression -> [AssignmentExpression] -> PostfixExpression
+        apply f [] = APostfixExpression f LEFTPAREN Nothing RIGHTPAREN
+        apply f ps = APostfixExpression f LEFTPAREN (Just $ fromList ps) RIGHTPAREN
 
 instance Backend CStaticOption where
     options = ("c",
@@ -423,44 +239,14 @@ instance Backend CStaticOption where
     generate os gswust outputTarget = sequence $ [writeTranslationUnit (renderHdr hdr []) (headerName os),
                                          writeTranslationUnit (renderSrc src [extHdrName os, headerName os]) (outputName os)]
                                          ++ [writeTranslationUnit (renderHdr ext [headerName os]) (extHdrName os) | not $ null tue]
-        where src = fromList $ concat tus
+        where src = fromList tus
               ext = fromList tue
               hdr = fromList tuh
-              tuh = [ExternalDeclaration $ Right $ eventStruct aliases name ty | (name, (Exported, ty@(Ty _))) <- Solver.toList syms]
-                    ++ [ExternalDeclaration $ Right $ makeFunctionDeclaration aliases name f | (name, f@(Exported, _ :-> _)) <- Solver.toList syms]
-                    ++ [ExternalDeclaration $ Right $ makeFunctionDeclaration aliases name f | (name, f) <- Solver.toList externs]
-              tue = [ExternalDeclaration $ Right $ makeFunctionDeclaration aliases name f | (name, f@(External, _ :-> _)) <- Solver.toList syms]
-              tus = [[ExternalDeclaration $ Right $ stateEnum aliases sm $ states g]
-                     ++ [ExternalDeclaration $ Right $ stateVarDeclaration aliases sm $ initial g]
-                     ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration aliases sm s EventExit | (_, EnterExitState {st = s@StateAny}) <- labNodes g]
-                     ++ [ExternalDeclaration $ Right $ handleStateEventDeclaration aliases sm s e
-                         | (n, EnterExitState {st = s}) <- labNodes g, e <- (map (event . edgeLabel) $ out g n), case s of State _ -> True; StateAny -> True; _ -> False]
-                     ++ (if debug then [ExternalDeclaration $ Left $ stateNameFunction aliases sm $ states g] else [])
-                     ++ [ExternalDeclaration $ Left $ currentStateNameFunction aliases debug sm]
-                     ++ [ExternalDeclaration $ Left $ transitionFunction aliases sm EventExit
-                         [st | (n, EnterExitState {st, ex = (_:_)}) <- labNodes g, n `notElem` finalStates g] | (_, EnterExitState {st = StateAny}) <- labNodes g]
-                     ++ [ExternalDeclaration $ Left $ unhandledEventFunction aliases debug (any_handler e g) sm e | e <- events g]
-                     ++ [ExternalDeclaration $ Left $ initializeFunction aliases sm $ initial g]
-                     ++ [ExternalDeclaration $ Left $ handleEventFunction aliases sm e (s_handlers e g) (unhandled e g) | e <- events g]
-                     ++ [ExternalDeclaration $ Left $ handleStateEventFunction aliases sm s h s' (s == StateAny || not (null ex)) syms
-                         | (n, EnterExitState {st = s, ex}) <- labNodes g, (_, n', h) <- out g n, Just EnterExitState {st = s'} <- [lab g n'], case s of State _ -> True; StateAny -> True; _ -> False, case s' of State _ -> True; StateAny -> True; _ -> False]
-                     | (sm, g) <- gs'']
-              gs'' = [(sm, insEdges [(n, n, Happening EventEnter en [NoTransition])
-                                     | (n, EnterExitState {en, st = State _}) <- labNodes $ delNodes [n | n <- nodes g, (_, _, Happening EventEnter _ _) <- out g n] g] g)
-                      | (sm, g) <- gs']
-              gs'  = [(sm, insEdges [(n, n, Happening EventExit ex [NoTransition])
-                                     | (n, EnterExitState {st = State _, ex = ex@(_:_)}) <- labNodes $ delNodes (finalStates g ++ [n | n <- nodes g, (_, _, Happening EventExit _ _) <- out g n]) g] g)
-                      | (sm, g) <- gs]
-              gs = [(smd, g) | (Annotated _ smd, g) <- gs_]
-              (gs_, aliases, syms) = gswust
-              externs = insertFunctions mempty [(rename aliases $ qualify (smName, "Current_state_name"), ([], "char")) | ((StateMachineDeclarator smName), _) <- gs'']
-              initial g = head [st ese | (n, EnterExitState {st = StateEntry}) <- labNodes g, n' <- suc g n, (Just ese) <- [lab g n']]
-              states g = [st ees | (_, ees) <- labNodes g]
-              s_handlers e g = [(s, h) | (s, Just h@(State _, _)) <- toList (handlers e g)]
-              unhandled e g = [s | (s, Just (StateAny, _)) <- toList (handlers e g)] ++ [s | (s, Nothing) <- toList (handlers e g)]
-              any_handler e g = nub [h | (_, Just h@(StateAny, _)) <- toList (handlers e g)]
-              events g = nub $ sort [e | (_, _, Happening {event=e@(Event _)}) <- labEdges g]
-              edgeLabel (_, _, l) = l
+              tus = concat [convertIR aliases True (lower debug ([g], syms)) | g <- gs]
+              tue = convertIR aliases False $ lowerSymTab $ filterBind syms External
+              tuh = convertIR aliases False $ (lowerSymTab $ filterBind syms Exported) ++ (lowerSymTab externs)
+              (gs, aliases, syms) = gswust
+              externs = insertFunctions mempty [(rename aliases $ qualify (smName, "Current_state_name"), ([], "char")) | (Annotated _ (StateMachineDeclarator smName), _) <- gs]
               inc ^++ src = (liftM (++src)) inc
               writeTranslationUnit render fp = (render fp) >>= (writeFile fp) >> (return fp)
               renderHdr u includes fp = hdrLeader includes fp ^++ (renderPretty u ++ hdrTrailer)

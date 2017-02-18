@@ -10,6 +10,7 @@ module Semantics.Solver (
     SymbolTable,
     insertFunctions,
     toList,
+    filterBind,
     (!),
 
     elaborateMono,
@@ -33,7 +34,7 @@ import Parsers.Id (Name)
 import Semantics.Semantic (AbstractFoldable(..))
 
 import Data.Map (Map, mapWithKey, foldrWithKey, unionWith, findWithDefault, member)
-import qualified Data.Map as Map(map, null, empty, singleton, insert, union, partition, toList, (!))
+import qualified Data.Map as Map(map, filter, null, empty, singleton, insert, union, partition, toList, (!))
 import Data.Set (Set, elems, empty, singleton, insert, union, intersection, partition, findMin, minView)
 import qualified Data.Set as Set(map, filter, null, size)
 import Data.List (intercalate)
@@ -104,6 +105,9 @@ insertFunctions (SymbolTable gamma) fs =
 
 toList :: SymbolTable -> [(TaggedName, (Binding, Ty))]
 toList (SymbolTable gamma) = Map.toList gamma
+
+filterBind :: SymbolTable -> Binding -> SymbolTable
+filterBind (SymbolTable gamma) b = SymbolTable $ Map.filter (\(b', _) -> b == b') gamma
 
 (!) :: SymbolTable -> TaggedName -> (Binding, Ty)
 (SymbolTable gamma) ! name = gamma Map.! name

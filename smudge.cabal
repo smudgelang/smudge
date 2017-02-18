@@ -51,7 +51,7 @@ Executable smudge
   Build-depends:     base <= 4.8.2.0, Cabal, containers, directory, filepath, fgl, parsec, pretty, text, graphviz, mtl, semigroups
 
   -- Modules not exported by this package.
-  Other-modules:     Backends.Backend Backends.CStatic Backends.GraphViz
+  Other-modules:     Backends.Backend Backends.CStatic Backends.GraphViz Backends.SmudgeIR
                      Grammars.C89 Grammars.Smudge
                      Semantics Semantics.Semantic Semantics.OneInitialState Semantics.NoTransientStateCycles
                      Semantics.DeclaredStateNames Semantics.UniqueStateNames Semantics.DeclaredEventNames

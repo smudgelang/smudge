@@ -10,8 +10,25 @@ module Trashcan.These (
     fmapThat,
 ) where
 
+import Data.Semigroup (Semigroup, (<>))
+
 data These a b = This a | That b | These a b
     deriving (Eq, Show)
+
+instance Functor (These a) where
+    fmap = fmapThat
+
+instance Semigroup a => Applicative (These a) where
+    pure = That
+    This a    <*> _     = This a
+    That f    <*> these = fmap f these
+    These a f <*> these = theseAndThis a (a <>) $ fmap f these
+
+instance Semigroup a => Monad (These a) where
+    return = pure
+    This a    >>= f = This a
+    That b    >>= f = f b
+    These a b >>= f = theseAndThis a (a <>) $ f b
 
 maybeThis :: These a b -> Maybe a
 maybeThis = theseThis Nothing Just

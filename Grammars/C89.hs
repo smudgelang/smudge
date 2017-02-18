@@ -108,6 +108,7 @@ module Grammars.C89 (
 import Trashcan.These (These(..))
 
 import Data.Char (isDigit, isAsciiLower, isAsciiUpper, ord)
+import Data.Semigroup (Semigroup(..))
 
 -------------------
 -- Helpful Class --
@@ -143,6 +144,9 @@ data SimpleList x = SimpleList x (Maybe (SimpleList x))
 instance Listish SimpleList where
     x <: xs = SimpleList x $ Just xs
     singleton = flip SimpleList Nothing
+
+instance Semigroup (SimpleList x) where
+    SimpleList x a <> b = SimpleList x (Just $ maybe b (<> b) a)
 
 data CommaList x = CommaList x (Maybe (Pair COMMA (CommaList x)))
 instance Listish CommaList where

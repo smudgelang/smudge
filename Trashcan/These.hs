@@ -11,6 +11,7 @@ module Trashcan.These (
 ) where
 
 data These a b = This a | That b | These a b
+    deriving (Eq, Show)
 
 maybeThis :: These a b -> Maybe a
 maybeThis = theseThis Nothing Just

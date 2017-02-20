@@ -30,9 +30,9 @@ basisAlias namespace = fromList $ map q [
 bindBasis :: Alias QualifiedName -> [StateMachine QualifiedName] -> SymbolTable
 bindBasis aliases sms = mappend exports externs
     where rename' = rename aliases . qualify
-          exports = insertFunctions mempty Exported [
+          exports = insertFunctions mempty Exported $ concat [[
             -- add more here
-            (qualify (smName, "Current_state_name"), ([], "char"))
+            (qualify (smName, "Current_state_name"), ([], "char"))]
                 | Annotated _ (StateMachineDeclarator smName) <- sms]
           externs = insertFunctions mempty External [
             -- add more here

@@ -104,8 +104,8 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
         unhandledEventFun (any_handler e) e | e <- events
     ] ++ [
         initializeFun initial
-    ] ++ [
-        handleEventFun e (s_handlers e) (unhandled e) | e <- events
+    ] ++ concat [
+        [sendEventFun e, handleEventFun e (s_handlers e) (unhandled e)] | e <- events
     ] ++ [
         stateEventFun st h s' (st == StateAny || not (null ex)) | (n, EnterExitState {st, ex}) <- labNodes g,
          (_, n', h) <- out g n,
@@ -172,11 +172,19 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
                             ExprS $ FunCall (qualify (s, "enter")) [],
                             ExprS $ init_var `Assign` Value init_init]]
 
-        handleEventFun :: Event TaggedName -> [(State TaggedName, (State TaggedName, Event TaggedName))] -> [State TaggedName] -> Def
-        handleEventFun e@(Event evName) ss unss = FunDef f_name eventNames (syms ! TagFunction f_name) [] es
+        sendEventFun :: Event TaggedName -> Def
+        sendEventFun e@(Event evName) = FunDef f_name eventNames (syms ! TagFunction f_name) [] es
             where f_name = qualify evName
                   es = [ExprS $ FunCall initialize_f [],
-                        Cases (Value stateVar) cases defaults]
+                        ExprS $ FunCall handle_f [Value event_var],
+                        ExprS $ FunCall (qualify "free") [Value event_var]]
+                  event_var = head eventNames
+                  handle_f = qualify (qualify evName, "handle")
+
+        handleEventFun :: Event TaggedName -> [(State TaggedName, (State TaggedName, Event TaggedName))] -> [State TaggedName] -> Def
+        handleEventFun e@(Event evName) ss unss = FunDef f_name eventNames (Internal, snd $ syms ! TagFunction (qualify evName)) [] es
+            where f_name = qualify (qualify evName, "handle")
+                  es = [Cases (Value stateVar) cases defaults]
                   event_var = head eventNames
                   call_unhandled = FunCall (unhandled_f e) [Value event_var]
                   call_ev_in s e' = FunCall (qualify (s, mangleEv e')) (if e == e' then [Value event_var] else [])

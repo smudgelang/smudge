@@ -13,6 +13,7 @@ basisAlias :: String -> Alias QualifiedName
 basisAlias "" = mempty
 basisAlias namespace = fromList $ map q [
             -- add more here
+            "free",
             "panic_print",
             "panic"]
     where q n = (qualify n, qualify(namespace, n))
@@ -22,5 +23,6 @@ bindBasis aliases =
     let rename' = rename aliases . qualify
     in  insertFunctions mempty  [
             -- add more here
+            (rename' "free",        (["void"], "")),
             (rename' "panic_print", (["char", "char", "char"], "")),
             (rename' "panic",       ([], ""))]

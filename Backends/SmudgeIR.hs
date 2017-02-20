@@ -146,7 +146,7 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
                   state_var = qualify "s"
 
         currentStateNameFun :: Def
-        currentStateNameFun = FunDef f_name [] (Exported, Void :-> Ty char) []
+        currentStateNameFun = FunDef f_name [] (syms ! TagFunction f_name) []
                                      [Return $ if debug then FunCall stateName_f [Value stateVar] else Literal $ Strn ""]
             where f_name = qualify (smName, "Current_state_name")
 

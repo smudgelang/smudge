@@ -3,9 +3,18 @@ module Semantics.Basis (
     bindBasis,
 ) where
 
-import Semantics.Solver (SymbolTable, insertFunctions)
+import Semantics.Solver (
+  SymbolTable,
+  Binding(..),
+  insertFunctions,
+  )
 import Model (QualifiedName, qualify)
 import Semantics.Alias (Alias, rename)
+import Grammars.Smudge (
+  StateMachine,
+  Annotated(..),
+  StateMachineDeclarator(..),
+  )
 
 import Data.Map (fromList)
 
@@ -18,10 +27,14 @@ basisAlias namespace = fromList $ map q [
             "panic"]
     where q n = (qualify n, qualify(namespace, n))
 
-bindBasis :: Alias QualifiedName -> SymbolTable
-bindBasis aliases =
-    let rename' = rename aliases . qualify
-    in  insertFunctions mempty  [
+bindBasis :: Alias QualifiedName -> [StateMachine QualifiedName] -> SymbolTable
+bindBasis aliases sms = mappend exports externs
+    where rename' = rename aliases . qualify
+          exports = insertFunctions mempty Exported [
+            -- add more here
+            (qualify (smName, "Current_state_name"), ([], "char"))
+                | Annotated _ (StateMachineDeclarator smName) <- sms]
+          externs = insertFunctions mempty External [
             -- add more here
             (rename' "free",        (["void"], "")),
             (rename' "panic_print", (["char", "char", "char"], "")),

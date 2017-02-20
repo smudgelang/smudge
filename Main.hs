@@ -115,7 +115,7 @@ processFile fileName os = do
             mapM (putStrLn . show) fs
             when (any fatal fs) $ report_failure $ length fs
 
-            let basis = bindBasis aliases
+            let basis = bindBasis aliases $ map fst sms''
             let st = if elem (SystemOption Strict) os
                      then elaborateMono basis sms'''
                      else elaboratePoly basis sms'''

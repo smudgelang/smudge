@@ -14,10 +14,6 @@ import Backends.SmudgeIR (
   lower,
   lowerSymTab,
   )
-import Grammars.Smudge (
-  Annotated(..),
-  StateMachineDeclarator(..),
-  )
 import Grammars.C89
 import Model (
   QualifiedName,
@@ -28,7 +24,6 @@ import Model (
 import Semantics.Solver (
   Ty(..), 
   Binding(..), 
-  insertFunctions,
   filterBind,
   (!),
   )
@@ -244,9 +239,8 @@ instance Backend CStaticOption where
               hdr = fromList tuh
               tus = concat [convertIR aliases True (lower debug ([g], syms)) | g <- gs]
               tue = convertIR aliases False $ lowerSymTab $ filterBind syms External
-              tuh = convertIR aliases False $ (lowerSymTab $ filterBind syms Exported) ++ (lowerSymTab externs)
+              tuh = convertIR aliases False $ lowerSymTab $ filterBind syms Exported
               (gs, aliases, syms) = gswust
-              externs = insertFunctions mempty [(rename aliases $ qualify (smName, "Current_state_name"), ([], "char")) | (Annotated _ (StateMachineDeclarator smName), _) <- gs]
               inc ^++ src = (liftM (++src)) inc
               writeTranslationUnit render fp = (render fp) >>= (writeFile fp) >> (return fp)
               renderHdr u includes fp = hdrLeader includes fp ^++ (renderPretty u ++ hdrTrailer)

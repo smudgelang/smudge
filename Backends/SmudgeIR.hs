@@ -93,7 +93,8 @@ lowerSymTab syms = [
 lowerMachine :: Bool -> SymbolTable -> (StateMachine TaggedName, Gr EnterExitState Happening) -> SmudgeIR
 lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
         DecDef $ CaseDec stateEnum (map qualify states),
-        DecDef $ VarDec stateVar (Internal, Ty stateEnum) (Value initial)
+        DecDef $ VarDec stateVar (Internal, Ty stateEnum) (Value initial),
+        DecDef $ CaseDec eventEnum [qualify (qualify "EVID", e) | Event e <- events]
     ] ++
         (if debug then [stateNameFun] else [])
       ++ [
@@ -126,6 +127,7 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
         call_panic_f args = if debug then FunCall (qualify "panic_print") args else FunCall (qualify "panic") []
         stateEnum = TagState $ qualify (smName, "State")
         stateVar = qualify (smName, "state")
+        eventEnum = TagState $ qualify (smName, "Event")
         states = [s | (_, EnterExitState {st = (State s)}) <- labNodes g]
         events = nub $ sort [e | (_, _, Happening {event=e@(Event _)}) <- labEdges g]
         s_handlers e = [(s, h) | (s, Just h@(State _, _)) <- Map.toList (handlers e g)]

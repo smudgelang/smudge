@@ -168,7 +168,7 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
         initializeFun :: QualifiedName -> Def
         initializeFun s = FunDef initialize_f [] (Internal, Void :-> Void) ds es
             where init_var = qualify "initialized"
-                  init_enum = TagState init_var
+                  init_enum = TagState $ qualify "init_flag"
                   init_init = qualify "INITIALIZED"
                   init_uninit = qualify "UNINITIALIZED"
                   ds = [CaseDec init_enum [init_uninit, init_init],

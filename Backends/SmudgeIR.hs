@@ -94,7 +94,7 @@ lowerMachine :: Bool -> SymbolTable -> (StateMachine TaggedName, Gr EnterExitSta
 lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
         DecDef $ CaseDec stateEnum (map qualify states),
         DecDef $ VarDec stateVar (Internal, Ty stateEnum) (Value initial),
-        DecDef $ CaseDec eventEnum [qualify (qualify "EVID", e) | Event e <- events]
+        DecDef $ CaseDec eventEnum [evt_id e | Event e <- events]
     ] ++
         (if debug then [stateNameFun] else [])
       ++ [
@@ -107,6 +107,8 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
         initializeFun initial
     ] ++ concat [
         [sendEventFun e, handleEventFun e (s_handlers e) (unhandled e)] | e <- events
+    ] ++ [
+        handleMessageFun
     ] ++ [
         stateEventFun st h s' (st == StateAny || not (null ex)) | (n, EnterExitState {st, ex}) <- labNodes g,
          (_, n', h) <- out g n,
@@ -122,12 +124,14 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
         eventNames = map qualify $ ["e"] ++ map (('e':) . show) [2..]
         char = TagBuiltin $ qualify "char"
         stateName_f = qualify (smName, "State_name")
+        handle_f = qualify (smName, "Handle_Message")
         initialize_f = qualify (smName, "initialize")
         unhandled_f e = qualify (qualify (smName, "UNHANDLED_EVENT"), mangleEv e)
         call_panic_f args = if debug then FunCall (qualify "panic_print") args else FunCall (qualify "panic") []
         stateEnum = TagState $ qualify (smName, "State")
         stateVar = qualify (smName, "state")
         eventEnum = TagState $ qualify (smName, "Event")
+        evt_id e = qualify (qualify "EVID", e)
         states = [s | (_, EnterExitState {st = (State s)}) <- labNodes g]
         events = nub $ sort [e | (_, _, Happening {event=e@(Event _)}) <- labEdges g]
         s_handlers e = [(s, h) | (s, Just h@(State _, _)) <- Map.toList (handlers e g)]
@@ -178,10 +182,8 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
         sendEventFun e@(Event evName) = FunDef f_name eventNames (syms ! TagFunction f_name) [] es
             where f_name = qualify evName
                   es = [ExprS $ FunCall initialize_f [],
-                        ExprS $ FunCall handle_f [Value event_var],
-                        ExprS $ FunCall (qualify "free") [Value event_var]]
+                        ExprS $ FunCall handle_f [Value $ evt_id evName, Value event_var]]
                   event_var = head eventNames
-                  handle_f = qualify (qualify evName, "handle")
 
         handleEventFun :: Event TaggedName -> [(State TaggedName, (State TaggedName, Event TaggedName))] -> [State TaggedName] -> Def
         handleEventFun e@(Event evName) ss unss = FunDef f_name eventNames (Internal, snd $ syms ! TagFunction (qualify evName)) [] es
@@ -193,6 +195,16 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
                   cases = [(qualify s, [call_ev_in s' e']) | (State s, (State s', e')) <- ss]
                        ++ [(qualify s, [call_unhandled]) | (State s) <- unss]
                   defaults = [call_unhandled]
+
+        handleMessageFun :: Def
+        handleMessageFun = FunDef handle_f [evId, evt] (Exported, Ty eventEnum :-> Ty (TagBuiltin $ qualify "void") :-> Void) [] es
+            where es = [Cases (Value evId) cases defaults,
+                        ExprS $ FunCall (qualify "free") [Value evt]]
+                  evId = qualify "eventId"
+                  evt = qualify "event"
+                  cases = [(evt_id e, [FunCall (qualify (qualify e, "handle")) [Value evt]]) | Event e <- events]
+                  defaults = [call_panic_f [Literal $ Strn panic_s, FunCall stateName_f [Value stateVar], Literal $ Strn ""]]
+                  panic_s = disqualifyTag smName ++ "[%s]: Invalid event ID\n"
 
         stateEventFun :: State TaggedName -> Happening -> State TaggedName -> Bool -> Def
         stateEventFun st h st' do_exit = FunDef f_name eventNames (Internal, ty) [] $ map ExprS es

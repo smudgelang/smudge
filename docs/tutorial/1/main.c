@@ -5,7 +5,7 @@
 
 void SMUDGE_free(const void *thing)
 {
-    free(thing);
+    free((void *)thing);
 }
 
 void SMUDGE_panic(void)

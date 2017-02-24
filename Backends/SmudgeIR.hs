@@ -55,7 +55,7 @@ data Dec = TyDec TaggedName TaggedName
          | ListDec QualifiedName (Binding, Ty) [Expr]
          | SizeDec QualifiedName QualifiedName
 
-data Stmt = Cases Expr [(QualifiedName, [Expr])] [Expr]
+data Stmt = Cases Expr [(QualifiedName, [Stmt])] [Stmt]
           | If Expr [Stmt]
           | Return Expr
           | ExprS Expr
@@ -127,7 +127,7 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
         handle_f = qualify (smName, "Handle_Message")
         initialize_f = qualify (smName, "initialize")
         unhandled_f e = qualify (qualify (smName, "UNHANDLED_EVENT"), mangleEv e)
-        call_panic_f args = if debug then FunCall (qualify "panic_print") args else FunCall (qualify "panic") []
+        call_panic_f args = ExprS $ if debug then FunCall (qualify "panic_print") args else FunCall (qualify "panic") []
         stateEnum = TagState $ qualify (smName, "State")
         stateVar = qualify (smName, "state")
         eventEnum = TagState $ qualify (smName, "Event")
@@ -162,7 +162,7 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
                   ds = if (not $ null handler) || not debug then [] else [VarDec name_var (Unresolved, Ty char) (Literal $ Strn $ disqualifyTag evName)]
                   es = [case handler of
                            [(s, e')] -> ExprS $ FunCall (qualify (sName smName s, mangleEv e')) (if e == e' then [Value event_var] else [])
-                           [] -> ExprS $ call_panic_f [Literal $ Strn panic_s, FunCall stateName_f [Value stateVar], Value name_var]]
+                           [] -> call_panic_f [Literal $ Strn panic_s, FunCall stateName_f [Value stateVar], Value name_var]]
                   panic_s = disqualifyTag smName ++ "[%s]: Unhandled event \"%s\"\n"
 
         initializeFun :: QualifiedName -> Def
@@ -190,8 +190,8 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
             where f_name = qualify (qualify evName, "handle")
                   es = [Cases (Value stateVar) cases defaults]
                   event_var = head eventNames
-                  call_unhandled = FunCall (unhandled_f e) [Value event_var]
-                  call_ev_in s e' = FunCall (qualify (s, mangleEv e')) (if e == e' then [Value event_var] else [])
+                  call_unhandled = ExprS $ FunCall (unhandled_f e) [Value event_var]
+                  call_ev_in s e' = ExprS $ FunCall (qualify (s, mangleEv e')) (if e == e' then [Value event_var] else [])
                   cases = [(qualify s, [call_ev_in s' e']) | (State s, (State s', e')) <- ss]
                        ++ [(qualify s, [call_unhandled]) | (State s) <- unss]
                   defaults = [call_unhandled]
@@ -202,7 +202,7 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
                         ExprS $ FunCall (qualify "free") [Value evt]]
                   evId = qualify "eventId"
                   evt = qualify "event"
-                  cases = [(evt_id e, [FunCall (qualify (qualify e, "handle")) [Value evt]]) | Event e <- events]
+                  cases = [(evt_id e, [ExprS $ FunCall (qualify (qualify e, "handle")) [Value evt]]) | Event e <- events]
                   defaults = [call_panic_f [Literal $ Strn panic_s, FunCall stateName_f [Value stateVar], Literal $ Strn ""]]
                   panic_s = disqualifyTag smName ++ "[%s]: Invalid event ID\n"
 
@@ -235,4 +235,4 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
         anyExitFun ss = FunDef f_name [] (Internal, Void :-> Void) [] es
             where f_name = qualify (sName smName StateAny, mangleEv EventExit)
                   es = [Cases (Value stateVar) cases []]
-                  cases = [(qualify s, [FunCall (qualify (s, mangleEv EventExit)) []]) | (State s) <- ss]
+                  cases = [(qualify s, [ExprS $ FunCall (qualify (s, mangleEv EventExit)) []]) | (State s) <- ss]

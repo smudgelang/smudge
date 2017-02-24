@@ -66,7 +66,7 @@ data CStaticOption = TargetPath FileType FileCategory FilePath
 (+-+) :: Identifier -> Identifier -> Identifier
 a +-+ b = dropWhileEnd (== '_') a ++ "_" ++ dropWhile (== '_') b
 
-makeSwitch :: Expression -> [(ConstantExpression, [Expression])] -> [Expression] -> Statement
+makeSwitch :: Expression -> [(ConstantExpression, [Statement])] -> [Statement] -> Statement
 makeSwitch var cs ds =
     SStatement $ SWITCH LEFTPAREN var RIGHTPAREN $ CStatement $ CompoundStatement LEFTCURLY
     Nothing
@@ -74,10 +74,9 @@ makeSwitch var cs ds =
                               ++ (LStatement $ DEFAULT COLON $ frst_stmt ds) : rest_stmt ds)
     RIGHTCURLY
     where
-        estmt e = EStatement $ ExpressionStatement (Just e) SEMICOLON
-        frst_stmt (e:_) = estmt e
+        frst_stmt (e:_) = e
         frst_stmt []    = JStatement $ BREAK SEMICOLON
-        rest_stmt (_:es) = map estmt es ++ [JStatement $ BREAK SEMICOLON]
+        rest_stmt (_:es) = es ++ [JStatement $ BREAK SEMICOLON]
         rest_stmt []     = []
 
 makeEnum :: Identifier -> [Identifier] -> TypeSpecifier
@@ -197,13 +196,12 @@ convertIR aliases dodef ir = map (ExternalDeclaration . Right . convertDef) ir +
                                 (if null ss then Nothing else Just $ fromList $ map convertStmt ss)
                              RIGHTCURLY
 
-        convertStmt (Cases e cs ds) = makeSwitch (fromList [convertExpr e]) (map (convertToConstExpr *** map convertToExpression) cs) (map convertToExpression ds)
+        convertStmt (Cases e cs ds) = makeSwitch (fromList [convertExpr e]) (map (convertToConstExpr *** map convertStmt) cs) (map convertStmt ds)
         convertStmt (If e ss)       = SStatement $ IF LEFTPAREN (fromList [convertExpr e]) RIGHTPAREN (CStatement $ convertBlock [] ss) Nothing
         convertStmt (Return e)      = JStatement $ RETURN (Just $ fromList [convertExpr e]) SEMICOLON
         convertStmt (ExprS e)       = EStatement $ ExpressionStatement (Just $ fromList [convertExpr e]) SEMICOLON
 
         convertToConstExpr q = (#:) (convertQName q) (:#)
-        convertToExpression = fromList . (:[]) . convertExpr
 
         convertExpr (FunCall x es)      = (#:) (apply ((#:) (convertQName x) (:#)) (map convertExpr es)) (:#)
         convertExpr (Literal (Strn v))  = (#:) (show v) (:#)

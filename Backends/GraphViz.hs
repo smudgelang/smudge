@@ -2,7 +2,9 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE FlexibleContexts #-}
 
-module Backends.GraphViz where
+module Backends.GraphViz (
+    GraphVizOption(..)
+) where
 
 import Backends.Backend (Backend(..))
 import Grammars.Smudge (

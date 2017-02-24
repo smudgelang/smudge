@@ -1,7 +1,8 @@
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE FlexibleContexts #-}
 
-module Backends.CStatic where
+module Backends.CStatic (
+    CStaticOption(..)
+) where
 
 import Backends.Backend (Backend(..))
 import Backends.SmudgeIR (

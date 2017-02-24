@@ -6,7 +6,6 @@ module Backends.SmudgeIR (
     Dec(..),
     Stmt(..),
     Expr(..),
-    Lit(..),
     lower,
     lowerSymTab
 ) where
@@ -61,14 +60,12 @@ data Stmt = Cases Expr [(QualifiedName, [Stmt])] [Stmt]
           | ExprS Expr
 
 data Expr = FunCall QualifiedName [Expr]
-          | Literal Lit
+          | Literal String
+          | Null
           | Value QualifiedName
           | Assign QualifiedName Expr
           | Neq QualifiedName QualifiedName
           | SafeIndex QualifiedName QualifiedName QualifiedName String
-
-data Lit = Strn String
-         | Nmbr Int
 
 sName :: TaggedName -> State TaggedName -> QualifiedName
 sName _ (State s) = qualify s
@@ -144,7 +141,7 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
 
         stateNameFun :: Def
         stateNameFun = FunDef stateName_f [state_var] (Internal, Ty stateEnum :-> Ty char) ds es
-            where ds = [ListDec names_var (Internal, Ty char) [Literal $ Strn (disqualifyTag s) | s <- states],
+            where ds = [ListDec names_var (Internal, Ty char) [Literal (disqualifyTag s) | s <- states],
                         SizeDec count_var names_var]
                   es = [Return $ SafeIndex names_var state_var count_var "INVALID_STATE"]
                   names_var = qualify "state_name"
@@ -153,7 +150,7 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
 
         currentStateNameFun :: Def
         currentStateNameFun = FunDef f_name [] (syms ! TagFunction f_name) []
-                                     [Return $ if debug then FunCall stateName_f [Value stateVar] else Literal $ Strn ""]
+                                     [Return $ if debug then FunCall stateName_f [Value stateVar] else Literal ""]
             where f_name = qualify (smName, "Current_state_name")
 
         unhandledEventFun :: [(State TaggedName, Event TaggedName)] -> Event TaggedName -> Def
@@ -161,10 +158,10 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
             where f_name = unhandled_f e
                   name_var = qualify "event_name"
                   event_var = head eventNames
-                  ds = if (not $ null handler) || not debug then [] else [VarDec name_var (Unresolved, Ty char) (Literal $ Strn $ disqualifyTag evName)]
+                  ds = if (not $ null handler) || not debug then [] else [VarDec name_var (Unresolved, Ty char) (Literal $ disqualifyTag evName)]
                   es = [case handler of
                            [(s, e')] -> ExprS $ FunCall (qualify (sName smName s, mangleEv e')) (if e == e' then [Value event_var] else [])
-                           [] -> call_panic_f [Literal $ Strn panic_s, FunCall stateName_f [Value stateVar], Value name_var]]
+                           [] -> call_panic_f [Literal panic_s, FunCall stateName_f [Value stateVar], Value name_var]]
                   panic_s = disqualifyTag smName ++ "[%s]: Unhandled event \"%s\"\n"
 
         initializeFun :: QualifiedName -> Def
@@ -205,7 +202,7 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
                   evId = qualify "eventId"
                   evt = qualify "event"
                   cases = [(evt_id e, [ExprS $ FunCall (qualify (qualify e, "handle")) [Value evt]]) | Event e <- events]
-                  defaults = [call_panic_f [Literal $ Strn panic_s, FunCall stateName_f [Value stateVar], Literal $ Strn ""]]
+                  defaults = [call_panic_f [Literal panic_s, FunCall stateName_f [Value stateVar], Literal ""]]
                   panic_s = disqualifyTag smName ++ "[%s]: Invalid event ID\n"
 
         stateEventFun :: State TaggedName -> Happening -> State TaggedName -> Bool -> Def
@@ -226,7 +223,7 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
                   isEventTy _ _ = False
 
                   psOf (Void :-> _) = []
-                  psOf (p    :-> _) = [if isEventTy p (event h) then Value event_var else Literal $ Nmbr 0]
+                  psOf (p    :-> _) = [if isEventTy p (event h) then Value event_var else Null]
                   apply_se (f, FuncTyped _) = undefined -- See ticket #15, harder than it seems at first.
                   apply_se (f, _) = FunCall (qualify f) (psOf (snd $ syms ! f))
                   es = case h of

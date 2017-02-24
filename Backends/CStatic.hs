@@ -11,7 +11,6 @@ import Backends.SmudgeIR (
   Dec(..),
   Stmt(..),
   Expr(..),
-  Lit(..),
   lower,
   lowerSymTab,
   )
@@ -206,8 +205,8 @@ convertIR aliases dodec dodef ir =
         convertToConstExpr q = (#:) (convertQName q) (:#)
 
         convertExpr (FunCall x es)      = (#:) (apply ((#:) (convertQName x) (:#)) (map convertExpr es)) (:#)
-        convertExpr (Literal (Strn v))  = (#:) (show v) (:#)
-        convertExpr (Literal (Nmbr v))  = (#:) (show v) (:#)
+        convertExpr (Literal v)         = (#:) (show v) (:#)
+        convertExpr (Null)              = (#:) "0" (:#)
         convertExpr (Value x)           = (#:) (convertQName x) (:#)
         convertExpr (Assign x e)        = (#:) (convertQName x) (:#) `ASSIGN` convertExpr e
         convertExpr (Neq x1 x2)         = (#:) (((#:) (convertQName x1) (:#)) `NOTEQUAL` ((#:) (convertQName x2) (:#))) (:#)

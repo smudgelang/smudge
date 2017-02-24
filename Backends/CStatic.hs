@@ -61,6 +61,7 @@ data FileCategory = ExtFile | IntFile
 
 data CStaticOption = TargetPath FileType FileCategory FilePath
                    | NoDebug
+                   | GenStubs
     deriving (Show, Eq)
 
 (+-+) :: Identifier -> Identifier -> Identifier
@@ -106,9 +107,10 @@ infixl 4 <*.>
 pop :: Monad m => StateT [a] m a
 pop = state $ head &&& tail
 
-convertIR :: Alias QualifiedName -> Bool -> SmudgeIR -> [ExternalDeclaration]
-convertIR aliases dodef ir = map (ExternalDeclaration . Right . convertDef) ir ++
-                             if dodef then concatMap (map (ExternalDeclaration . Left) . defineDef) ir else []
+convertIR :: Alias QualifiedName -> Bool -> Bool -> SmudgeIR -> [ExternalDeclaration]
+convertIR aliases dodec dodef ir =
+            (if dodec then map (ExternalDeclaration . Right . convertDef) ir else []) ++
+            (if dodef then concatMap (map (ExternalDeclaration . Left) . defineDef) ir else [])
     where
         defineDef (FunDef name ps (b, ty) ds es) = [defun (first (bind b) $ convertNamedDeclarator ps name ty) $ convertBlock ds es]
         defineDef (DecDef _)                     = []
@@ -230,19 +232,22 @@ instance Backend CStaticOption where
                  "The name of the target file if not derived from source file.",
                 Option [] ["h"] (ReqArg (TargetPath Header IntFile) "FILE")
                  "The name of the target header file if not derived from source file.",
+                Option [] ["ext_o"] (ReqArg (TargetPath Source ExtFile) "FILE")
+                 "The name of the target ext file if not derived from source file.",
                 Option [] ["ext_h"] (ReqArg (TargetPath Header ExtFile) "FILE")
                  "The name of the target ext header file if not derived from source file.",
+                Option [] ["stubs"] (NoArg GenStubs)
+                 "generate stub implementation.",
                 Option [] ["no-debug"] (NoArg NoDebug)
                  "Don't generate debugging information"])
     generate os gswust outputTarget = sequence $ [writeTranslationUnit (renderHdr hdr []) headerName,
                                          writeTranslationUnit (renderSrc src [extHdrName, headerName]) outputName,
-                                         writeTranslationUnit (renderHdr ext [headerName]) extHdrName]
-        where src = fromList tus
-              ext = fromList tue
-              hdr = fromList tuh
-              tus = concat [convertIR aliases True (lower debug ([g], syms)) | g <- gs]
-              tue = convertIR aliases False $ lowerSymTab $ filterBind syms External
-              tuh = convertIR aliases False $ lowerSymTab $ filterBind syms Exported
+                                         writeTranslationUnit (renderHdr ext [headerName]) extHdrName] ++
+                                         if stubs then [writeTranslationUnit (renderSrc exs [extHdrName, headerName]) extSrcName] else []
+        where hdr = fromList $ convertIR aliases True False $ lowerSymTab $ filterBind syms Exported
+              src = fromList $ concat [convertIR aliases True True (lower debug ([g], syms)) | g <- gs]
+              ext = fromList $ convertIR aliases True False $ lowerSymTab $ filterBind syms External
+              exs = fromList $ convertIR aliases False True $ lowerSymTab $ filterBind syms External
               (gs, aliases, syms) = gswust
               inc ^++ src = (liftM (++src)) inc
               writeTranslationUnit render fp = (render fp) >>= (writeFile fp) >> (return fp)
@@ -255,6 +260,7 @@ instance Backend CStaticOption where
               headerName = normalise $ head $ [f | TargetPath Header IntFile f <- renames] ++ [(outputBaseName <.> "h")]
               outputName = normalise $ head $ [f | TargetPath Source IntFile f <- renames] ++ [(outputBaseName <.> "c")]
               extHdrName = normalise $ head $ [f | TargetPath Header ExtFile f <- renames] ++ [(outputExtName <.> "h")]
+              extSrcName = normalise $ head $ [f | TargetPath Source ExtFile f <- renames] ++ [(outputExtName <.> "c")]
               genIncludes includes includer = liftM concat $ sequence $ map (mkInclude includer) includes
               mkInclude includer include =
                 do
@@ -270,3 +276,4 @@ instance Backend CStaticOption where
                                    gennedIncludes]
               hdrTrailer = "#endif\n"
               debug = null $ filter (==NoDebug) os
+              stubs = not $ null $ filter (==GenStubs) os

@@ -87,8 +87,10 @@ lowerSymTab :: SymbolTable -> SmudgeIR
 lowerSymTab syms = [
         DecDef $ TyDec name ty | (name, (b, Ty ty)) <- toList syms
     ] ++ [
-        FunDef (qualify n) [] f [] [] | (n, f@(_, _ :-> _)) <- toList syms
+        FunDef (qualify n) args f [] [] | (n, f@(_, _ :-> _)) <- toList syms
     ]
+    where 
+        args = map (qualify . ('a':) . show) [1..]
 
 lowerMachine :: Bool -> SymbolTable -> (StateMachine TaggedName, Gr EnterExitState Happening) -> SmudgeIR
 lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [

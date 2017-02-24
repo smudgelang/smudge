@@ -8,3 +8,6 @@ Outside Smudge, we can use ctypes in Python to hook this in to a test
 harness. This isn't strictly Smudge effort, but may get wrapped in
 with it.
 
+===
+Update: the stubs are generated into _ext.c with the command --c-stubs
+        but they are empty, and not exercised.

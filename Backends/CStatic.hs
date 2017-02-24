@@ -53,9 +53,13 @@ import System.FilePath (
   (<.>)
   )
 
-data CStaticOption = OutFile FilePath
-                   | Header FilePath
-                   | ExtFile FilePath
+data FileType = Source | Header
+    deriving (Show, Eq)
+
+data FileCategory = ExtFile | IntFile
+    deriving (Show, Eq)
+
+data CStaticOption = TargetPath FileType FileCategory FilePath
                    | NoDebug
     deriving (Show, Eq)
 
@@ -224,17 +228,17 @@ convertIR aliases dodef ir = map (ExternalDeclaration . Right . convertDef) ir +
 
 instance Backend CStaticOption where
     options = ("c",
-               [Option [] ["o"] (ReqArg OutFile "FILE")
+               [Option [] ["o"] (ReqArg (TargetPath Source IntFile) "FILE")
                  "The name of the target file if not derived from source file.",
-                Option [] ["h"] (ReqArg Header "FILE")
+                Option [] ["h"] (ReqArg (TargetPath Header IntFile) "FILE")
                  "The name of the target header file if not derived from source file.",
-                Option [] ["ext_h"] (ReqArg ExtFile "FILE")
+                Option [] ["ext_h"] (ReqArg (TargetPath Header ExtFile) "FILE")
                  "The name of the target ext header file if not derived from source file.",
                 Option [] ["no-debug"] (NoArg NoDebug)
                  "Don't generate debugging information"])
-    generate os gswust outputTarget = sequence $ [writeTranslationUnit (renderHdr hdr []) (headerName os),
-                                         writeTranslationUnit (renderSrc src [extHdrName os, headerName os]) (outputName os)]
-                                         ++ [writeTranslationUnit (renderHdr ext [headerName os]) (extHdrName os) | not $ null tue]
+    generate os gswust outputTarget = sequence $ [writeTranslationUnit (renderHdr hdr []) headerName,
+                                         writeTranslationUnit (renderSrc src [extHdrName, headerName]) outputName,
+                                         writeTranslationUnit (renderHdr ext [headerName]) extHdrName]
         where src = fromList tus
               ext = fromList tue
               hdr = fromList tuh
@@ -246,20 +250,13 @@ instance Backend CStaticOption where
               writeTranslationUnit render fp = (render fp) >>= (writeFile fp) >> (return fp)
               renderHdr u includes fp = hdrLeader includes fp ^++ (renderPretty u ++ hdrTrailer)
               renderSrc u includes fp = srcLeader includes fp ^++ (renderPretty u ++ srcTrailer)
-              getFirstOrDefault :: ([a] -> b) -> b -> [a] -> b
-              getFirstOrDefault _ d     [] = d
-              getFirstOrDefault f _ (x:xs) = f xs
-              outputFileName ((OutFile f):_) = f
-              outputFileName xs = getFirstOrDefault outputFileName ((dropExtension outputTarget) <.> "c") xs
-              outputName = normalise . outputFileName
-              headerFileName ((Header f):_) = f
-              headerFileName xs = getFirstOrDefault headerFileName ((dropExtension outputTarget) <.> "h") xs
-              headerName = normalise . headerFileName
-              extHdrFileName ((ExtFile f):_) = f
-              extHdrFileName xs = getFirstOrDefault extHdrFileName (((dropExtension outputTarget) ++ "_ext") <.> "h") xs
-              extHdrName = normalise . extHdrFileName
-              doDebug ((NoDebug):_) = False
-              doDebug xs = getFirstOrDefault doDebug True xs
+
+              outputBaseName = dropExtension outputTarget
+              outputExtName = outputBaseName ++ "_ext"
+              renames = [o | o@(TargetPath _ _ _) <- os]
+              headerName = normalise $ head $ [f | TargetPath Header IntFile f <- renames] ++ [(outputBaseName <.> "h")]
+              outputName = normalise $ head $ [f | TargetPath Source IntFile f <- renames] ++ [(outputBaseName <.> "c")]
+              extHdrName = normalise $ head $ [f | TargetPath Header ExtFile f <- renames] ++ [(outputExtName <.> "h")]
               genIncludes includes includer = liftM concat $ sequence $ map (mkInclude includer) includes
               mkInclude includer include =
                 do
@@ -274,4 +271,4 @@ instance Backend CStaticOption where
                   return $ concat ["#ifndef ", reinclusionName fp, "\n", "#define ", reinclusionName fp, "\n",
                                    gennedIncludes]
               hdrTrailer = "#endif\n"
-              debug = doDebug os
+              debug = null $ filter (==NoDebug) os

@@ -116,33 +116,43 @@ convertIR aliases dodec dodef ir =
         defineDef (FunDef name ps (b, ty) ds es) = [defun (first (bind b) $ convertNamedDeclarator ps name ty) $ convertBlock ds es]
         defineDef (DecDef _)                     = []
 
+        convertDef :: Def -> Declaration
         convertDef (FunDef name ps (b, ty) ds es) = define (first (bind b) $ convertDeclarator name ty) Nothing
         convertDef (DecDef d)                     = convertDec d
 
+        convertDec :: Dec -> Declaration
         convertDec (TyDec d)    = define (convertTyDec d) Nothing
         convertDec (ValDec b d) = uncurry define $ first (first (bind b)) $ convertValDec d
 
+        convertTyDec :: TyDec -> (DeclarationSpecifiers, Declarator)
         convertTyDec (EvtDec x ty)  = typedef x $ convertStruct ty
         convertTyDec (CaseDec x cs) = typedef x $ convertEnum x cs
 
+        convertValDec :: ValDec -> ((SpecifierQualifierList, Declarator), Maybe Initializer)
         convertValDec (VarDec x ty e)   = (convertDeclarator x ty, Just $ AInitializer $ convertExpr e)
         convertValDec (ListDec x ty es) = (convertDeclaratorList, Just $ LInitializer LEFTCURLY (fromList $ map (AInitializer . convertExpr) es) Nothing RIGHTCURLY)
             where convertDeclaratorList = second (convertFromAbsDeclarator x . Just . addList . theseAndThat Nothing id . sequence) $ convertAbsDeclarator ty
                   addList = fmapThis (const $ fromList [POINTER $ Just $ fromList [CONST]]) . fmap (\a -> CDirectAbstractDeclarator a LEFTSQUARE Nothing RIGHTSQUARE)
-        convertValDec (SizeDec x y)     = ((fromList [C CONST, B UNSIGNED, B INT], (Declarator Nothing (IDirectDeclarator $ convertQName x))), Just $ AInitializer count_e)
+        convertValDec (SizeDec x y)     = ((fromList [Right CONST, Left UNSIGNED, Left INT], (Declarator Nothing (IDirectDeclarator $ convertQName x))), Just $ AInitializer count_e)
             where a_size_e = (#:) (SIZEOF $ Right $ Trio LEFTPAREN (TypeName (fromList [Left $ TypeSpecifier $ convertQName y]) Nothing) RIGHTPAREN) (:#)
                   ptr_size_e = (#:) (SIZEOF $ Right $ Trio LEFTPAREN (TypeName (fromList [Right CONST, Left CHAR])
                                                                                (Just $ This $ fromList [POINTER Nothing])) RIGHTPAREN) (:#)
                   count_e = (#:) (a_size_e `DIV` ptr_size_e) (:#)
 
-        bind :: Binding -> DeclarationSpecifiers -> DeclarationSpecifiers
-        bind External   ds = A EXTERN <: ds
-        bind Unresolved ds = ds
-        bind Exported   ds = ds
-        bind Internal   ds = A STATIC <: ds
+        sqlToDss :: SpecifierQualifierList -> DeclarationSpecifiers
+        sqlToDss (SimpleList sq xs) = SimpleList (sqToDs sq) $ fmap sqlToDss xs
+            where sqToDs (Left ts)  = B ts
+                  sqToDs (Right tq) = C tq
 
-        typedef :: TaggedName -> DeclarationSpecifiers -> (DeclarationSpecifiers, Declarator)
-        typedef x ds = (A TYPEDEF <: ds, Declarator Nothing (IDirectDeclarator $ convertTName x))
+        bind :: Binding -> SpecifierQualifierList -> DeclarationSpecifiers
+        bind b sql = bind' b $ sqlToDss sql
+            where bind' External   ds = A EXTERN <: ds
+                  bind' Unresolved ds = ds
+                  bind' Exported   ds = ds
+                  bind' Internal   ds = A STATIC <: ds
+
+        typedef :: TaggedName -> SpecifierQualifierList -> (DeclarationSpecifiers, Declarator)
+        typedef x ds = (A TYPEDEF <: sqlToDss ds, Declarator Nothing (IDirectDeclarator $ convertTName x))
 
         defun :: (DeclarationSpecifiers, Declarator) -> CompoundStatement -> FunctionDefinition
         defun (spec, declr) body = Function (Just spec) declr Nothing body
@@ -151,30 +161,30 @@ convertIR aliases dodec dodef ir =
         define (spec, declr) init = Declaration spec (Just $ fromList [InitDeclarator declr initializer]) SEMICOLON
             where initializer = fmap (Pair EQUAL) init
 
-        convertEnum :: TaggedName -> [QualifiedName] -> DeclarationSpecifiers
-        convertEnum x cs = fromList [B $ makeEnum (convertTName x) (map convertQName cs)]
+        convertEnum :: TaggedName -> [QualifiedName] -> SpecifierQualifierList
+        convertEnum x cs = fromList [Left $ makeEnum (convertTName x) (map convertQName cs)]
 
-        convertStruct :: TaggedName -> DeclarationSpecifiers
-        convertStruct x = fromList [B $ makeStruct (convertTName x) []]
+        convertStruct :: TaggedName -> SpecifierQualifierList
+        convertStruct x = fromList [Left $ makeStruct (convertTName x) []]
 
         constable (TagEvent _)   = True
         constable (TagBuiltin _) = True
         constable _              = False
 
-        convertAbsDeclarator :: Ty -> (DeclarationSpecifiers, Maybe AbstractDeclarator)
-        convertAbsDeclarator Void                 = (fromList [B VOID], Nothing)
-        convertAbsDeclarator (Ty t) | constable t = (fromList [C CONST, B $ TypeSpecifier $ convertTName t], Just $ This $ fromList [POINTER Nothing])
-        convertAbsDeclarator (Ty t)               = (fromList [B $ TypeSpecifier $ convertTName t], Nothing)
+        convertAbsDeclarator :: Ty -> (SpecifierQualifierList, Maybe AbstractDeclarator)
+        convertAbsDeclarator Void                 = (fromList [Left VOID], Nothing)
+        convertAbsDeclarator (Ty t) | constable t = (fromList [Right CONST, Left $ TypeSpecifier $ convertTName t], Just $ This $ fromList [POINTER Nothing])
+        convertAbsDeclarator (Ty t)               = (fromList [Left $ TypeSpecifier $ convertTName t], Nothing)
         convertAbsDeclarator (p :-> r)            = (spec, Just absdec)
             where ((spec, rabsdec), rparams) = convertF (p :-> r)
                   params = ParameterTypeList (fromList rparams) Nothing
                   pdeclr dad = PDirectAbstractDeclarator dad LEFTPAREN (Just params) RIGHTPAREN
                   absdec = fmap pdeclr $ theseAndThat Nothing id $ sequence rabsdec
-                  toParam = uncurry ParameterDeclaration . second (fmap Right) . convertAbsDeclarator
+                  toParam = uncurry ParameterDeclaration . second (fmap Right) . first sqlToDss . convertAbsDeclarator
                   convertF (p :-> r) = second (toParam p :) $ convertF r
                   convertF        r  = (convertAbsDeclarator r, [])
 
-        convertDeclarator :: QualifiedName -> Ty -> (DeclarationSpecifiers, Declarator)
+        convertDeclarator :: QualifiedName -> Ty -> (SpecifierQualifierList, Declarator)
         convertDeclarator x = second (convertFromAbsDeclarator x) . convertAbsDeclarator
 
         convertFromAbsDeclarator :: QualifiedName -> Maybe AbstractDeclarator -> Declarator
@@ -185,7 +195,7 @@ convertIR aliases dodec dodef ir =
                   instdir (CDirectAbstractDeclarator a LEFTSQUARE c RIGHTSQUARE) = CDirectDeclarator (maybename a) LEFTSQUARE c RIGHTSQUARE
                   instdir (PDirectAbstractDeclarator a LEFTPAREN p RIGHTPAREN)   = PDirectDeclarator (maybename a) LEFTPAREN (fmap Left p) RIGHTPAREN
 
-        convertNamedDeclarator :: [QualifiedName] -> QualifiedName -> Ty -> (DeclarationSpecifiers, Declarator)
+        convertNamedDeclarator :: [QualifiedName] -> QualifiedName -> Ty -> (SpecifierQualifierList, Declarator)
         convertNamedDeclarator names = (second (flip evalState names . namedr) .) . convertDeclarator
             where namedr (Declarator ps dd) = Declarator ps <$> namedd dd
                   namedd (IDirectDeclarator i)                          = return $ IDirectDeclarator i

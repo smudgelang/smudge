@@ -9,6 +9,8 @@ import Backends.SmudgeIR (
   SmudgeIR,
   Def(..),
   Dec(..),
+  TyDec(..),
+  ValDec(..),
   Stmt(..),
   Expr(..),
   lower,
@@ -117,14 +119,17 @@ convertIR aliases dodec dodef ir =
         convertDef (FunDef name ps (b, ty) ds es) = define (first (bind b) $ convertDeclarator name ty) Nothing
         convertDef (DecDef d)                     = convertDec d
 
-        convertDec (TyDec x ty)           = define (typedef x $ convertStruct ty) Nothing
-        convertDec (CaseDec x cs)         = define (typedef x $ convertEnum x cs) Nothing
-        convertDec (VarDec x (b, ty) e)   = define (first (bind b) $ convertDeclarator x ty) (Just $ AInitializer $ convertExpr e)
-        convertDec (ListDec x (b, ty) es) = define (first (bind b) $ convertDeclaratorList) (Just $ LInitializer LEFTCURLY (fromList $ map (AInitializer . convertExpr) es) Nothing RIGHTCURLY)
+        convertDec (TyDec d)    = define (convertTyDec d) Nothing
+        convertDec (ValDec b d) = uncurry define $ first (first (bind b)) $ convertValDec d
+
+        convertTyDec (EvtDec x ty)  = typedef x $ convertStruct ty
+        convertTyDec (CaseDec x cs) = typedef x $ convertEnum x cs
+
+        convertValDec (VarDec x ty e)   = (convertDeclarator x ty, Just $ AInitializer $ convertExpr e)
+        convertValDec (ListDec x ty es) = (convertDeclaratorList, Just $ LInitializer LEFTCURLY (fromList $ map (AInitializer . convertExpr) es) Nothing RIGHTCURLY)
             where convertDeclaratorList = second (convertFromAbsDeclarator x . Just . addList . theseAndThat Nothing id . sequence) $ convertAbsDeclarator ty
                   addList = fmapThis (const $ fromList [POINTER $ Just $ fromList [CONST]]) . fmap (\a -> CDirectAbstractDeclarator a LEFTSQUARE Nothing RIGHTSQUARE)
-        convertDec (SizeDec x y)          = define (fromList [A STATIC, C CONST, B UNSIGNED, B INT], (Declarator Nothing (IDirectDeclarator $ convertQName x)))
-                                                        (Just $ AInitializer count_e)
+        convertValDec (SizeDec x y)     = ((fromList [C CONST, B UNSIGNED, B INT], (Declarator Nothing (IDirectDeclarator $ convertQName x))), Just $ AInitializer count_e)
             where a_size_e = (#:) (SIZEOF $ Right $ Trio LEFTPAREN (TypeName (fromList [Left $ TypeSpecifier $ convertQName y]) Nothing) RIGHTPAREN) (:#)
                   ptr_size_e = (#:) (SIZEOF $ Right $ Trio LEFTPAREN (TypeName (fromList [Right CONST, Left CHAR])
                                                                                (Just $ This $ fromList [POINTER Nothing])) RIGHTPAREN) (:#)

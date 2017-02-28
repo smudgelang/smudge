@@ -5,7 +5,7 @@ module Backends.SmudgeIR (
     Def(..),
     Dec(..),
     TyDec(..),
-    ValDec(..),
+    VarDec(..),
     Stmt(..),
     Expr(..),
     lower,
@@ -51,13 +51,13 @@ data Def = FunDef QualifiedName [QualifiedName] (Binding, Ty) [Dec] [Stmt]
          | DecDef Dec
 
 data Dec = TyDec TyDec
-         | ValDec Binding ValDec
+         | VarDec Binding VarDec
 
 data TyDec = EvtDec TaggedName TaggedName
            | CaseDec TaggedName [QualifiedName]
-data ValDec = VarDec QualifiedName Ty Expr
-             | ListDec QualifiedName Ty [Expr]
-             | SizeDec QualifiedName QualifiedName
+data VarDec = ValDec QualifiedName Ty Expr
+            | ListDec QualifiedName Ty [Expr]
+            | SizeDec QualifiedName QualifiedName
 
 data Stmt = Cases Expr [(QualifiedName, [Stmt])] [Stmt]
           | If Expr [Stmt]
@@ -97,7 +97,7 @@ lowerSymTab syms = [
 lowerMachine :: Bool -> SymbolTable -> (StateMachine TaggedName, Gr EnterExitState Happening) -> SmudgeIR
 lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
         DecDef $ TyDec $ CaseDec stateEnum (map qualify states),
-        DecDef $ ValDec Internal $ VarDec stateVar (Ty stateEnum) (Value initial),
+        DecDef $ VarDec Internal $ ValDec stateVar (Ty stateEnum) (Value initial),
         DecDef $ TyDec $ CaseDec eventEnum [evt_id e | Event e <- events]
     ] ++
         (if debug then [stateNameFun] else [])
@@ -146,8 +146,8 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
 
         stateNameFun :: Def
         stateNameFun = FunDef stateName_f [state_var] (Internal, Ty stateEnum :-> Ty char) ds es
-            where ds = [ValDec Internal $ ListDec names_var (Ty char) [Literal (disqualifyTag s) | s <- states],
-                        ValDec Internal $ SizeDec count_var names_var]
+            where ds = [VarDec Internal $ ListDec names_var (Ty char) [Literal (disqualifyTag s) | s <- states],
+                        VarDec Internal $ SizeDec count_var names_var]
                   es = [Return $ SafeIndex names_var state_var count_var "INVALID_STATE"]
                   names_var = qualify "state_name"
                   count_var = qualify "state_count"
@@ -163,7 +163,7 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
             where f_name = unhandled_f e
                   name_var = qualify "event_name"
                   event_var = head eventNames
-                  ds = if (not $ null handler) || not debug then [] else [ValDec Unresolved $ VarDec name_var (Ty char) (Literal $ disqualifyTag evName)]
+                  ds = if (not $ null handler) || not debug then [] else [VarDec Unresolved $ ValDec name_var (Ty char) (Literal $ disqualifyTag evName)]
                   es = [case handler of
                            [(s, e')] -> ExprS $ FunCall (qualify (sName smName s, mangleEv e')) (if e == e' then [Value event_var] else [])
                            [] -> call_panic_f [Literal panic_s, FunCall stateName_f [Value stateVar], Value name_var]]
@@ -176,7 +176,7 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
                   init_init = qualify "INITIALIZED"
                   init_uninit = qualify "UNINITIALIZED"
                   ds = [TyDec $ CaseDec init_enum [init_uninit, init_init],
-                        ValDec Internal $ VarDec init_var (Ty init_enum) (Value $ init_uninit)]
+                        VarDec Internal $ ValDec init_var (Ty init_enum) (Value $ init_uninit)]
                   es = [If (init_init `Neq` init_var) [
                             ExprS $ stateVar `Assign` Value s,
                             ExprS $ FunCall (qualify (s, "enter")) [],

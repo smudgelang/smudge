@@ -94,7 +94,7 @@ makeStruct name [] = STRUCT (Left $ name)
 makeStruct name ss = 
     STRUCT (Right (Quad (Just $ name)
     LEFTCURLY
-    (fromList [StructDeclaration sqs (fromList [StructDeclarator $ This $ Declarator Nothing $ IDirectDeclarator id]) SEMICOLON | (sqs, id) <- ss])
+    (fromList [StructDeclaration sqs (fromList [This $ Declarator Nothing $ IDirectDeclarator id]) SEMICOLON | (sqs, id) <- ss])
     RIGHTCURLY))
 
 (<*$>) :: Applicative f => f (a -> b) -> a -> f b

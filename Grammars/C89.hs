@@ -70,7 +70,7 @@ module Grammars.C89 (
     StructDeclaration(..),
     SpecifierQualifierList,
     StructDeclaratorList,
-    StructDeclarator(..),
+    StructDeclarator,
     EnumeratorList,
     Enumerator(..),
     TypeQualifier(..),
@@ -385,7 +385,7 @@ type SpecifierQualifierList = SimpleList (Either TypeSpecifier TypeQualifier)
 
 type StructDeclaratorList = CommaList StructDeclarator
 
-data StructDeclarator = StructDeclarator (These Declarator (Pair COLON ConstantExpression))
+type StructDeclarator = These Declarator (Pair COLON ConstantExpression)
 
 type EnumeratorList = CommaList Enumerator
 

@@ -70,7 +70,6 @@ import Grammars.C89 (
     StructDeclaration(..),
     SpecifierQualifierList,
     StructDeclaratorList,
-    StructDeclarator(..),
     EnumeratorList,
     Enumerator(..),
     TypeQualifier(..),
@@ -84,7 +83,6 @@ import Grammars.C89 (
     ParameterDeclaration(..),
     IdentifierList,
     TypeName(..),
-    AbstractDeclarator,
     DirectAbstractDeclarator(..),
     TypedefName(..),
     Initializer(..),
@@ -411,9 +409,6 @@ instance Prettyable SpecifierQualifierList where
 instance Prettyable StructDeclaratorList where
     pretty (CommaList x (Just (Pair c cl))) = pretty x <> pretty c $+$ pretty cl
     pretty (CommaList x cl)                 = pretty x <> pretty cl
-
-instance Prettyable StructDeclarator where
-    pretty (StructDeclarator dandorce) = pretty dandorce
 
 instance Prettyable EnumeratorList where
     pretty (CommaList x (Just (Pair c cl))) = pretty x <> pretty c $+$ pretty cl

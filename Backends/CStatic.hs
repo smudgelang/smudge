@@ -8,7 +8,7 @@ import Backends.Backend (Backend(..))
 import Backends.SmudgeIR (
   SmudgeIR,
   Def(..),
-  Dec(..),
+  DataDef(..),
   TyDec(..),
   Init(..),
   VarDec(..),
@@ -115,15 +115,15 @@ convertIR aliases dodec dodef ir =
             (if dodef then concatMap (map (ExternalDeclaration . Left) . defineDef) ir else [])
     where
         defineDef (FunDef name ps (b, ty) ds es) = [defun (first (bind b) $ convertNamedDeclarator ps name ty) $ convertBlock ds es]
-        defineDef (DecDef _)                     = []
+        defineDef (DataDef _)                    = []
 
         convertDef :: Def -> Declaration
         convertDef (FunDef name ps (b, ty) ds es) = define (first (bind b) $ convertDeclarator name ty) Nothing
-        convertDef (DecDef d)                     = convertDec d
+        convertDef (DataDef d)                    = convertDec d
 
-        convertDec :: Dec -> Declaration
-        convertDec (TyDec d)    = define (convertTyDec d) Nothing
-        convertDec (VarDec b d) = uncurry define $ first (first (bind b)) $ second Just $ convertVarDef d
+        convertDec :: DataDef -> Declaration
+        convertDec (TyDef d)    = define (convertTyDec d) Nothing
+        convertDec (VarDef b d) = uncurry define $ first (first (bind b)) $ second Just $ convertVarDef d
 
         convertTyDec :: TyDec -> (DeclarationSpecifiers, Declarator)
         convertTyDec (EvtDec x ty)  = typedef x $ convertStruct ty

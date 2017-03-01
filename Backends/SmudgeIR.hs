@@ -52,10 +52,10 @@ type SmudgeIR = [Def]
 data Def = FunDef QualifiedName [QualifiedName] (Binding, Ty) [DataDef] [Stmt]
          | DataDef DataDef
 
-data DataDef = TyDef TyDec
+data DataDef = TyDef TaggedName TyDec
              | VarDef Binding (VarDec Init)
 
-data TyDec = EvtDec TaggedName TaggedName
+data TyDec = EvtDec TaggedName
            | CaseDec TaggedName [QualifiedName]
 
 newtype Init a = Init a
@@ -93,7 +93,7 @@ lower debug (gs, syms) = concatMap (lowerMachine debug syms) gs
 
 lowerSymTab :: SymbolTable -> SmudgeIR
 lowerSymTab syms = [
-        DataDef $ TyDef $ EvtDec name ty | (name, (b, Ty ty)) <- toList syms
+        DataDef $ TyDef name $ EvtDec ty | (name, (b, Ty ty)) <- toList syms
     ] ++ [
         FunDef (qualify n) args f [] [] | (n, f@(_, _ :-> _)) <- toList syms
     ]
@@ -102,9 +102,9 @@ lowerSymTab syms = [
 
 lowerMachine :: Bool -> SymbolTable -> (StateMachine TaggedName, Gr EnterExitState Happening) -> SmudgeIR
 lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
-        DataDef $ TyDef $ CaseDec stateEnum (map qualify states),
+        DataDef $ TyDef stateEnum $ CaseDec stateEnum (map qualify states),
         DataDef $ VarDef Internal $ ValDec stateVar (Ty stateEnum) (Init $ Value initial),
-        DataDef $ TyDef $ CaseDec eventEnum [evt_id e | Event e <- events]
+        DataDef $ TyDef eventEnum $ CaseDec eventEnum [evt_id e | Event e <- events]
     ] ++
         (if debug then [stateNameFun] else [])
       ++ [
@@ -181,7 +181,7 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
                   init_enum = TagState $ qualify "init_flag"
                   init_init = qualify "INITIALIZED"
                   init_uninit = qualify "UNINITIALIZED"
-                  ds = [TyDef $ CaseDec init_enum [init_uninit, init_init],
+                  ds = [TyDef init_enum $ CaseDec init_enum [init_uninit, init_init],
                         VarDef Internal $ ValDec init_var (Ty init_enum) (Init $ Value $ init_uninit)]
                   es = [If (init_init `Neq` init_var) [
                             ExprS $ stateVar `Assign` Value s,

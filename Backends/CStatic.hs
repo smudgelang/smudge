@@ -122,12 +122,12 @@ convertIR aliases dodec dodef ir =
         convertDef (DataDef d)                    = convertDec d
 
         convertDec :: DataDef -> Declaration
-        convertDec (TyDef d)    = define (convertTyDec d) Nothing
+        convertDec (TyDef x d)  = define (typedef x $ convertTyDec d) Nothing
         convertDec (VarDef b d) = uncurry define $ first (first (bind b)) $ second Just $ convertVarDef d
 
-        convertTyDec :: TyDec -> (DeclarationSpecifiers, Declarator)
-        convertTyDec (EvtDec x ty)  = typedef x $ convertStruct ty
-        convertTyDec (CaseDec x cs) = typedef x $ convertEnum x cs
+        convertTyDec :: TyDec -> SpecifierQualifierList
+        convertTyDec (EvtDec ty)    = convertStruct ty
+        convertTyDec (CaseDec x cs) = convertEnum x cs
 
         convertVarDef :: VarDec Init -> ((SpecifierQualifierList, Declarator), Initializer)
         convertVarDef v@(ValDec _ _ (Init e))   = (convertVarDec v, AInitializer $ convertExpr e)

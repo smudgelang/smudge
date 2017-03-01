@@ -9,6 +9,7 @@ import Backends.SmudgeIR (
   SmudgeIR,
   Def(..),
   DataDef(..),
+  Dec(..),
   TyDec(..),
   Init(..),
   VarDec(..),
@@ -90,12 +91,12 @@ makeEnum x cs =
     (fromList [Enumerator c Nothing | c <- cs])
     RIGHTCURLY))
 
-makeStruct :: Identifier -> [(SpecifierQualifierList, Identifier)] -> TypeSpecifier
+makeStruct :: Identifier -> [(SpecifierQualifierList, Declarator)] -> TypeSpecifier
 makeStruct name [] = STRUCT (Left $ name)
 makeStruct name ss = 
     STRUCT (Right (Quad (Just $ name)
     LEFTCURLY
-    (fromList [StructDeclaration sqs (fromList [This $ Declarator Nothing $ IDirectDeclarator id]) SEMICOLON | (sqs, id) <- ss])
+    (fromList [StructDeclaration sqs (fromList [This declr]) SEMICOLON | (sqs, declr) <- ss]) -- Declarator Nothing $ IDirectDeclarator id
     RIGHTCURLY))
 
 (<*$>) :: Applicative f => f (a -> b) -> a -> f b
@@ -126,7 +127,7 @@ convertIR aliases dodec dodef ir =
         convertDec (VarDef b d) = uncurry define $ first (first (bind b)) $ second Just $ convertVarDef d
 
         convertTyDec :: TyDec -> SpecifierQualifierList
-        convertTyDec (EvtDec ty)    = convertStruct ty
+        convertTyDec (EvtDec ty)    = convertStruct ty []
         convertTyDec (CaseDec x cs) = convertEnum x cs
 
         convertVarDef :: VarDec Init -> ((SpecifierQualifierList, Declarator), Initializer)
@@ -169,8 +170,10 @@ convertIR aliases dodec dodef ir =
         convertEnum :: TaggedName -> [QualifiedName] -> SpecifierQualifierList
         convertEnum x cs = fromList [Left $ makeEnum (convertTName x) (map convertQName cs)]
 
-        convertStruct :: TaggedName -> SpecifierQualifierList
-        convertStruct x = fromList [Left $ makeStruct (convertTName x) []]
+        convertStruct :: TaggedName -> [Dec] -> SpecifierQualifierList
+        convertStruct x ds = fromList [Left $ makeStruct (convertTName x) (map makeMember ds)]
+            where makeMember (TyDec y t)  = (convertTyDec t, Declarator Nothing $ IDirectDeclarator $ convertQName y)
+                  makeMember (VarDec v) = convertVarDec v
 
         constable (TagEvent _)   = True
         constable (TagBuiltin _) = True

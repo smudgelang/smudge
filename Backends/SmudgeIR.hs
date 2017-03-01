@@ -4,6 +4,7 @@ module Backends.SmudgeIR (
     SmudgeIR,
     Def(..),
     DataDef(..),
+    Dec(..),
     TyDec(..),
     Init(..),
     UnInit,
@@ -54,6 +55,9 @@ data Def = FunDef QualifiedName [QualifiedName] (Binding, Ty) [DataDef] [Stmt]
 
 data DataDef = TyDef TaggedName TyDec
              | VarDef Binding (VarDec Init)
+
+data Dec = TyDec QualifiedName TyDec
+         | VarDec (VarDec UnInit)
 
 data TyDec = EvtDec TaggedName
            | CaseDec TaggedName [QualifiedName]

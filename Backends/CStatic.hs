@@ -10,6 +10,7 @@ import Backends.SmudgeIR (
   Def(..),
   Dec(..),
   TyDec(..),
+  Init(..),
   VarDec(..),
   Stmt(..),
   Expr(..),
@@ -122,22 +123,26 @@ convertIR aliases dodec dodef ir =
 
         convertDec :: Dec -> Declaration
         convertDec (TyDec d)    = define (convertTyDec d) Nothing
-        convertDec (VarDec b d) = uncurry define $ first (first (bind b)) $ convertVarDec d
+        convertDec (VarDec b d) = uncurry define $ first (first (bind b)) $ second Just $ convertVarDef d
 
         convertTyDec :: TyDec -> (DeclarationSpecifiers, Declarator)
         convertTyDec (EvtDec x ty)  = typedef x $ convertStruct ty
         convertTyDec (CaseDec x cs) = typedef x $ convertEnum x cs
 
-        convertVarDec :: VarDec -> ((SpecifierQualifierList, Declarator), Maybe Initializer)
-        convertVarDec (ValDec x ty e)   = (convertDeclarator x ty, Just $ AInitializer $ convertExpr e)
-        convertVarDec (ListDec x ty es) = (convertDeclaratorList, Just $ LInitializer LEFTCURLY (fromList $ map (AInitializer . convertExpr) es) Nothing RIGHTCURLY)
-            where convertDeclaratorList = second (convertFromAbsDeclarator x . Just . addList . theseAndThat Nothing id . sequence) $ convertAbsDeclarator ty
-                  addList = fmapThis (const $ fromList [POINTER $ Just $ fromList [CONST]]) . fmap (\a -> CDirectAbstractDeclarator a LEFTSQUARE Nothing RIGHTSQUARE)
-        convertVarDec (SizeDec x y)     = ((fromList [Right CONST, Left UNSIGNED, Left INT], (Declarator Nothing (IDirectDeclarator $ convertQName x))), Just $ AInitializer count_e)
+        convertVarDef :: VarDec Init -> ((SpecifierQualifierList, Declarator), Initializer)
+        convertVarDef v@(ValDec _ _ (Init e))   = (convertVarDec v, AInitializer $ convertExpr e)
+        convertVarDef v@(ListDec _ _ (Init es)) = (convertVarDec v, LInitializer LEFTCURLY (fromList $ map (AInitializer . convertExpr) es) Nothing RIGHTCURLY)
+        convertVarDef v@(SizeDec _ (Init y))    = (convertVarDec v, AInitializer count_e)
             where a_size_e = (#:) (SIZEOF $ Right $ Trio LEFTPAREN (TypeName (fromList [Left $ TypeSpecifier $ convertQName y]) Nothing) RIGHTPAREN) (:#)
                   ptr_size_e = (#:) (SIZEOF $ Right $ Trio LEFTPAREN (TypeName (fromList [Right CONST, Left CHAR])
                                                                                (Just $ This $ fromList [POINTER Nothing])) RIGHTPAREN) (:#)
                   count_e = (#:) (a_size_e `DIV` ptr_size_e) (:#)
+
+        convertVarDec :: VarDec a -> (SpecifierQualifierList, Declarator)
+        convertVarDec (ValDec x ty _)  = convertDeclarator x ty
+        convertVarDec (ListDec x ty _) = second (convertFromAbsDeclarator x . Just . addList . theseAndThat Nothing id . sequence) $ convertAbsDeclarator ty
+            where addList = fmapThis (const $ fromList [POINTER $ Just $ fromList [CONST]]) . fmap (\a -> CDirectAbstractDeclarator a LEFTSQUARE Nothing RIGHTSQUARE)
+        convertVarDec (SizeDec x _)    = (fromList [Right CONST, Left UNSIGNED, Left INT], (Declarator Nothing (IDirectDeclarator $ convertQName x)))
 
         sqlToDss :: SpecifierQualifierList -> DeclarationSpecifiers
         sqlToDss (SimpleList sq xs) = SimpleList (sqToDs sq) $ fmap sqlToDss xs

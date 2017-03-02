@@ -32,10 +32,11 @@ bindBasis aliases sms = mappend exports externs
     where rename' = rename aliases . qualify
           exports = insertFunctions mempty Exported $ concat [[
             -- add more here
+            (qualify (smName, "Handle_Message"),     ([qualify (smName, "Event_Wrapper")], "")),
             (qualify (smName, "Current_state_name"), ([], "char"))]
                 | Annotated _ (StateMachineDeclarator smName) <- sms]
           externs = insertFunctions mempty External [
             -- add more here
-            (rename' "free",        (["void"], "")),
-            (rename' "panic_print", (["char", "char", "char"], "")),
+            (rename' "free",        ([qualify "void"], "")),
+            (rename' "panic_print", ([qualify "char", qualify "char", qualify "char"], "")),
             (rename' "panic",       ([], ""))]

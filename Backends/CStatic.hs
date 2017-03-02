@@ -15,6 +15,7 @@ import Backends.SmudgeIR (
   VarDec(..),
   Stmt(..),
   Expr(..),
+  Var(..),
   lower,
   lowerSymTab,
   )
@@ -140,8 +141,8 @@ convertIR aliases dodec dodef ir =
                   tag = fromList [Left $ makeEnum "" $ map convertQName cxs]
                   union = fromList [Left $ makeUnion "" $ map (uncurry convertDeclarator . (extractWith seq qualify . qualify &&& Ty)) $ catMaybes cvs]
                   taggedUnion = fromList [Left $ makeStruct (convertTName x) [(tag, tag_name), (union, union_name)]]
-                  tag_name = Declarator Nothing $ IDirectDeclarator (convertQName $ qualify "id")
-                  union_name = Declarator Nothing $ IDirectDeclarator (convertQName $ qualify "event")
+                  tag_name = Declarator Nothing $ IDirectDeclarator id_field
+                  union_name = Declarator Nothing $ IDirectDeclarator event_field
 
         convertVarDef :: VarDec Init -> ((SpecifierQualifierList, Declarator), Initializer)
         convertVarDef v@(ValDec _ _ (Init e))   = (convertVarDec v, AInitializer $ convertExpr e)
@@ -157,6 +158,9 @@ convertIR aliases dodec dodef ir =
         convertVarDec (ListDec x ty _) = second (convertFromAbsDeclarator x . Just . addList . theseAndThat Nothing id . sequence) $ convertAbsDeclarator ty
             where addList = fmapThis (const $ fromList [POINTER $ Just $ fromList [CONST]]) . fmap (\a -> CDirectAbstractDeclarator a LEFTSQUARE Nothing RIGHTSQUARE)
         convertVarDec (SizeDec x _)    = (fromList [Right CONST, Left UNSIGNED, Left INT], (Declarator Nothing (IDirectDeclarator $ convertQName x)))
+
+        id_field = convertQName $ qualify "id"
+        event_field = convertQName $ qualify "event"
 
         sqlToDss :: SpecifierQualifierList -> DeclarationSpecifiers
         sqlToDss (SimpleList sq xs) = SimpleList (sqToDs sq) $ fmap sqlToDss xs
@@ -241,12 +245,17 @@ convertIR aliases dodec dodef ir =
         convertExpr (FunCall x es)      = (#:) (apply ((#:) (convertQName x) (:#)) (map convertExpr es)) (:#)
         convertExpr (Literal v)         = (#:) (show v) (:#)
         convertExpr (Null)              = (#:) "0" (:#)
-        convertExpr (Value x)           = (#:) (convertQName x) (:#)
-        convertExpr (Assign x e)        = (#:) (convertQName x) (:#) `ASSIGN` convertExpr e
+        convertExpr (Value v)           = (#:) (convertVar v) (:#)
+        convertExpr (Assign v e)        = (#:) (convertVar v) (:#) `ASSIGN` convertExpr e
         convertExpr (Neq x1 x2)         = (#:) (((#:) (convertQName x1) (:#)) `NOTEQUAL` ((#:) (convertQName x2) (:#))) (:#)
         convertExpr (SafeIndex a i b d) = (#:) (bounds_check_e `QUESTION` (Trio (fromList [array_index_e]) COLON ((#:) (show d) (:#)))) (:#)
-            where bounds_check_e = (#:) (((#:) (convertQName i) (:#)) `LESS_THAN` ((#:) (convertQName b) (:#))) (:#)
-                  array_index_e = (#:) (EPostfixExpression ((#:) (convertQName a) (:#)) LEFTSQUARE (fromList [(#:) (convertQName i) (:#)]) RIGHTSQUARE) (:#)
+            where bounds_check_e = (#:) (((#:) (convertVar i) (:#)) `LESS_THAN` ((#:) (convertVar b) (:#))) (:#)
+                  array_index_e = (#:) (EPostfixExpression (convertVar a) LEFTSQUARE (fromList [(#:) (convertVar i) (:#)]) RIGHTSQUARE) (:#)
+
+        convertVar (Var x)     = (#:) (convertQName x) (:#)
+        convertVar (SumVar x)  = (#:) (convertQName x) (:#) `DOT` id_field
+        convertVar (Field (SumVar x) f) = (#:) (convertQName x) (:#) `DOT` event_field `DOT` convertQName (extractWith seq qualify f)
+        convertVar (Field v f) = convertVar v `ARROW` convertQName f
 
         convertQName :: Qualifiable q => q -> Identifier
         convertQName q = mangleWith (+-+) mangleIdentifier $ rename aliases $ qualify q

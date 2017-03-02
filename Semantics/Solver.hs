@@ -90,12 +90,12 @@ elaborateMono (SymbolTable gamma) = SymbolTable . canonicalizeTabMono . defModul
 elaboratePoly :: SymbolTable -> [(StateMachine TaggedName, [(WholeState TaggedName)])] -> SymbolTable
 elaboratePoly (SymbolTable gamma) = SymbolTable . canonicalizeTabPoly . defModule gamma
 
-insertFunctions :: SymbolTable -> Binding -> [(QualifiedName, ([Name], Name))] -> SymbolTable
+insertFunctions :: SymbolTable -> Binding -> [(QualifiedName, ([QualifiedName], Name))] -> SymbolTable
 insertFunctions (SymbolTable gamma) b fs =
     SymbolTable $ canonicalizeTabPoly $ mapWithKey ((*** instantiate theta) . rebind btheta) gamma'
     where gamma' = evalState (foldM defName gamma $ map fst fs') 0  -- BUG: 0 is probably wrong
           fs' = map (TagFunction *** funTy) fs
-          funTy = map makeTy *** makeTy >>> uncurry makeFun
+          funTy = map (Ty . TagBuiltin) *** makeTy >>> uncurry makeFun
           makeFun [] rty = Void :-> rty
           makeFun [pty] rty = pty :-> rty
           makeFun (pty:ptys) rty = pty :-> makeFun ptys rty

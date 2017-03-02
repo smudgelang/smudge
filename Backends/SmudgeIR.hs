@@ -118,8 +118,8 @@ lowerSymTab gs syms = [
 
 lowerMachine :: Bool -> SymbolTable -> (StateMachine TaggedName, Gr EnterExitState Happening) -> SmudgeIR
 lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
-        DataDef $ TyDef stateEnum $ SumDec stateEnum [(qualify s, Nothing) | s <- states],
-        DataDef $ VarDef Internal $ ValDec stateVar (Ty stateEnum) (Init $ Value $ Var initial)
+        DataDef $ TyDef stateEnum $ SumDec stateEnum [(st_id s, Nothing) | s <- states],
+        DataDef $ VarDef Internal $ ValDec stateVar (Ty stateEnum) (Init $ Value $ Var $ st_id initial)
     ] ++
         (if debug then [stateNameFun] else [])
       ++ [
@@ -158,6 +158,7 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
         stateVar = qualify (smName, "state")
         eventEnum = (\(Ty p :-> r) -> p) $ snd (syms ! TagFunction handle_f)
         evt_id e = qualify (qualify "EVID", e)
+        st_id s = qualify (qualify "STID", s)
         states = [s | (_, EnterExitState {st = (State s)}) <- labNodes g]
         events = events_for g
         s_handlers e = [(s, h) | (s, Just h@(State _, _)) <- Map.toList (handlers e g)]
@@ -200,7 +201,7 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
                   ds = [TyDef init_enum $ SumDec init_enum [(init_uninit, Nothing), (init_init, Nothing)],
                         VarDef Internal $ ValDec init_var (Ty init_enum) (Init $ Value $ Var init_uninit)]
                   es = [If (init_init `Neq` init_var) [
-                            ExprS $ Var stateVar `Assign` Value (Var s),
+                            ExprS $ Var stateVar `Assign` Value (Var $ st_id s),
                             ExprS $ FunCall (qualify (s, "enter")) [],
                             ExprS $ Var init_var `Assign` Value (Var init_init)]]
 
@@ -220,8 +221,8 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
                   event_var = head eventNames
                   call_unhandled = ExprS $ FunCall (unhandled_f e) [Value $ Var event_var]
                   call_ev_in s e' = ExprS $ FunCall (qualify (s, mangleEv e')) (if e == e' then [Value $ Var event_var] else [])
-                  cases = [(qualify s, [call_ev_in s' e']) | (State s, (State s', e')) <- ss]
-                       ++ [(qualify s, [call_unhandled]) | (State s) <- unss]
+                  cases = [(st_id s, [call_ev_in s' e']) | (State s, (State s', e')) <- ss]
+                       ++ [(st_id s, [call_unhandled]) | (State s) <- unss]
                   defaults = [call_unhandled]
 
         handleMessageFun :: Def
@@ -243,7 +244,7 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
                   event_var = head eventNames
                   dest_state = qualify $ sName smName st'
                   call_exit = FunCall (qualify (sName smName st, "exit")) []
-                  assign_state = Var stateVar `Assign` Value (Var dest_state)
+                  assign_state = Var stateVar `Assign` Value (Var $ st_id dest_state)
                   call_enter = FunCall (qualify (sName smName st', "enter")) []
 
                   isEventTy :: Ty -> Event TaggedName -> Bool
@@ -262,4 +263,4 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
         anyExitFun ss = FunDef f_name [] (Internal, Void :-> Void) [] es
             where f_name = qualify (sName smName StateAny, mangleEv EventExit)
                   es = [Cases (Value $ Var stateVar) cases []]
-                  cases = [(qualify s, [ExprS $ FunCall (qualify (s, mangleEv EventExit)) []]) | (State s) <- ss]
+                  cases = [(st_id s, [ExprS $ FunCall (qualify (s, mangleEv EventExit)) []]) | (State s) <- ss]

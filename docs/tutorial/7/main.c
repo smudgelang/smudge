@@ -19,6 +19,16 @@ static void *sendValidCoin(void *unused)
     return NULL;
 }
 
+extern void turnstyle_Send_Message(turnstyle_Event_Wrapper e)
+{
+    turnstyle_Handle_Message(e);
+}
+
+void SMUDGE_free(const void *thing)
+{
+    free((void *)thing);
+}
+
 void SMUDGE_panic(void)
 {
     printf("Game over!\n");

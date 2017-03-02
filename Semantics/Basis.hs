@@ -8,7 +8,11 @@ import Semantics.Solver (
   Binding(..),
   insertFunctions,
   )
-import Model (QualifiedName, qualify)
+import Model (
+  QualifiedName,
+  qualify,
+  TaggedName(..),
+  )
 import Semantics.Alias (Alias, rename)
 import Grammars.Smudge (
   StateMachine,
@@ -30,9 +34,9 @@ basisAlias namespace = fromList $ map q [
 bindBasis :: Alias QualifiedName -> [StateMachine QualifiedName] -> SymbolTable
 bindBasis aliases sms = mappend exports externs
     where rename' = rename aliases . qualify
-          void = qualify "void"
-          str = qualify "char"
-          wrapper smName = qualify (smName, "Event_Wrapper")
+          void = TagBuiltin $ qualify "void"
+          str = TagBuiltin $ qualify "char"
+          wrapper smName = TagState $ qualify (smName, "Event_Wrapper") -- a horrible kludge
           exports = insertFunctions mempty Exported $ concat [[
             -- add more sm-specific exports here
             (qualify (smName, "Handle_Message"),     ([wrapper smName], "")),

@@ -390,9 +390,9 @@ instance Prettyable TypeSpecifier where
     pretty SIGNED = zeroWidthText "single"
     pretty UNSIGNED = zeroWidthText "unsigned"
     pretty (STRUCT (Left id)) = text "struct" <+> pretty id
-    pretty (STRUCT (Right (Quad mi l sdl r))) = text "struct" <+> pretty mi <+> pretty l $+$ pretty sdl $+$ pretty r
+    pretty (STRUCT (Right (Quad mi l sdl r))) = text "struct" <+> pretty mi $+$ pretty l $+$ nest indent (pretty sdl) $+$ pretty r
     pretty (UNION (Left id)) = text "union" <+> pretty id
-    pretty (UNION (Right (Quad mi l sdl r))) = text "union" <+> pretty mi <+> pretty l $+$ pretty sdl $+$ pretty r
+    pretty (UNION (Right (Quad mi l sdl r))) = text "union" <+> pretty mi $+$ pretty l $+$ nest indent (pretty sdl) $+$ pretty r
     pretty (ENUM (Left id)) = text "enum" <+> pretty id
     pretty (ENUM (Right (Quad mi l el r))) = text "enum" <+> pretty mi $+$ pretty l $+$ nest indent (pretty el) $+$ pretty r
     pretty (TypeSpecifier tn) = pretty tn

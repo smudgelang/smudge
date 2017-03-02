@@ -22,6 +22,7 @@ import Grammars.C89
 import Model (
   QualifiedName,
   Qualifiable(qualify),
+  extractWith,
   TaggedName(..),
   mangleWith,
   )
@@ -46,6 +47,7 @@ import Control.Arrow (first, second, (***), (&&&))
 import Control.Monad (liftM)
 import Control.Monad.State (StateT, evalState, state)
 import Data.List (dropWhileEnd)
+import Data.Maybe (catMaybes, isNothing)
 import System.Console.GetOpt
 import System.FilePath (
   FilePath,
@@ -92,11 +94,16 @@ makeEnum x cs =
     RIGHTCURLY))
 
 makeStruct :: Identifier -> [(SpecifierQualifierList, Declarator)] -> TypeSpecifier
-makeStruct name [] = STRUCT (Left $ name)
-makeStruct name ss = 
-    STRUCT (Right (Quad (Just $ name)
+makeStruct = makeStructOrUnion STRUCT
+
+makeUnion :: Identifier -> [(SpecifierQualifierList, Declarator)] -> TypeSpecifier
+makeUnion = makeStructOrUnion UNION
+
+makeStructOrUnion ctor x [] = ctor (Left $ x)
+makeStructOrUnion ctor x ss = 
+    ctor (Right (Quad (if null x then Nothing else Just $ x)
     LEFTCURLY
-    (fromList [StructDeclaration sqs (fromList [This declr]) SEMICOLON | (sqs, declr) <- ss]) -- Declarator Nothing $ IDirectDeclarator id
+    (fromList [StructDeclaration sqs (fromList [This declr]) SEMICOLON | (sqs, declr) <- ss])
     RIGHTCURLY))
 
 (<*$>) :: Applicative f => f (a -> b) -> a -> f b
@@ -127,8 +134,14 @@ convertIR aliases dodec dodef ir =
         convertDec (VarDef b d) = uncurry define $ first (first (bind b)) $ second Just $ convertVarDef d
 
         convertTyDec :: TyDec -> SpecifierQualifierList
-        convertTyDec (EvtDec ty)    = convertStruct ty []
-        convertTyDec (CaseDec x cs) = convertEnum x cs
+        convertTyDec (EvtDec ty)   = convertStruct ty
+        convertTyDec (SumDec x cs) = if all isNothing cvs then convertEnum x cxs else taggedUnion
+            where (cxs, cvs) = unzip cs
+                  tag = fromList [Left $ makeEnum "" $ map convertQName cxs]
+                  union = fromList [Left $ makeUnion "" $ map (uncurry convertDeclarator . (extractWith seq qualify . qualify &&& Ty)) $ catMaybes cvs]
+                  taggedUnion = fromList [Left $ makeStruct (convertTName x) [(tag, tag_name), (union, union_name)]]
+                  tag_name = Declarator Nothing $ IDirectDeclarator (convertQName $ qualify "id")
+                  union_name = Declarator Nothing $ IDirectDeclarator (convertQName $ qualify "event")
 
         convertVarDef :: VarDec Init -> ((SpecifierQualifierList, Declarator), Initializer)
         convertVarDef v@(ValDec _ _ (Init e))   = (convertVarDec v, AInitializer $ convertExpr e)
@@ -170,10 +183,8 @@ convertIR aliases dodec dodef ir =
         convertEnum :: TaggedName -> [QualifiedName] -> SpecifierQualifierList
         convertEnum x cs = fromList [Left $ makeEnum (convertTName x) (map convertQName cs)]
 
-        convertStruct :: TaggedName -> [Dec] -> SpecifierQualifierList
-        convertStruct x ds = fromList [Left $ makeStruct (convertTName x) (map makeMember ds)]
-            where makeMember (TyDec y t)  = (convertTyDec t, Declarator Nothing $ IDirectDeclarator $ convertQName y)
-                  makeMember (VarDec v) = convertVarDec v
+        convertStruct :: TaggedName -> SpecifierQualifierList
+        convertStruct x = fromList [Left $ makeStruct (convertTName x) []]
 
         constable (TagEvent _)   = True
         constable (TagBuiltin _) = True

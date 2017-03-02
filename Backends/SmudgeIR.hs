@@ -60,7 +60,7 @@ data Dec = TyDec QualifiedName TyDec
          | VarDec (VarDec UnInit)
 
 data TyDec = EvtDec TaggedName
-           | CaseDec TaggedName [QualifiedName]
+           | SumDec TaggedName [(QualifiedName, Maybe TaggedName)]
 
 newtype Init a = Init a
 data UnInit a = UnInit
@@ -106,9 +106,9 @@ lowerSymTab syms = [
 
 lowerMachine :: Bool -> SymbolTable -> (StateMachine TaggedName, Gr EnterExitState Happening) -> SmudgeIR
 lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
-        DataDef $ TyDef stateEnum $ CaseDec stateEnum (map qualify states),
+        DataDef $ TyDef stateEnum $ SumDec stateEnum [(qualify s, Nothing) | s <- states],
         DataDef $ VarDef Internal $ ValDec stateVar (Ty stateEnum) (Init $ Value initial),
-        DataDef $ TyDef eventEnum $ CaseDec eventEnum [evt_id e | Event e <- events]
+        DataDef $ TyDef eventEnum $ SumDec eventEnum [(evt_id e, Just e) | Event e <- events]
     ] ++
         (if debug then [stateNameFun] else [])
       ++ [
@@ -144,7 +144,7 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
         call_panic_f args = ExprS $ if debug then FunCall (qualify "panic_print") args else FunCall (qualify "panic") []
         stateEnum = TagState $ qualify (smName, "State")
         stateVar = qualify (smName, "state")
-        eventEnum = TagState $ qualify (smName, "Event")
+        eventEnum = TagEvent $ qualify (smName, "Event")
         evt_id e = qualify (qualify "EVID", e)
         states = [s | (_, EnterExitState {st = (State s)}) <- labNodes g]
         events = nub $ sort [e | (_, _, Happening {event=e@(Event _)}) <- labEdges g]
@@ -185,7 +185,7 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
                   init_enum = TagState $ qualify "init_flag"
                   init_init = qualify "INITIALIZED"
                   init_uninit = qualify "UNINITIALIZED"
-                  ds = [TyDef init_enum $ CaseDec init_enum [init_uninit, init_init],
+                  ds = [TyDef init_enum $ SumDec init_enum [(init_uninit, Nothing), (init_init, Nothing)],
                         VarDef Internal $ ValDec init_var (Ty init_enum) (Init $ Value $ init_uninit)]
                   es = [If (init_init `Neq` init_var) [
                             ExprS $ stateVar `Assign` Value s,

@@ -30,13 +30,19 @@ basisAlias namespace = fromList $ map q [
 bindBasis :: Alias QualifiedName -> [StateMachine QualifiedName] -> SymbolTable
 bindBasis aliases sms = mappend exports externs
     where rename' = rename aliases . qualify
+          void = qualify "void"
+          str = qualify "char"
+          wrapper smName = qualify (smName, "Event_Wrapper")
           exports = insertFunctions mempty Exported $ concat [[
-            -- add more here
-            (qualify (smName, "Handle_Message"),     ([qualify (smName, "Event_Wrapper")], "")),
+            -- add more sm-specific exports here
+            (qualify (smName, "Handle_Message"),     ([wrapper smName], "")),
             (qualify (smName, "Current_state_name"), ([], "char"))]
                 | Annotated _ (StateMachineDeclarator smName) <- sms]
-          externs = insertFunctions mempty External [
-            -- add more here
-            (rename' "free",        ([qualify "void"], "")),
-            (rename' "panic_print", ([qualify "char", qualify "char", qualify "char"], "")),
+          externs = insertFunctions mempty External $ concat [[
+            -- add more sm-specific externals here
+            (qualify (smName, "Send_Message"), ([wrapper smName], ""))]
+                | Annotated _ (StateMachineDeclarator smName) <- sms] ++ [
+            -- add more smudge-wide externals here
+            (rename' "free",        ([void], "")),
+            (rename' "panic_print", ([str, str, str], "")),
             (rename' "panic",       ([], ""))]

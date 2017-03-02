@@ -143,6 +143,7 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
         eventNames = map qualify $ ["e"] ++ map (('e':) . show) [2..]
         char = TagBuiltin $ qualify "char"
         stateName_f = qualify (smName, "State_name")
+        send_f = qualify (smName, "Send_Message")
         handle_f = qualify (smName, "Handle_Message")
         initialize_f = qualify (smName, "initialize")
         unhandled_f e = qualify (qualify (smName, "UNHANDLED_EVENT"), mangleEv e)
@@ -201,7 +202,7 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
         sendEventFun e@(Event evName) = FunDef f_name eventNames (syms ! TagFunction f_name) [] es
             where f_name = qualify evName
                   es = [ExprS $ FunCall initialize_f [],
-                        ExprS $ FunCall handle_f [Value $ Var $ evt_id evName, Value $ Var event_var]]
+                        ExprS $ FunCall send_f [Value $ Var $ evt_id evName, Value $ Var event_var]]
                   event_var = head eventNames
 
         handleEventFun :: Event TaggedName -> [(State TaggedName, (State TaggedName, Event TaggedName))] -> [State TaggedName] -> Def

@@ -98,12 +98,18 @@ mangleEv EventEnter = qualify "enter"
 mangleEv EventExit = qualify "exit"
 mangleEv EventAny = qualify "any"
 
+events_for :: Gr EnterExitState Happening -> [Event TaggedName]
+events_for g = nub $ sort [e | (_, _, Happening {event=e@(Event _)}) <- labEdges g]
+
 lower :: Bool -> ([(StateMachine TaggedName, Gr EnterExitState Happening)], SymbolTable) -> SmudgeIR
 lower debug (gs, syms) = concatMap (lowerMachine debug syms) gs
 
-lowerSymTab :: SymbolTable -> SmudgeIR
-lowerSymTab syms = [
+lowerSymTab :: [(StateMachine TaggedName, Gr EnterExitState Happening)] -> SymbolTable -> SmudgeIR
+lowerSymTab gs syms = [
         DataDef $ TyDef name $ EvtDec ty | (name, (b, Ty ty)) <- toList syms
+    ] ++ [
+        DataDef $ TyDef eventEnum $ SumDec eventEnum [(qualify (qualify "EVID", e), Just e) | Event e <- events_for g] -- a kludge to get it into the header
+            | (Annotated _ (StateMachineDeclarator smName), g) <- gs, let eventEnum = (\(Ty p :-> r) -> p) $ snd (syms ! TagFunction (qualify (smName, "Handle_Message")))
     ] ++ [
         FunDef (qualify n) args f [] [] | (n, f@(_, _ :-> _)) <- toList syms
     ]
@@ -113,8 +119,7 @@ lowerSymTab syms = [
 lowerMachine :: Bool -> SymbolTable -> (StateMachine TaggedName, Gr EnterExitState Happening) -> SmudgeIR
 lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
         DataDef $ TyDef stateEnum $ SumDec stateEnum [(qualify s, Nothing) | s <- states],
-        DataDef $ VarDef Internal $ ValDec stateVar (Ty stateEnum) (Init $ Value $ Var initial),
-        DataDef $ TyDef eventEnum $ SumDec eventEnum [(evt_id e, Just e) | Event e <- events]
+        DataDef $ VarDef Internal $ ValDec stateVar (Ty stateEnum) (Init $ Value $ Var initial)
     ] ++
         (if debug then [stateNameFun] else [])
       ++ [
@@ -154,7 +159,7 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
         eventEnum = (\(Ty p :-> r) -> p) $ snd (syms ! TagFunction handle_f)
         evt_id e = qualify (qualify "EVID", e)
         states = [s | (_, EnterExitState {st = (State s)}) <- labNodes g]
-        events = nub $ sort [e | (_, _, Happening {event=e@(Event _)}) <- labEdges g]
+        events = events_for g
         s_handlers e = [(s, h) | (s, Just h@(State _, _)) <- Map.toList (handlers e g)]
         unhandled e = [s | (s, Just (StateAny, _)) <- Map.toList (handlers e g)] ++ [s | (s, Nothing) <- Map.toList (handlers e g)]
         any_handler e = nub [h | (_, Just h@(StateAny, _)) <- Map.toList (handlers e g)]

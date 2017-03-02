@@ -67,6 +67,7 @@ newtype Init a = Init a
 data UnInit a = UnInit
 
 data VarDec f = ValDec QualifiedName Ty (f Expr)
+              | SumVDec QualifiedName Ty (f (QualifiedName, Expr))
               | ListDec QualifiedName Ty (f [Expr])
               | SizeDec QualifiedName (f QualifiedName)
 
@@ -199,10 +200,12 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
                             ExprS $ Var init_var `Assign` Value (Var init_init)]]
 
         sendEventFun :: Event TaggedName -> Def
-        sendEventFun e@(Event evName) = FunDef f_name eventNames (syms ! TagFunction f_name) [] es
+        sendEventFun e@(Event evName) = FunDef f_name eventNames (syms ! TagFunction f_name) ds es
             where f_name = qualify evName
+                  wrap_name = qualify "wrapper"
+                  ds = [VarDef Unresolved $ SumVDec wrap_name (Ty eventEnum) $ Init (evt_id evName, Value $ Var event_var)]
                   es = [ExprS $ FunCall initialize_f [],
-                        ExprS $ FunCall send_f [Value $ Var $ evt_id evName, Value $ Var event_var]]
+                        ExprS $ FunCall send_f [Value $ Var wrap_name]]
                   event_var = head eventNames
 
         handleEventFun :: Event TaggedName -> [(State TaggedName, (State TaggedName, Event TaggedName))] -> [State TaggedName] -> Def
@@ -217,11 +220,11 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
                   defaults = [call_unhandled]
 
         handleMessageFun :: Def
-        handleMessageFun = FunDef handle_f [evt] (syms ! TagFunction handle_f) [] es
-            where es = [Cases (Value $ SumVar evt) cases defaults]
-                  evt = qualify "evt"
-                  cases = [(evt_id e, [ExprS $ FunCall (qualify (qe, "handle")) [Value $ Field (SumVar evt) qe],
-                                       ExprS $ FunCall (qualify "free") [Value $ Field (SumVar evt) qe]]) | Event e <- events, let qe = qualify e]
+        handleMessageFun = FunDef handle_f [wrap_name] (syms ! TagFunction handle_f) [] es
+            where es = [Cases (Value $ SumVar wrap_name) cases defaults]
+                  wrap_name = qualify "wrapper"
+                  cases = [(evt_id e, [ExprS $ FunCall (qualify (qe, "handle")) [Value $ Field (SumVar wrap_name) qe],
+                                       ExprS $ FunCall (qualify "free") [Value $ Field (SumVar wrap_name) qe]]) | Event e <- events, let qe = qualify e]
                   defaults = [call_panic_f [Literal panic_s, FunCall stateName_f [Value $ Var stateVar], Literal ""]]
                   panic_s = disqualifyTag smName ++ "[%s]: Invalid event ID\n"
 

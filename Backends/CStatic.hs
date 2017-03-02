@@ -132,7 +132,7 @@ convertIR aliases dodec dodef ir =
 
         convertDec :: DataDef -> Declaration
         convertDec (TyDef x d)  = define (typedef x $ convertTyDec d) Nothing
-        convertDec (VarDef b d) = uncurry define $ first (first (bind b)) $ second Just $ convertVarDef d
+        convertDec (VarDef b d) = uncurry define $ first (first (bind b)) $ convertVarDef d
 
         convertTyDec :: TyDec -> SpecifierQualifierList
         convertTyDec (EvtDec ty)   = convertStruct ty
@@ -144,10 +144,11 @@ convertIR aliases dodec dodef ir =
                   tag_name = Declarator Nothing $ IDirectDeclarator id_field
                   union_name = Declarator Nothing $ IDirectDeclarator event_field
 
-        convertVarDef :: VarDec Init -> ((SpecifierQualifierList, Declarator), Initializer)
-        convertVarDef v@(ValDec _ _ (Init e))   = (convertVarDec v, AInitializer $ convertExpr e)
-        convertVarDef v@(ListDec _ _ (Init es)) = (convertVarDec v, LInitializer LEFTCURLY (fromList $ map (AInitializer . convertExpr) es) Nothing RIGHTCURLY)
-        convertVarDef v@(SizeDec _ (Init y))    = (convertVarDec v, AInitializer count_e)
+        convertVarDef :: VarDec Init -> ((SpecifierQualifierList, Declarator), Maybe Initializer)
+        convertVarDef v@(ValDec _ _ (Init e))   = (convertVarDec v, Just $ AInitializer $ convertExpr e)
+        convertVarDef v@(SumVDec _ _ _)         = (convertVarDec v, Nothing)
+        convertVarDef v@(ListDec _ _ (Init es)) = (convertVarDec v, Just $ LInitializer LEFTCURLY (fromList $ map (AInitializer . convertExpr) es) Nothing RIGHTCURLY)
+        convertVarDef v@(SizeDec _ (Init y))    = (convertVarDec v, Just $ AInitializer count_e)
             where a_size_e = (#:) (SIZEOF $ Right $ Trio LEFTPAREN (TypeName (fromList [Left $ TypeSpecifier $ convertQName y]) Nothing) RIGHTPAREN) (:#)
                   ptr_size_e = (#:) (SIZEOF $ Right $ Trio LEFTPAREN (TypeName (fromList [Right CONST, Left CHAR])
                                                                                (Just $ This $ fromList [POINTER Nothing])) RIGHTPAREN) (:#)
@@ -155,6 +156,7 @@ convertIR aliases dodec dodef ir =
 
         convertVarDec :: VarDec a -> (SpecifierQualifierList, Declarator)
         convertVarDec (ValDec x ty _)  = convertDeclarator x ty
+        convertVarDec (SumVDec x ty _) = convertDeclarator x ty
         convertVarDec (ListDec x ty _) = second (convertFromAbsDeclarator x . Just . addList . theseAndThat Nothing id . sequence) $ convertAbsDeclarator ty
             where addList = fmapThis (const $ fromList [POINTER $ Just $ fromList [CONST]]) . fmap (\a -> CDirectAbstractDeclarator a LEFTSQUARE Nothing RIGHTSQUARE)
         convertVarDec (SizeDec x _)    = (fromList [Right CONST, Left UNSIGNED, Left INT], (Declarator Nothing (IDirectDeclarator $ convertQName x)))
@@ -230,10 +232,13 @@ convertIR aliases dodec dodef ir =
                   namep (ParameterDeclaration spec@(SimpleList (B VOID) _) declr) = ParameterDeclaration spec <$> fmap Left <$> mapM (either id <$> (convertFromAbsDeclarator <$> pop <*.> Just) <*$>) declr
                   namep (ParameterDeclaration spec declr) = ParameterDeclaration spec <$> Just <$> Left <$> maybe (Declarator Nothing . IDirectDeclarator . convertQName) (either const (flip convertFromAbsDeclarator . Just)) declr <$> pop
 
+        convertBlock :: [DataDef] -> [Stmt] -> CompoundStatement
         convertBlock ds ss = CompoundStatement LEFTCURLY
                                 (if null ds then Nothing else Just $ fromList $ map convertDec ds)
-                                (if null ss then Nothing else Just $ fromList $ map convertStmt ss)
+                                (if null ss then Nothing else Just $ fromList $ map convertStmt $ sum_inits ++ ss)
                              RIGHTCURLY
+            where sum_inits = concat [[ExprS $ Assign v (Value $ Var ctor), ExprS $ Assign (Field v ctor) e]
+                                      | VarDef _ (SumVDec x _ (Init (ctor, e))) <- ds, let v = SumVar x]
 
         convertStmt (Cases e cs ds) = makeSwitch (fromList [convertExpr e]) (map (convertToConstExpr *** map convertStmt) cs) (map convertStmt ds)
         convertStmt (If e ss)       = SStatement $ IF LEFTPAREN (fromList [convertExpr e]) RIGHTPAREN (CStatement $ convertBlock [] ss) Nothing

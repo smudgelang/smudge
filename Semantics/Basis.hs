@@ -39,6 +39,7 @@ bindBasis aliases sms = mappend exports externs
           wrapper smName = TagState $ qualify (smName, "Event_Wrapper") -- a horrible kludge
           exports = insertFunctions mempty Exported $ concat [[
             -- add more sm-specific exports here
+            (qualify (smName, "Free_Message"),       ([wrapper smName], "")),
             (qualify (smName, "Handle_Message"),     ([wrapper smName], "")),
             (qualify (smName, "Current_state_name"), ([], "char"))]
                 | Annotated _ (StateMachineDeclarator smName) <- sms]

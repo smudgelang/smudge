@@ -133,7 +133,8 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
     ] ++ concat [
         [sendEventFun e, handleEventFun e (s_handlers e) (unhandled e)] | e <- events
     ] ++ [
-        handleMessageFun
+        handleMessageFun,
+        freeMessageFun
     ] ++ [
         stateEventFun st h s' (st == StateAny || not (null ex)) | (n, EnterExitState {st, ex}) <- labNodes g,
          (_, n', h) <- out g n,
@@ -229,8 +230,16 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
         handleMessageFun = FunDef handle_f [wrap_name] (syms ! TagFunction handle_f) [] es
             where es = [Cases (Value $ SumVar wrap_name) cases defaults]
                   wrap_name = qualify "wrapper"
-                  cases = [(evt_id e, [ExprS $ FunCall (qualify (qe, "handle")) [Value $ Field (SumVar wrap_name) qe],
-                                       ExprS $ FunCall (qualify "free") [Value $ Field (SumVar wrap_name) qe]]) | Event e <- events, let qe = qualify e]
+                  cases = [(evt_id e, [ExprS $ FunCall (qualify (qe, "handle")) [Value $ Field (SumVar wrap_name) qe]]) | Event e <- events, let qe = qualify e]
+                  defaults = [call_panic_f [Literal panic_s, FunCall stateName_f [Value $ Var stateVar], Literal ""]]
+                  panic_s = disqualifyTag smName ++ "[%s]: Invalid event ID\n"
+
+        freeMessageFun :: Def
+        freeMessageFun = FunDef f_name [wrap_name] (syms ! TagFunction f_name) [] es
+            where f_name = qualify (smName, "Free_Message")
+                  es = [Cases (Value $ SumVar wrap_name) cases defaults]
+                  wrap_name = qualify "wrapper"
+                  cases = [(evt_id e, [ExprS $ FunCall (qualify "free") [Value $ Field (SumVar wrap_name) $ qualify e]]) | Event e <- events]
                   defaults = [call_panic_f [Literal panic_s, FunCall stateName_f [Value $ Var stateVar], Literal ""]]
                   panic_s = disqualifyTag smName ++ "[%s]: Invalid event ID\n"
 

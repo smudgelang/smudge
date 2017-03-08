@@ -211,8 +211,7 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
             where f_name = qualify evName
                   wrap_name = qualify "wrapper"
                   ds = [VarDef Unresolved $ SumVDec wrap_name (Ty eventEnum) $ Init (evt_id evName, Value $ Var event_var)]
-                  es = [ExprS $ FunCall initialize_f [],
-                        ExprS $ FunCall send_f [Value $ Var wrap_name]]
+                  es = [ExprS $ FunCall send_f [Value $ Var wrap_name]]
                   event_var = head eventNames
 
         handleEventFun :: Event TaggedName -> [(State TaggedName, (State TaggedName, Event TaggedName))] -> [State TaggedName] -> Def
@@ -228,7 +227,8 @@ lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
 
         handleMessageFun :: Def
         handleMessageFun = FunDef handle_f [wrap_name] (syms ! TagFunction handle_f) [] es
-            where es = [Cases (Value $ SumVar wrap_name) cases defaults]
+            where es = [ExprS $ FunCall initialize_f [],
+                        Cases (Value $ SumVar wrap_name) cases defaults]
                   wrap_name = qualify "wrapper"
                   cases = [(evt_id e, [ExprS $ FunCall (qualify (qe, "handle")) [Value $ Field (SumVar wrap_name) qe]]) | Event e <- events, let qe = qualify e]
                   defaults = [call_panic_f [Literal panic_s, FunCall stateName_f [Value $ Var stateVar], Literal ""]]

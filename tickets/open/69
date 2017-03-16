@@ -1,0 +1,22 @@
+Title: Add commit hash to version
+
+E.g., from a version-controlled copy of Smudge:
+
+smudge$ hg id -i
+cc0999901b41
+smudge$ echo $?
+0
+smudge$ ./dist/build/smudge/smudge --version
+smudge version: 0.4
+build commit: cc0999901b41
+
+
+But, from a non-version-controlled copy of Smudge:
+
+smudge$ hg id -i
+abort: there is no Mercurial repository here (.hg not found)
+smudge$ echo $?
+255
+smudge$ ./dist/build/smudge/smudge --version
+smudge version: 0.4
+build commit: UNKNOWN

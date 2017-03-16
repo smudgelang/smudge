@@ -6,3 +6,7 @@ dist/build/autogen/PackageInfo.hs:6:131: Warning:
     In the use of ‘versionTags’
     (imported from Distribution.Version, but defined in Data.Version):
     Deprecated: "See GHC ticket #2496"
+
+This appears to require upgrading cabal, which replaces PackageInfo with
+Paths_<pkgname>, where this is fixed.  See:
+https://www.haskell.org/cabal/users-guide/developing-packages.html#accessing-data-files-from-package-code

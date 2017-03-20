@@ -5,9 +5,7 @@ turnstyle
     locked (@lockedEnter)
     [
         coin -(@flashLEDs, coinInspector.validate)-> waiting-to-unlock,
-        person -(@soundAlarm)-,
-        tilt -(@soundAlarm)-,
-        _ -(@soundError)-
+        person -(@soundAlarm)-
     ] (@lockedExit),
 
     waiting-to-unlock
@@ -20,12 +18,12 @@ turnstyle
     unlocked (@unlockedEnter)
     [
         person -(@soundOkay)-> locked,
-        tilt -(@soundAlarm)-> locked
     ],
 
     _
     [
-        tilt -(@soundAlarm)-> locked
+        tilt -(@soundAlarm)-> locked,
+	_ -(@soundError)-
     ]
 }
 

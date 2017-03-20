@@ -25,7 +25,7 @@ examples: build
 	$(MAKE) -C examples all
 
 doc:
-	$(MAKE) -C docs/tutorial all
+	$(MAKE) -C docs/tutorial tutorial.pdf
 	$(MAKE) -C docs/definition all
 
 # Let Cabal handle dependencies.
@@ -49,10 +49,10 @@ release: build doc
 	rm -rf dist/release # Make sure it's a clean new release build.
 	mkdir dist/release
 	cp $(SMUDGE_TARGET) dist/release
-	$(MAKE) -C examples clean
+	$(MAKE) -C docs/tutorial tutorial.pdf
+	$(MAKE) -C docs/tutorial docclean
 	cp -r examples dist/release
-	./clean-tutorial.sh
-	cp -r dist/doc dist/release
+	cp -r docs/tutorial dist/release
 	cp README dist/release
 	./tar-up-release.sh $(SMUDGE_TARGET) $(PLATFORM)
 

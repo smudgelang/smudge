@@ -1,4 +1,4 @@
-turnstyle
+turnstile
 {
    *locked (@lockedEnter) // The * means it's the initial state.
     [

@@ -1,4 +1,4 @@
-turnstyle
+turnstile
 {
    *power-on -(@lightLEDs)-> locked,
 
@@ -26,7 +26,7 @@ coinInspector
    *ready
     [
         validate -(@validateCoin)-,
-        valid -(turnstyle.coin-valid)->ready,
-        invalid -(turnstyle.coin-invalid)->ready
+        valid -(turnstile.coin-valid)->ready,
+        invalid -(turnstile.coin-invalid)->ready
     ]
 }

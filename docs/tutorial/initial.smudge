@@ -1,4 +1,4 @@
-turnstyle
+turnstile
 {
    *locked // The * means it's the initial state.
     [

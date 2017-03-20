@@ -1,4 +1,4 @@
-turnstyle
+turnstile
 {
    *power-on -(@lightLEDs)-> locked,
 

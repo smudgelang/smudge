@@ -1,5 +1,5 @@
 =================
-Turnstyle Example
+Turnstile Example
 =================
 
 .. contents::
@@ -10,10 +10,10 @@ Turnstyle Example
 
          PageBreak oneColumn
    
-Simple Turnstyle
+Simple Turnstile
 ================
 
-In this tutorial, we'll be creating a simple turnstyle program. It
+In this tutorial, we'll be creating a simple turnstile program. It
 will accept coin events, unlock itself, let a person walk through, and
 lock itself. Here's a nice drawing of the basic state machine:
 
@@ -22,13 +22,13 @@ lock itself. Here's a nice drawing of the basic state machine:
 
 The source for this state machine, reproduced below, is available in
 **initial.smudge**. You can see the essential elements of a smudge state
-machine. The word ``turnstyle`` is the name of the state machine. The
+machine. The word ``turnstile`` is the name of the state machine. The
 part inside the curly braces after the state machine's name is its
 definition.
 
 ::
 
-    turnstyle
+    turnstile
     {
        *locked // The * means it's the initial state.
         [
@@ -42,7 +42,7 @@ definition.
     }
 
 Inside the state machine's definition, there are one or more states
-separated by commas. The turnstyle example has 2 states called
+separated by commas. The turnstile example has 2 states called
 *locked* and *unlocked*. The initial state will be *locked* for this
 state machine.
 
@@ -108,12 +108,12 @@ Most of the stubs aren't strictly necessary for Smudge to function. If
 you don't want anything to happen when an unhandled event comes in,
 you can leave ``SMUDGE_panic`` and ``SMUDGE_panic_print`` empty and
 Smudge will still basically work. However, the
-``turnstyle_Send_Message`` function is required. Every state machine
+``turnstile_Send_Message`` function is required. Every state machine
 has a ``_Send_Message`` function that accepts a struct by value. That
 struct needs to be sent back to the state machine through the
 corresponding ``_Handle_Message`` function. The simple implementation
-(used in **fixed.c**) is to just call ``turnstyle_Handle_Message``
-from ``turnstyle_Send_Message``. That approach has problems, but it
+(used in **fixed.c**) is to just call ``turnstile_Handle_Message``
+from ``turnstile_Send_Message``. That approach has problems, but it
 will work for now.
 
 Use it
@@ -126,7 +126,7 @@ this.
 
 .. sidebar:: Debugging Functions
 
-    The **events.c** example uses ``turnstyle_Current_state_name`` to
+    The **events.c** example uses ``turnstile_Current_state_name`` to
     demonstrate that the state machine is transitioning states. The
     ``_Current_state_name`` function is generated for every state
     machine, and will return a string with the name of the appropriate
@@ -164,14 +164,14 @@ types of side effects in Smudge: C functions that are called directly
 of an @function can be any valid C identifier for reasons that will
 become apparent soon.
 
-When a person walks through an unlocked turnstyle, we'd like it to
+When a person walks through an unlocked turnstile, we'd like it to
 play a sound. When a coin is inserted, it should flash some LEDs. To
-add these features to our turnstyle state machine, see
+add these features to our turnstile state machine, see
 **side_effects.smudge**.
 
 ::
 
-    turnstyle
+    turnstile
     {
        *locked // The * means it's the initial state.
         [
@@ -210,7 +210,7 @@ You may have noticed that these side effect functions take pointers to
 arguments whose types are left incomplete in
 **side_effects.h**. Smudge won't ever put anything in these payloads,
 but you can. Let's say that you want to pay attention to who's going
-through your turnstyle and play a nice customized greeting for them
+through your turnstile and play a nice customized greeting for them
 when they pass. **payloads.c** uses the same **side_effects.smudge**
 file, but adds some code to do just that.
 
@@ -224,11 +224,11 @@ Dynamic Allocation
 
 The next file, **dynamic_payloads.c**, shows how Smudge handles
 dynamic memory allocation for these payloads. After the event wrapper
-is passed to ``turnstyle_Handle_Message``, it should be given to
-``turnstyle_Free_Message``. That function will, in turn, call
+is passed to ``turnstile_Handle_Message``, it should be given to
+``turnstile_Free_Message``. That function will, in turn, call
 ``SMUDGE_free``. As you can see if you run **dynamic_payloads**, the
 pointers passed to ``SMUDGE_free`` are the same as those passed to
-*turnstyle_coin* and *turnstyle_person*.
+*turnstile_coin* and *turnstile_person*.
 
 ::
 
@@ -246,7 +246,7 @@ pointers passed to ``SMUDGE_free`` are the same as those passed to
    Allocated memory for event at 0x7fb211c02730.
    Blinky blinky
    Freeing memory for event at 0x0
-   Welcome to the other side of the turnstyle, Nikola.
+   Welcome to the other side of the turnstile, Nikola.
    Freeing memory for event at 0x7fb211c02730
 
 Note that all events are passed to the same ``SMUDGE_free``
@@ -262,7 +262,7 @@ to be handled properly.
 Enter/Exit Functions
 ====================
 
-Now our turnstyle can accept a coin and allow a person through. It
+Now our turnstile can accept a coin and allow a person through. It
 doesn't actually lock or unlock though. To do that, we need to call
 side effect functions when we enter the locked and unlocked
 states. Between the name of a state machine and the [, there is an
@@ -299,13 +299,13 @@ passed to the side effect function.
 
 The files **enter_exit.smudge** and **use_enter_exit.c** add
 lockedEnter and lockedExit as well as unlockedEnter to the state
-machine. Now the turnstyle can actually lock and unlock itself instead
+machine. Now the turnstile can actually lock and unlock itself instead
 of just waving as people go through.
 
 Transitionless Events
 =====================
 
-Our turnstyle is starting to look pretty nice, but what if a person
+Our turnstile is starting to look pretty nice, but what if a person
 tries to go through it without paying? It would be good to have an
 event that's handled by a state, but that doesn't cause a state
 transition. We could put ``person --> locked`` in the locked state,
@@ -329,7 +329,7 @@ to the locked state and a new @function called ``soundAlarm``.
 Transient States
 ================
 
-Great, now our turnstyle shames people who try to get through without
+Great, now our turnstile shames people who try to get through without
 paying. Let's add a little state to power it up. Instead of starting
 in locked, it should light up all its LEDs in a test pattern then go
 straight to locked. This new state is called a transient state because
@@ -339,7 +339,7 @@ it doesn't stay around long enough to ever get any events.
    :width: 700
 
 The **transient.smudge** and **use_transient.c** example files add
-this little state and a message to indicate that the turnstyle is
+this little state and a message to indicate that the turnstile is
 powering up.
 
 Message Passing
@@ -361,9 +361,9 @@ send events.
 
 The example code in **message_passing.c** uses a simple queue as a
 proxy for the system's message queue. It implements a slightly more
-realistic turnstyle_Send_Message, and another loop that runs through
-the queue and calls *turnstyle_Handle_Message* and
-*turnstyle_Free_Message.*
+realistic turnstile_Send_Message, and another loop that runs through
+the queue and calls *turnstile_Handle_Message* and
+*turnstile_Free_Message.*
 
 Note that memory management is tricky in C. If your program allocates
 memory for a message wrapper, it has to free it after calling the
@@ -379,7 +379,7 @@ it.
 Multiple State Machines
 =======================
 
-The turnstyle has been running nicely for a few days now, and the
+The turnstile has been running nicely for a few days now, and the
 customer (a subway system) is very happy. Wait a second, they say
 they've been getting less money than expected and metal slugs are
 piling up in the coin bin! That's no good, we need to validate those
@@ -414,7 +414,7 @@ Default States
 --------------
 
 What if we want to handle a particular event the same regardless of
-the current state? If someone shakes the turnstyle, it should give off
+the current state? If someone shakes the turnstile, it should give off
 a warning regardless of the current state of the machine. We could put
 ``tilt -(@soundAlarm)-`` in every state, but that's error prone and
 nightmarish to maintain. Instead, there's a special state called the

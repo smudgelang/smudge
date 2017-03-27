@@ -48,7 +48,7 @@ Executable smudge
   Main-is:           Main.hs
   
   -- Packages needed in order to build this package.
-  Build-depends:     base <= 4.8.2.0, Cabal, containers, directory, filepath, fgl, parsec, pretty, text, graphviz, mtl, semigroups
+  Build-depends:     base <= 4.9.1.0, Cabal, containers, directory, filepath, fgl, parsec, pretty, text, graphviz, mtl, semigroups
 
   -- Modules not exported by this package.
   Other-modules:     Backends.Backend Backends.CStatic Backends.GraphViz Backends.SmudgeIR

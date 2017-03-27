@@ -218,46 +218,139 @@ file, but adds some code to do just that.
 .. raw:: pdf
 
          PageBreak oneColumn
-   
-Dynamic Allocation
-==================
 
-The next file, **dynamic_payloads.c**, shows how Smudge handles
-dynamic memory allocation for these payloads. After the event wrapper
-is passed to ``turnstile_Handle_Message``, it should be given to
+Message Passing
+===============
+
+Before we go any further, it's time to talk about Smudge's message
+passing mechanism. Smudge expects events it passes to the user through
+``_Send_Message`` to be passed back to it through the corresponding
+``_Handle_Message``. It expects order to be maintained, but they don't
+have to be passed right back immediately. In fact, for nontrivial
+state machines, it's bad to call ``_Handle_Message`` from within
+``_Send_Message``.
+
+The intent of these functions is for the system to queue up the
+messages then hand them back when it's convenient. This lets the state
+machine accept events from multiple threads, reduces the maximum stack
+depth, and lets events be handled sanely even if their event handlers
+send events.
+
+The example code in **message_passing.c** uses a simple queue as a
+proxy for the system's message queue. It implements a slightly more
+realistic turnstile_Send_Message, and another loop that runs through
+the queue and calls ``turnstile_Handle_Message`` and
+``turnstile_Free_Message``.
+
+Dynamic Allocation
+------------------
+
+You can compile **message_passing**, and depending on your system you
+may even be able to run it. However, it has a fatal flaw:
+
+::
+
+   $ ./message_passing 
+   turnstile[locked]: Unhandled event "person"
+   Blinky blinky
+   Segmentation fault: 11
+
+Smudge passes an event wrapper in to ``turnstile_Send_Message`` by
+value, but the ``turnstile_person`` function takes a pointer to an
+event. In **message_passing.c**, that pointer was to values that lived
+on the stack. Once that stack frame was gone, accessing those pointers
+resulted in undefined behavior. Usually, though, it'll cause a
+segfault.
+
+The way around this, clearly, is to allocate those events on the heap
+instead of using the stack. The next file, **dynamic_payloads.c**,
+shows how Smudge handles dynamic memory allocation for event
+payloads. After the event wrapper is passed to
+``turnstile_Handle_Message``, it should be given to
 ``turnstile_Free_Message``. That function will, in turn, call
 ``SMUDGE_free``. As you can see if you run **dynamic_payloads**, the
 pointers passed to ``SMUDGE_free`` are the same as those passed to
-*turnstile_coin* and *turnstile_person*.
+``turnstile_coin`` and ``turnstile_person``.
 
 ::
 
    $ make dynamic_payloads
-   ../../../dist/build/smudge/smudge --dot-fmt=Svg side_effects.smudge
+   ../../dist/build/smudge/smudge --dot-fmt=Svg side_effects.smudge
    Wrote file "side_effects.svg"
    Wrote file "side_effects.h"
    Wrote file "side_effects.c"
    Wrote file "side_effects_ext.h"
    gcc -c -o side_effects.o -Wall -Wextra -Wno-unused-parameter side_effects.c
-   gcc -c -o dynamic_payloads.o -Wall -Wextra -Wno-unused-parameter dynamic_payloads.c
-   gcc -o dynamic_payloads -Wall -Wextra -Wno-unused-parameter side_effects.o dynamic_payloads.o
+   gcc -c -o dynamic_payloads.o -Wall -Wextra -Wno-unused-parameter
+   dynamic_payloads.c
+   gcc -c -o queue.o -Wall -Wextra -Wno-unused-parameter queue.c
+   gcc -o dynamic_payloads -Wall -Wextra -Wno-unused-parameter side_effects.o
+   dynamic_payloads.o queue.o
    rm side_effects.c
+
    $ ./dynamic_payloads 
-   Allocated memory for event at 0x7fb211c02730.
+   Sending person event Thomas at 0x7f8b86c02760.
+   Sending person event Nikola at 0x7f8b86c02750.
+   turnstile[locked]: Unhandled event "person"
+   Freeing Thomas at 0x7f8b86c02760
    Blinky blinky
-   Freeing memory for event at 0x0
    Welcome to the other side of the turnstile, Nikola.
-   Freeing memory for event at 0x7fb211c02730
+   Freeing Nikola at 0x7f8b86c02750
 
 Note that all events are passed to the same ``SMUDGE_free``
 function. It should be able to handle any event sent to any state
 machine. That almost certainly means ``NULL`` pointers, and if events
-are ever allocated through methods other than ``malloc`` it will have
+are ever allocated through methods other than ``malloc`` they will have
 to be handled properly.
 
 .. raw:: pdf
 
          PageBreak oneColumn
+
+Wrapping Up
+-----------
+
+Memory management is tricky in C. If your program allocates memory for
+a message wrapper, it has to free it after calling the appropriate
+state machine's ``_Free_Message`` function to free the event
+itself. If this seems confusing, you might want to spend some time
+with the example (including the generated C code) until you understand
+it.
+
+The message passing scheme is one of the more complicated concepts to
+understand in Smudge. Events get sent by user code with calls like
+``turnstile_person(e)``. Then Smudge packages them up and hands them
+right back to the user code in the form of a
+``turnstile_Event_Wrapper_t`` passed to
+``turnstile_Send_Message``. The events are sent as pointers, but the
+wrappers come in by value. What the user code does next affects
+Smudge's semantics.
+
+If the user code behaves like the example in **dynamic_payloads.c**,
+Smudge will have the semantics we use in this document. Events are
+handled in order but not immediately. If an event is sent as a side
+effect of another event, it will be handled after any state transition
+caused by the original event.
+
+If, instead, the ``turnstile_Send_Message`` function just calls
+``turnstile_Handle_Message`` directly, like in **use_side_effects.c**,
+that behavior changes. For simple state machines like
+**side_effects.smudge**, this distinction probably doesn't
+matter. However, for complex state machines you might use in
+production code, this can cause some very weird bugs. It also tends to
+increase your maximum stack depth, which can become a problem on
+embedded systems.
+
+Nonetheless, you define this aspect of Smudge's semantics. If you want
+to make up a new data structure where the order of elements being
+removed from it is not deterministic, then your events won't be
+handled in a deterministic order.
+
+Smudge does guarantee that @functions will always be handled right
+away in the order in which they're called. That means that ``event
+-(@a, otherEvent, @b)-> STATE`` will, with the behavior we're using in
+dynamic_payloads.c, call ``a`` then ``b``, then handle *otherEvent*
+from with in the state *STATE*.
 
 Enter/Exit Functions
 ====================
@@ -265,10 +358,10 @@ Enter/Exit Functions
 Now our turnstile can accept a coin and allow a person through. It
 doesn't actually lock or unlock though. To do that, we need to call
 side effect functions when we enter the locked and unlocked
-states. Between the name of a state machine and the [, there is an
+states. Between the name of a state machine and the ``[``, there is an
 optional list of side effects surrounded by parentheses. These can be
 @functions or events just like in arrows. Likewise, there's an
-optional parenthesized list of @functions after the ]. The first list
+optional parenthesized list of @functions after the ``]``. The first list
 is called immediately when the state is entered. The second list is
 called after the state exits but before any other state is entered.
 
@@ -279,8 +372,8 @@ Like with other lists of side effects, these functions are always
 called in the order in which they're listed.
 
 Unlike event side effects, @functions used on state enter and exit
-don't accept any arguments. If you use the same function name as an
-enter/exit function as an event side effect, the generated prototype
+don't accept any arguments. If you use the same function as an
+enter/exit function and an event side effect, the generated prototype
 for the function will accept no arguments and the event won't be
 passed to the side effect function.
 
@@ -300,7 +393,10 @@ passed to the side effect function.
 The files **enter_exit.smudge** and **use_enter_exit.c** add
 lockedEnter and lockedExit as well as unlockedEnter to the state
 machine. Now the turnstile can actually lock and unlock itself instead
-of just waving as people go through.
+of just waving as people go through. In the interest of simplicity,
+we're going to put all that message passing stuff from the previous
+chapter on the shelf. It will show up again later, but for now it's
+mostly clutter.
 
 Transitionless Events
 =====================
@@ -342,40 +438,6 @@ The **transient.smudge** and **use_transient.c** example files add
 this little state and a message to indicate that the turnstile is
 powering up.
 
-Message Passing
-===============
-
-Before we go any further, it's time to talk about Smudge's message
-passing mechanism. Smudge expects events it passes to the user through
-*_Send_Message* to be passed back to it through the corresponding
-*_Handle_Message*. It expects order to be maintained, but they don't
-have to be passed right back immediately. In fact, for nontrivial
-state machines, it's bad to call *_Handle_Message* from within
-*_Send_Message*.
-
-The intent of these functions is for the system to queue up the
-messages then hand them back when it's convenient. This lets the state
-machine accept events from multiple threads, reduces the maximum stack
-depth, and lets events be handled sanely even if their event handlers
-send events.
-
-The example code in **message_passing.c** uses a simple queue as a
-proxy for the system's message queue. It implements a slightly more
-realistic turnstile_Send_Message, and another loop that runs through
-the queue and calls *turnstile_Handle_Message* and
-*turnstile_Free_Message.*
-
-Note that memory management is tricky in C. If your program allocates
-memory for a message wrapper, it has to free it after calling the
-appropriate state machine's *_Free_Message* function to free the event
-itself. If this seems confusing, you might want to spend some time
-with the example (including the generated C code) until you understand
-it.
-
-.. raw:: pdf
-
-         PageBreak oneColumn
-   
 Multiple State Machines
 =======================
 

@@ -3,14 +3,14 @@
 #include "transient.h"
 #include "transient_ext.h"
 
-struct turnstyle_person_t
+struct turnstile_person_t
 {
     char *name;
 };
 
-extern void turnstyle_Send_Message(turnstyle_Event_Wrapper e)
+extern void turnstile_Send_Message(turnstile_Event_Wrapper e)
 {
-    turnstyle_Handle_Message(e);
+    turnstile_Handle_Message(e);
 }
 
 void SMUDGE_free(const void *a1)
@@ -32,24 +32,24 @@ void lightLEDs(void)
     printf("-------Powering Up-------\n");
 }
 
-void flashLEDs(const turnstyle_coin_t *coin)
+void flashLEDs(const turnstile_coin_t *coin)
 {
     printf("Blinky blinky\n");
 }
 
-void soundOkay(const turnstyle_person_t *person)
+void soundOkay(const turnstile_person_t *person)
 {
-    printf("Welcome to the other side of the turnstyle, %s.\n", person->name);
+    printf("Welcome to the other side of the turnstile, %s.\n", person->name);
 }
 
-void soundAlarm(const turnstyle_person_t *person)
+void soundAlarm(const turnstile_person_t *person)
 {
     printf("BEEP BEEP! %s TRIED TO GET THROUGH WITHOUT PAYING!\n", person->name);
 }
 
 void lockedEnter(void)
 {
-    printf("Locking the turnstyle.\n");
+    printf("Locking the turnstile.\n");
 }
 
 void lockedExit(void)
@@ -59,16 +59,16 @@ void lockedExit(void)
 
 void unlockedEnter(void)
 {
-    printf("Unlocking the turnstyle.\n");
+    printf("Unlocking the turnstile.\n");
 }
 
 int main(void)
 {
-    turnstyle_person_t nikky;
+    turnstile_person_t nikky;
 
     nikky.name = "Nikola";
-    turnstyle_person(&nikky);
-    turnstyle_coin(NULL);
-    turnstyle_person(&nikky);
+    turnstile_person(&nikky);
+    turnstile_coin(NULL);
+    turnstile_person(&nikky);
     return 0;
 }

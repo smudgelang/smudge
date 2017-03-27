@@ -52,7 +52,7 @@ use_side_effects: side_effects.o use_side_effects.o
 payloads: side_effects.o payloads.o
 	$(CC) -o $@ $(CFLAGS) $^
 
-dynamic_payloads: side_effects.o dynamic_payloads.o
+dynamic_payloads: side_effects.o dynamic_payloads.o queue.o
 	$(CC) -o $@ $(CFLAGS) $^
 
 use_enter_exit: enter_exit.o use_enter_exit.o
@@ -64,7 +64,7 @@ use_transitionless: transitionless.o use_transitionless.o
 use_transient: transient.o use_transient.o
 	$(CC) -o $@ $(CFLAGS) $^
 
-message_passing: messages.o message_passing.o queue.o
+message_passing: side_effects.o message_passing.o queue.o
 	$(CC) -o $@ $(CFLAGS) $^
 
 multism: msm.o multism.o queue.o

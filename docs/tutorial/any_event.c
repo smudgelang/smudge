@@ -12,12 +12,12 @@ typedef enum
     COIN_INSPECTOR
 } sm_id_t;
 
-struct turnstyle_person_t
+struct turnstile_person_t
 {
     const char *name;
 };
 
-struct turnstyle_coin_t
+struct turnstile_coin_t
 {
     int diameter;
     bool ridges;
@@ -29,7 +29,7 @@ typedef struct
     sm_id_t sm;
     union
     {
-        turnstyle_Event_Wrapper turnstyle;
+        turnstile_Event_Wrapper turnstile;
         coinInspector_Event_Wrapper coinInspector;
     } wrapper;
 } system_message_t;
@@ -41,7 +41,7 @@ static void flushEventQueue(void)
     // This function could be running in a parallel thread
     // concurrently with the rest of the system. The important thing
     // is that it pops messages off the queue and sends them to
-    // turnstyle_Handle_Message.
+    // turnstile_Handle_Message.
     bool success;
     system_message_t *msg;
 
@@ -57,11 +57,11 @@ static void flushEventQueue(void)
         {
         case TURNSTYLE:
             // This actually sends the event into the state machine.
-            turnstyle_Handle_Message(msg->wrapper.turnstyle);
+            turnstile_Handle_Message(msg->wrapper.turnstile);
 
             // This frees the event payload that's within the wrapper by
             // calling SMUDGE_free on it.
-            turnstyle_Free_Message(msg->wrapper.turnstyle);
+            turnstile_Free_Message(msg->wrapper.turnstile);
             break;
         case COIN_INSPECTOR:
             // This could just as easily have been implemented as a
@@ -71,16 +71,16 @@ static void flushEventQueue(void)
             break;
         }
         // We still need to free the copy of the wrapper itself, since
-        // it was malloc'd in turnstyle_Send_Message.
+        // it was malloc'd in turnstile_Send_Message.
         free(msg);
     }
 }
 
-static turnstyle_person_t *newPerson(const char *name)
+static turnstile_person_t *newPerson(const char *name)
 {
-    turnstyle_person_t *person;
+    turnstile_person_t *person;
 
-    person = malloc(sizeof(turnstyle_person_t));
+    person = malloc(sizeof(turnstile_person_t));
     if (person == NULL)
     {
         fprintf(stderr, "Failed to allocate space for %s.\n", name);
@@ -90,11 +90,11 @@ static turnstyle_person_t *newPerson(const char *name)
     return person;
 }
 
-void turnstyle_Send_Message(turnstyle_Event_Wrapper e)
+void turnstile_Send_Message(turnstile_Event_Wrapper e)
 {
     bool success;
     system_message_t *msg;
-    turnstyle_Event_Wrapper *wrapper;
+    turnstile_Event_Wrapper *wrapper;
 
     // The event wrapper is passed in on the stack, so we have to
     // allocate some memory that we can put in the message queue.
@@ -105,7 +105,7 @@ void turnstyle_Send_Message(turnstyle_Event_Wrapper e)
         exit(-1);
     }
     msg->sm = TURNSTYLE;
-    wrapper = &msg->wrapper.turnstyle;
+    wrapper = &msg->wrapper.turnstile;
     memcpy(wrapper, &e, sizeof(e));
 
     // Put the event on the queue, to be popped off later and handled
@@ -166,14 +166,14 @@ void lightLEDs(void)
     printf("-------Powering Up-------\n");
 }
 
-void flashLEDs(const turnstyle_coin_t *coin)
+void flashLEDs(const turnstile_coin_t *coin)
 {
     printf("Blinky blinky\n");
 }
 
-void soundOkay(const turnstyle_person_t *person)
+void soundOkay(const turnstile_person_t *person)
 {
-    printf("Welcome to the other side of the turnstyle, %s.\n", person->name);
+    printf("Welcome to the other side of the turnstile, %s.\n", person->name);
 }
 
 void soundAlarm(void)
@@ -183,7 +183,7 @@ void soundAlarm(void)
 
 void lockedEnter(void)
 {
-    printf("Locking the turnstyle.\n");
+    printf("Locking the turnstile.\n");
 }
 
 void lockedExit(void)
@@ -193,7 +193,7 @@ void lockedExit(void)
 
 void unlockedEnter(void)
 {
-    printf("Unlocking the turnstyle.\n");
+    printf("Unlocking the turnstile.\n");
 }
 
 void soundError(void)
@@ -221,7 +221,7 @@ void validateCoin(const coinInspector_validate_t *coin)
 
 int main(void)
 {
-    turnstyle_person_t *nikky;
+    turnstile_person_t *nikky;
 
     q = newq();
     if (q == NULL)
@@ -231,13 +231,13 @@ int main(void)
     }
 
     nikky = newPerson("Nikola");
-    turnstyle_person(nikky);
-    turnstyle_coin(NULL); // Good
+    turnstile_person(nikky);
+    turnstile_coin(NULL); // Good
     flushEventQueue();
     nikky = newPerson("Nikola");
-    turnstyle_person(nikky);
-    turnstyle_coin(NULL); // No good
-    turnstyle_tilt(NULL);
+    turnstile_person(nikky);
+    turnstile_coin(NULL); // No good
+    turnstile_tilt(NULL);
     flushEventQueue();
     return 0;
 }

@@ -4,12 +4,12 @@
 
 int main(void)
 {
-    printf("Current state: %s\n", turnstyle_Current_state_name());
+    printf("Current state: %s\n", turnstile_Current_state_name());
     printf("Sending coin event.\n");
-    turnstyle_coin(NULL);
-    printf("Current state: %s\n", turnstyle_Current_state_name());
+    turnstile_coin(NULL);
+    printf("Current state: %s\n", turnstile_Current_state_name());
     printf("Sending person event.\n");
-    turnstyle_person(NULL);
-    printf("Current state: %s\n", turnstyle_Current_state_name());
+    turnstile_person(NULL);
+    printf("Current state: %s\n", turnstile_Current_state_name());
     return 0;
 }

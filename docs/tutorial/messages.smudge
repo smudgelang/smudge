@@ -1,14 +1,11 @@
 turnstile
 {
-   *power-on -(@lightLEDs)-> locked,
-
-    locked (@lockedEnter)
+   *locked // The * means it's the initial state.
     [
-        coin -(@flashLEDs)-> unlocked,
-        person -(@soundAlarm)-
-    ] (@lockedExit),
+        coin -(@flashLEDs)-> unlocked
+    ],
 
-    unlocked (@unlockedEnter)
+    unlocked
     [
         person -(@soundOkay)-> locked
     ]

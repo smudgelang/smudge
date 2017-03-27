@@ -3,14 +3,14 @@
 #include "enter_exit.h"
 #include "enter_exit_ext.h"
 
-struct turnstyle_person_t
+struct turnstile_person_t
 {
     char *name;
 };
 
-void turnstyle_Send_Message(turnstyle_Event_Wrapper a1)
+void turnstile_Send_Message(turnstile_Event_Wrapper a1)
 {
-    turnstyle_Handle_Message(a1);
+    turnstile_Handle_Message(a1);
 }
 
 void SMUDGE_free(const void *a1)
@@ -27,19 +27,19 @@ void SMUDGE_panic_print(const char *a1, const char *a2, const char *a3)
     fprintf(stderr, a1, a2, a3);
 }
 
-void flashLEDs(const turnstyle_coin_t *coin)
+void flashLEDs(const turnstile_coin_t *coin)
 {
     printf("Blinky blinky\n");
 }
 
-void soundOkay(const turnstyle_person_t *person)
+void soundOkay(const turnstile_person_t *person)
 {
-    printf("Welcome to the other side of the turnstyle, %s.\n", person->name);
+    printf("Welcome to the other side of the turnstile, %s.\n", person->name);
 }
 
 void lockedEnter(void)
 {
-    printf("Locking the turnstyle.\n");
+    printf("Locking the turnstile.\n");
 }
 
 void lockedExit(void)
@@ -49,15 +49,15 @@ void lockedExit(void)
 
 void unlockedEnter(void)
 {
-    printf("Unlocking the turnstyle.\n");
+    printf("Unlocking the turnstile.\n");
 }
 
 int main(void)
 {
-    turnstyle_person_t nikky;
+    turnstile_person_t nikky;
 
     nikky.name = "Nikola";
-    turnstyle_coin(NULL);
-    turnstyle_person(&nikky);
+    turnstile_coin(NULL);
+    turnstile_person(&nikky);
     return 0;
 }

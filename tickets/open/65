@@ -66,3 +66,12 @@ and mangle_unqual.  There are a few ways to prove these injectivities, e.g.:
 
 There may be others depending on the exact manifestation of the mappings, but
 these are likely the simplest.
+
+Ultimately, the mangling scheme we settled on is as follows:
+
+    1) ^[a-zA-Z][a-zA-Z0-9]*$
+        The mapping is identity
+    2) ^[a-zA-Z0-9](_?[a-zA-Z0-9]+)*$
+        The mapping is identity wrapped in leading and trailing underscores.
+    3) ^.*$
+        The mapping is as before, but prepended with the length, i.e., "__len_"

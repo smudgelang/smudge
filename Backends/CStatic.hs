@@ -47,7 +47,6 @@ import Unparsers.C89 (renderPretty)
 import Control.Arrow (first, second, (***), (&&&))
 import Control.Monad (liftM)
 import Control.Monad.State (StateT, evalState, state)
-import Data.List (dropWhileEnd)
 import Data.Maybe (catMaybes, isNothing)
 import System.Console.GetOpt
 import System.FilePath (
@@ -71,7 +70,8 @@ data CStaticOption = TargetPath FileType FileCategory FilePath
     deriving (Show, Eq)
 
 (+-+) :: Identifier -> Identifier -> Identifier
-a +-+ b = dropWhileEnd (== '_') a ++ "_" ++ dropWhile (== '_') b
+a +-+ b = a ++ "_" ++ b
+infixr 5 +-+
 
 makeSwitch :: Expression -> [(ConstantExpression, [Statement])] -> [Statement] -> Statement
 makeSwitch var cs ds =

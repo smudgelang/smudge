@@ -169,6 +169,15 @@ isAsciiAlpha c = isAsciiLower c || isAsciiUpper c
 isAsciiAlphaNum :: Char -> Bool
 isAsciiAlphaNum c = isDigit c || isAsciiAlpha c
 
+isAsciiAlnumUnder :: Char -> Bool
+isAsciiAlnumUnder c = c == '_' || isAsciiAlphaNum c
+
+isSimpleUnderscore :: String -> Bool
+isSimpleUnderscore [] = True
+isSimpleUnderscore ('_':[]) = False
+isSimpleUnderscore ('_':'_':_) = False
+isSimpleUnderscore (c:cs) = isAsciiAlnumUnder c && isSimpleUnderscore cs
+
 toAsciiCode :: Char -> String
 toAsciiCode = show . ord
 
@@ -176,11 +185,13 @@ mangleChar :: Char -> String
 mangleChar c | isAsciiAlphaNum c = [c]
 mangleChar c                     = '_' : (toAsciiCode c) ++ "_"
 
+mangleLength :: Int -> String
+mangleLength = show
+
 mangleIdentifier :: String -> Identifier
-mangleIdentifier [] = "__"
-mangleIdentifier cs = prefix ++ concatMap mangleChar cs
-    where valid c = c == '_' || isAsciiAlpha c
-          prefix = if valid $ head cs then "" else "_"
+mangleIdentifier x@(c:cs) | isAsciiAlpha c    && all isAsciiAlphaNum cs = x               -- [a-zA-Z][a-zA-Z0-9]*
+mangleIdentifier x@(c:cs) | isAsciiAlphaNum c && isSimpleUnderscore cs  = "_" ++ x ++ "_" -- [a-zA-Z0-9](_?[a-zA-Z0-9]+)*
+mangleIdentifier x = "__" ++ mangleLength (length x) ++ "_" ++ concatMap mangleChar x     -- .*
 
 -- A.1.1.4 Constants
 

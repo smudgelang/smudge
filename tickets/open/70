@@ -1,0 +1,15 @@
+Title: Unicode names generate non-compliant strings.
+
+smudge --c-stubs - <<<'"Ψζξ" { *"Ψζξ" ["Ψζξ" --]}'
+
+Such a state machine generates strings, e.g.:
+
+    const char *event_name = "\936\950\958";
+
+This is not C89 compliant (because unicode), but nonsense even in C99.
+
+The correct output in C99 for such a case would be:
+
+    const char *event_name = "\u03a8\u03b6\u03be";
+
+For C89, we punt, and leave the user to deal with it.

@@ -109,6 +109,7 @@ import Trashcan.These (These(..))
 
 import Data.Char (isDigit, isAsciiLower, isAsciiUpper, ord)
 import Data.Semigroup (Semigroup(..))
+import Numeric (showHex)
 
 -------------------
 -- Helpful Class --
@@ -179,7 +180,7 @@ isSimpleUnderscore ('_':'_':_) = False
 isSimpleUnderscore (c:cs) = isAsciiAlnumUnder c && isSimpleUnderscore cs
 
 toAsciiCode :: Char -> String
-toAsciiCode = show . ord
+toAsciiCode = flip showHex "" . ord
 
 mangleChar :: Char -> String
 mangleChar c | isAsciiAlphaNum c = [c]

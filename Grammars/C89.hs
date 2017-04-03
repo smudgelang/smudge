@@ -183,6 +183,7 @@ toAsciiCode = show . ord
 
 mangleChar :: Char -> String
 mangleChar c | isAsciiAlphaNum c = [c]
+mangleChar '_'                   = "__"
 mangleChar c                     = '_' : (toAsciiCode c) ++ "_"
 
 mangleLength :: Int -> String

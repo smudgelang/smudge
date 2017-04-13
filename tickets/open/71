@@ -1,0 +1,5 @@
+Title: Choose backends on command line.
+
+We should have options for the Smudge command line to enable or
+disable backends at will.
+

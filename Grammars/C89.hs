@@ -193,7 +193,7 @@ mangleLength = show
 mangleIdentifier :: String -> Identifier
 mangleIdentifier x@(c:cs) | isAsciiAlpha c    && all isAsciiAlphaNum cs = x               -- [a-zA-Z][a-zA-Z0-9]*
 mangleIdentifier x@(c:cs) | isAsciiAlphaNum c && isSimpleUnderscore cs  = "_" ++ x ++ "_" -- [a-zA-Z0-9]+(_[a-zA-Z0-9]+)*
-mangleIdentifier x = "__" ++ mangleLength (length x) ++ "_" ++ concatMap mangleChar x     -- .*
+mangleIdentifier x = concatMap mangleChar x ++ "_" ++ mangleLength (length x) ++ "__"     -- .*
 
 -- A.1.1.4 Constants
 

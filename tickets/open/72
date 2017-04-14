@@ -1,0 +1,7 @@
+Title: C Identifiers can't begin with numbers or underscores
+
+In both cases Smudge should detect that it will emit such an identifier in the
+backend, and either emit a warning, or fail with an error.
+
+There should be an escape valve flag that lets the user prefix ALL names (it
+must be all, for injectivity reasons) with the SMUDGE namespace.

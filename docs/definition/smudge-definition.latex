@@ -303,8 +303,8 @@ are handled as three different cases:
     \item \verb|[a-zA-Z0-9]+(_[a-zA-Z0-9]+)*| \\
         The mapping is identity wrapped in leading and trailing underscores.
     \item \verb|.*| \\
-        The mapping is to prepend two underscores, the decimal length, and an
-        underscore, i.e., \verb|__len_|, and mangle each character as follows:
+        The mapping is to append an underscore, the decimal length, and two
+        underscores, i.e., \verb|_len__|, and mangle each character as follows:
         \begin{enumerate}
             \item \verb|[a-zA-Z0-9]| \\
                 The mapping is identity.
@@ -316,13 +316,18 @@ are handled as three different cases:
         \end{enumerate}
 \end{enumerate}
 
+Note that this mapping can produce output with leading underscores and decimal
+digits; the former is undefined behavior in C, while the latter is not in the
+language of C identifiers.  Both of these concerns are handled elsewhere, and
+no further consideration is given to them below.
+
 Qualified identifiers are mangled by mangling unqualified identifiers, and then
 joining them by concatenation with an underscore.
 
 In order to prove the injectivity of the overall translation, the unqualified,
 qualified, and single character translations can be separately proven
 injective.  Because the overall translation is a composition of these, if they
-are individually injective, then the composition is injective.  An informal
+are individually injective then the composition is injective.  An informal
 proof follows.
 
 The single character translation uses identity on alphanumeric characters,
@@ -384,17 +389,17 @@ identity and concatenation with a fixed pattern are both injective, and since
 it cannot produce purely alphanumeric output and the alphanumeric case cannot
 produce leading and trailing underscores, these cases are injective with
 respect to each other.  Otherwise (the ``general'' case), the translation is
-two underscores followed by the input length encoded in decimal followed by an
-underscore followed by the concatenation of the single character translation
-applied to the input, presented previously; decimal natural number encoding is
-injective, as is concatenation with the stated fixed underscore pattern, and
+the concatenation of the single character translation applied to the input,
+presented previously, followed by an underscore followed by the input length
+encoded in decimal followed by two underscores; decimal natural number encoding
+is injective, as is concatenation with the stated fixed underscore pattern, and
 because concatenation of the single character translation is injective there
 are no two inputs of the same lengths that produce the same output, and as it
-produces output with two leading underscores, it cannot produce output with a
-leading alphanumeric character or solitary underscore, so overall this
+produces output with two trailing underscores, it cannot produce output with a
+trailing alphanumeric character or solitary underscore, so overall this
 translation is injective with respect to itself as well as the other two cases;
 finally, neither the alphanumeric nor single underscore case can produce two
-leading underscores.  All cases are injective with respect to themselves and
+trailing underscores.  All cases are injective with respect to themselves and
 each other, and so unqualified identifier translation is injective.
 
 The qualified identifier translation, a concatenation of the output of the
@@ -402,51 +407,51 @@ unqualified identifier translation intercalated with underscores, can be proven
 injective by induction on the length of the input.  The single identifier base
 case is presented previously.  A total function with only non-negative-length
 outputs, the empty qualified identifier is thus also injective.  The inductive
-hypothesis is that all inputs $y_k\ldots y_1$ of length $k$ are injective with
-respect to all inputs $x_j\ldots x_1$ of length $j\leq k$.  The proof of the
+hypothesis is that all inputs $y_1\ldots y_k$ of length $k$ are injective with
+respect to all inputs $x_1\ldots x_j$ of length $j\leq k$.  The proof of the
 induction is by contradiction: assume there are two such inputs $x\neq y$ of
 length $j+1$ and $k+1$ respectively s.t.
 \begin{myverbbox}{\vunder}_\end{myverbbox}
 \begin{align*}
-    u(x_{j+1})+\vunder+u(x_j)+\vunder+\ldots+u(x_1)&=    u(y_{k+1})+\vunder+u(y_k)+\vunder+\ldots+u(y_1)\\
-                       u(x_j)+\vunder+\ldots+u(x_1)&\neq                    u(y_k)+\vunder+\ldots+u(y_1)
+    u(x_1)+\ldots+\vunder+u(x_j)+\vunder+u(x_{j+1})&=    u(y_1)+\ldots+\vunder+u(y_k)+\vunder+u(y_{k+1})\\
+    u(x_1)+\ldots+\vunder+u(x_j)                   &\neq u(y_1)+\ldots+\vunder+u(y_k)
 \end{align*}
 where $u()$ denotes unqualified identifier translation, all underscores are
 literals, and plus denotes concatenation.  In order for this to be the case,
-either \mbox{$u(x_j)+\vunder+\ldots+u(x_1)$} or $u(y_k)+\vunder+\ldots+u(y_1)$
-must be a proper suffix of the other\footnote{Again, it doesn't matter which};
-say it is $u(x_j)+\vunder+\ldots+u(x_1)$.  As such, $u(x_{j+1})+\vunder$ is a
-proper prefix of $u(y_{k+1})+\vunder+\ldots+u(y_1)$, which means more simply
-that either $u(x_{j+1})+\vunder$ or $u(y_{k+1})+\vunder$ is a prefix of the
+either \mbox{$u(x_1)+\ldots+\vunder+u(x_j)$} or $u(y_1)+\ldots+\vunder+u(y_k)$
+must be a proper prefix of the other\footnote{Again, it doesn't matter which};
+say it is $u(x_1)+\ldots+\vunder+u(x_j)$.  As such, $\vunder+u(x_{j+1})$ is a
+proper suffix of $u(y_1)+\ldots+\vunder+u(y_{k+1})$, which means more simply
+that either $\vunder+u(x_{j+1})$ or $\vunder+u(y_{k+1})$ is a suffix of the
 other\footnote{Without the intercalated underscore, trivial examples of output
-prefixing can easily be produced; as such, the rest of the proof requires the
+suffixing can easily be produced; as such, the rest of the proof requires the
 intercalated underscore.}.  Consider the cases of the unqualified identifier
 translation: the alphanumeric case, the single underscore case, and the general
-case, each with an underscore appended.  The alphanumeric case output cannot
-have a leading underscore so it cannot be a prefix of the other two cases.  The
-appended underscore prevents its output from being a proper prefix of other
-alphanumeric case outputs, as underscore is not in the output alphabet.  The
-single underscore case starts with exactly one leading underscore so it cannot
-be a prefix of the other two cases.  The appended underscore prevents its
-output from being a proper prefix of other single underscore case outputs,
-which cannot contain a sequence of two underscores.  The general case starts
-with two underscores so it cannot be a prefix of the other two cases.  With
-respect to itself, the appended underscore does not help the general case;
-instead, the length code is used.  The length prefix is injective with respect
-to the length of the input identifier, thus if $u(x_{j+1})+\vunder$ or
-$u(y_{k+1})+\vunder$ prefixes the other, $x_{j+1}$ and $y_{k+1}$ must have the
-same length.  If the translation of a prefix of either input could equal the
+case, each with an underscore prepended.  The alphanumeric case output cannot
+have a trailing underscore so it cannot be a suffix of the other two cases.
+The prepended underscore prevents its output from being a proper suffix of
+other alphanumeric case outputs, as underscore is not in the output alphabet.
+The single underscore case ends with exactly one trailing underscore so it
+cannot be a suffix of the other two cases.  The prepended underscore prevents
+its output from being a proper suffix of other single underscore case outputs,
+which cannot contain a sequence of two underscores.  The general case ends with
+two underscores so it cannot be a suffix of the other two cases.  With
+respect to itself, the prepended underscore does not help the general case;
+instead, the length code is used.  The length suffix is injective with respect
+to the length of the input identifier, thus if $\vunder+u(x_{j+1})$ or
+$\vunder+u(y_{k+1})$ suffixes the other, $x_{j+1}$ and $y_{k+1}$ must have the
+same length.  If the translation of a suffix of either input could equal the
 translation of the entirety of the other, this would be a violation of the
 injectivity already proven in the unqualified case.  Thus neither
-$u(x_{j+1})+\vunder$ nor $u(y_{k+1})+\vunder$ can be a proper prefix of the
-other, so they must be equal.  As as $u(x_{j+1})+\vunder=u(y_{k+1})+\vunder$,
+$\vunder+u(x_{j+1})$ nor $\vunder+u(y_{k+1})$ can be a proper suffix of the
+other, so they must be equal.  As as $\vunder+u(x_{j+1})=\vunder+u(y_{k+1})$,
 trimming them off of their respective outputs gives
-\[u(x_j)+\vunder+\ldots+u(x_1)=u(y_k)+\vunder+\ldots+u(y_1)\]
+\[u(x_1)+\ldots+\vunder+u(x_j)=u(y_1)+\ldots+\vunder+u(y_k)\]
 which contradicts the premise that they differ.  Thus, $x=y$ and the
 concatenation for lengths $j+1, k+1$ is injective for all $k,j\leq k$.
-Concatenation is associative, so this is true for appending as
+Concatenation is associative, so this is true for prepending as
 well\footnote{Although the proof in that direction is more convoluted, because
-all cases can output proper suffixes of some general case output.}.
+all cases can output proper prefixes of some general case output.}.
 
 With the unqualified, qualified, and single character translations separately
 proven injective, and as the overall translation is a composition of these, the

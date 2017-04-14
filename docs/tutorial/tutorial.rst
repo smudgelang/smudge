@@ -461,10 +461,34 @@ machines to queue and dispatch messages for. On a real system, each of
 these can have its own message queue, or they can share the system's
 message queue like in the example.
 
-.. raw:: pdf
+.. sidebar:: Naming Things
 
-         PageBreak oneColumn
-   
+   It is well known that the 2 hardest things in programming are cache
+   invalidation, naming things, and off by one errors. Smudge lets you
+   name things with a pretty wide character set. Events, states, and
+   state machine names can contain characters not found in C
+   identifiers like ``My-favorite-state-machine`` or even be quoted
+   strings with a big character set like ``"Some (event) or other,
+   +/-"``. When Smudge converts these things to C, it has to mangle
+   the names into something that fits within the set of valid C
+   identifiers.
+
+   The precise way in which Smudge mangles names is not important for
+   this tutorial, but there are a few properties that you might want
+   to keep in mind. First, you never need to see the mangled names of
+   states. If you want to name a state ``"The $%#!@ state"``, you'll be
+   able to call ``SM_Current_state_name()`` and get that string back.
+
+   However, for the names of your state machines, the mangling
+   matters. If you use a state machine name that begins with a number,
+   Smudge will generate an invalid identifier and it won't compile. If
+   you use any other character but a letter to begin the name of your
+   state machine, Smudge will mangle its name into something that
+   begins with an underscore. Since the C standard reserves most
+   symbols beginning with underscores, this could lead to undefined
+   behavior. Use names for your state machines that begin with
+   letters.
+
 Syntactic Shortcuts
 ===================
 

@@ -298,9 +298,9 @@ To map into this space as densely as possible, unqualified Smudge identifiers
 are handled as three different cases:
 
 \begin{enumerate}
-    \item \verb|[a-zA-Z][a-zA-Z0-9]*| \\
+    \item \verb|[a-zA-Z0-9]+| \\
         The mapping is identity.
-    \item \verb|[a-zA-Z0-9]+(_[a-zA-Z0-9]+)*| \\
+    \item \verb|[a-zA-Z0-9]+(_[a-zA-Z0-9]+)+| \\
         The mapping is identity wrapped in leading and trailing underscores.
     \item \verb|.*| \\
         The mapping is to append an underscore, the decimal length, and two
@@ -316,10 +316,11 @@ are handled as three different cases:
         \end{enumerate}
 \end{enumerate}
 
-Note that this mapping can produce output with leading underscores and decimal
+Note that the output identifier language is \verb|[_a-zA-Z0-9]+| rather than
+C's; i.e., this mapping can produce output with leading underscores and decimal
 digits; the former is undefined behavior in C, while the latter is not in the
 language of C identifiers.  Both of these concerns are handled elsewhere, and
-no further consideration is given to them below.
+no further consideration is given to them here.
 
 Qualified identifiers are mangled by mangling unqualified identifiers, and then
 joining them by concatenation with an underscore.
@@ -379,8 +380,7 @@ which contradicts the premise that they differ.  Thus, $a=b$ and the
 concatenation for lengths $j+1, k+1$ is injective for all $k,j\leq k$.
 Concatenation is associative, so this is true for prepending as well.
 
-The unqualified identifier translation uses identity on strings with an initial
-upper- or lower-case letter followed by any number of alphanumeric characters
+The unqualified identifier translation uses identity on alphanumeric strings
 (the ``alphanumeric'' case), which is injective with respect to itself.
 Strings composed of alphanumeric characters separated by lone underscores (the
 ``single underscore'' case) are translated using identity wrapped by a leading

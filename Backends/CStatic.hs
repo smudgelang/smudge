@@ -139,7 +139,7 @@ convertIR aliases dodec dodef ir =
         convertTyDec (SumDec x cs) = if all isNothing cvs then convertEnum x cxs else taggedUnion
             where (cxs, cvs) = unzip cs
                   tag = fromList [Left $ makeEnum "" $ map convertQName cxs]
-                  union = fromList [Left $ makeUnion "" $ map (uncurry convertDeclarator . (extractWith seq qualify . qualify &&& Ty)) $ catMaybes cvs]
+                  union = fromList [Left $ makeUnion "" $ map (uncurry convertDeclarator . (extractWith seq (qualify . (,) (qualify "e")) . qualify &&& Ty)) $ catMaybes cvs]
                   taggedUnion = fromList [Left $ makeStruct (convertTName x) [(tag, tag_name), (union, union_name)]]
                   tag_name = Declarator Nothing $ IDirectDeclarator id_field
                   union_name = Declarator Nothing $ IDirectDeclarator event_field
@@ -259,7 +259,7 @@ convertIR aliases dodec dodef ir =
 
         convertVar (Var x)     = (#:) (convertQName x) (:#)
         convertVar (SumVar x)  = (#:) (convertQName x) (:#) `DOT` id_field
-        convertVar (Field (SumVar x) f) = (#:) (convertQName x) (:#) `DOT` event_field `DOT` convertQName (extractWith seq qualify f)
+        convertVar (Field (SumVar x) f) = (#:) (convertQName x) (:#) `DOT` event_field `DOT` convertQName (extractWith seq (qualify . (,) (qualify "e")) f)
         convertVar (Field v f) = convertVar v `ARROW` convertQName f
 
         convertQName :: Qualifiable q => q -> Identifier

@@ -25,13 +25,16 @@ import Model (
   Qualifiable(qualify),
   extractWith,
   TaggedName(..),
-  mangleWith,
   )
 import Semantics.Solver (
   Ty(..), 
   Binding(..), 
   filterBind,
   (!),
+  )
+import Parsers.Id (
+  rawtest,
+  mangle,
   )
 import Semantics.Alias (Alias, rename)
 import Trashcan.FilePath (relPath)
@@ -263,7 +266,9 @@ convertIR aliases dodec dodef ir =
         convertVar (Field v f) = convertVar v `ARROW` convertQName f
 
         convertQName :: Qualifiable q => q -> Identifier
-        convertQName q = mangleWith (+-+) mangleIdentifier $ rename aliases $ qualify q
+        convertQName q = snd $ extractWith joinIdentifier (rawtest isSimpleUnderscore &&& mangle mangleIdentifier) $ rename aliases $ qualify q
+            where joinIdentifier (su, x) (True, y)  = (su, x +-+ "" +-+ y)
+                  joinIdentifier (su, x) (False, y) = (su, x +-+ y)
 
         convertTName :: TaggedName -> Identifier
         convertTName (TagEvent q) = convertQName q +-+ "t"

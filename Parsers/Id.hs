@@ -3,6 +3,7 @@ module Parsers.Id (
     Identifier,
     host_identifier,
     identifier,
+    rawtest,
     mangle,
 ) where
 
@@ -43,6 +44,10 @@ instance Read Identifier where
         where ident = do  id <- spaces *> (host_identifier <|> identifier)
                           rest <- getInput
                           return (id, rest)
+
+rawtest :: (Name -> Bool) -> Identifier -> Bool
+rawtest f (RawId name) = f name
+rawtest _ (CookedId name) = False
 
 mangle :: (Name -> Name) -> Identifier -> Name
 mangle f (RawId name) = f name

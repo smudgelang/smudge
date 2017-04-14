@@ -301,7 +301,7 @@ are handled as three different cases:
     \item \verb|[a-zA-Z0-9]+| \\
         The mapping is identity.
     \item \verb|[a-zA-Z0-9]+(_[a-zA-Z0-9]+)+| \\
-        The mapping is identity wrapped in leading and trailing underscores.
+        The mapping is identity followed by a trailing underscore.
     \item \verb|.*| \\
         The mapping is to append an underscore, the decimal length, and two
         underscores, i.e., \verb|_len__|, and mangle each character as follows:
@@ -323,7 +323,9 @@ language of C identifiers.  Both of these concerns are handled elsewhere, and
 no further consideration is given to them here.
 
 Qualified identifiers are mangled by mangling unqualified identifiers, and then
-joining them by concatenation with an underscore.
+joining them by concatenation with two underscores if the second unqualified
+identifier is composed of alphanumeric characters separated by lone underscores,
+and concatenation with a single underscore otherwise.
 
 In order to prove the injectivity of the overall translation, the unqualified,
 qualified, and single character translations can be separately proven
@@ -383,24 +385,24 @@ Concatenation is associative, so this is true for prepending as well.
 The unqualified identifier translation uses identity on alphanumeric strings
 (the ``alphanumeric'' case), which is injective with respect to itself.
 Strings composed of alphanumeric characters separated by lone underscores (the
-``single underscore'' case) are translated using identity wrapped by a leading
-and trailing underscore, which is injective with respect to itself because
-identity and concatenation with a fixed pattern are both injective, and since
-it cannot produce purely alphanumeric output and the alphanumeric case cannot
-produce leading and trailing underscores, these cases are injective with
-respect to each other.  Otherwise (the ``general'' case), the translation is
-the concatenation of the single character translation applied to the input,
-presented previously, followed by an underscore followed by the input length
-encoded in decimal followed by two underscores; decimal natural number encoding
-is injective, as is concatenation with the stated fixed underscore pattern, and
-because concatenation of the single character translation is injective there
-are no two inputs of the same lengths that produce the same output, and as it
-produces output with two trailing underscores, it cannot produce output with a
-trailing alphanumeric character or solitary underscore, so overall this
-translation is injective with respect to itself as well as the other two cases;
-finally, neither the alphanumeric nor single underscore case can produce two
-trailing underscores.  All cases are injective with respect to themselves and
-each other, and so unqualified identifier translation is injective.
+``single underscore'' case) are translated using identity followed by a
+trailing underscore, which is injective with respect to itself because identity
+and concatenation with a fixed pattern are both injective, and since it cannot
+produce purely alphanumeric output and the alphanumeric case cannot produce a
+trailing underscore, these cases are injective with respect to each other.
+Otherwise (the ``general'' case), the translation is the concatenation of the
+single character translation applied to the input, presented previously,
+followed by an underscore followed by the input length encoded in decimal
+followed by two underscores; decimal natural number encoding is injective, as
+is concatenation with the stated fixed underscore pattern, and because
+concatenation of the single character translation is injective there are no two
+inputs of the same lengths that produce the same output, and as it produces
+output with two trailing underscores, it cannot produce output with a trailing
+alphanumeric character or solitary underscore, so overall this translation is
+injective with respect to itself as well as the other two cases; finally,
+neither the alphanumeric nor single underscore case can produce two trailing
+underscores.  All cases are injective with respect to themselves and each
+other, and so unqualified identifier translation is injective.
 
 The qualified identifier translation, a concatenation of the output of the
 unqualified identifier translation intercalated with underscores, can be proven
@@ -416,29 +418,30 @@ length $j+1$ and $k+1$ respectively s.t.
     u(x_1)+\ldots+\vunder+u(x_j)+\vunder+u(x_{j+1})&=    u(y_1)+\ldots+\vunder+u(y_k)+\vunder+u(y_{k+1})\\
     u(x_1)+\ldots+\vunder+u(x_j)                   &\neq u(y_1)+\ldots+\vunder+u(y_k)
 \end{align*}
-where $u()$ denotes unqualified identifier translation, all underscores are
-literals, and plus denotes concatenation.  In order for this to be the case,
+where $u()$ denotes unqualified identifier translation, underscores denote the
+join sequence\footnote{See previous specification for qualified identifier
+mangling.}, and plus denotes concatenation.  In order for this to be the case,
 either \mbox{$u(x_1)+\ldots+\vunder+u(x_j)$} or $u(y_1)+\ldots+\vunder+u(y_k)$
 must be a proper prefix of the other\footnote{Again, it doesn't matter which};
 say it is $u(x_1)+\ldots+\vunder+u(x_j)$.  As such, $\vunder+u(x_{j+1})$ is a
 proper suffix of $u(y_1)+\ldots+\vunder+u(y_{k+1})$, which means more simply
 that either $\vunder+u(x_{j+1})$ or $\vunder+u(y_{k+1})$ is a suffix of the
-other\footnote{Without the intercalated underscore, trivial examples of output
+other\footnote{Without the intercalated underscores, trivial examples of output
 suffixing can easily be produced; as such, the rest of the proof requires the
-intercalated underscore.}.  Consider the cases of the unqualified identifier
+intercalated underscores.}.  Consider the cases of the unqualified identifier
 translation: the alphanumeric case, the single underscore case, and the general
-case, each with an underscore prepended.  The alphanumeric case output cannot
+case, each with underscore(s) prepended.  The alphanumeric case output cannot
 have a trailing underscore so it cannot be a suffix of the other two cases.
 The prepended underscore prevents its output from being a proper suffix of
 other alphanumeric case outputs, as underscore is not in the output alphabet.
 The single underscore case ends with exactly one trailing underscore so it
-cannot be a suffix of the other two cases.  The prepended underscore prevents
+cannot be a suffix of the other two cases.  Two prepended underscores prevent
 its output from being a proper suffix of other single underscore case outputs,
 which cannot contain a sequence of two underscores.  The general case ends with
-two underscores so it cannot be a suffix of the other two cases.  With
-respect to itself, the prepended underscore does not help the general case;
-instead, the length code is used.  The length suffix is injective with respect
-to the length of the input identifier, thus if $\vunder+u(x_{j+1})$ or
+two underscores so it cannot be a suffix of the other two cases.  With respect
+to itself, the prepended underscore does not help the general case; instead,
+the length code is used.  The length suffix is injective with respect to the
+length of the input identifier, thus if $\vunder+u(x_{j+1})$ or
 $\vunder+u(y_{k+1})$ suffixes the other, $x_{j+1}$ and $y_{k+1}$ must have the
 same length.  If the translation of a suffix of either input could equal the
 translation of the entirety of the other, this would be a violation of the

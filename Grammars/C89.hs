@@ -17,6 +17,7 @@ module Grammars.C89 (
     CommaList(..),
 
     Identifier,
+    isSimpleUnderscore,
     mangleIdentifier,
 
     Constant,
@@ -174,10 +175,12 @@ isAsciiAlnumUnder :: Char -> Bool
 isAsciiAlnumUnder c = c == '_' || isAsciiAlphaNum c
 
 isSimpleUnderscore :: String -> Bool
-isSimpleUnderscore [] = True
-isSimpleUnderscore ('_':[]) = False
-isSimpleUnderscore ('_':'_':_) = False
-isSimpleUnderscore (c:cs) = isAsciiAlnumUnder c && isSimpleUnderscore cs
+isSimpleUnderscore []     = False
+isSimpleUnderscore (c:cs) = isAsciiAlphaNum c && isSimpleTail cs False
+    where isSimpleTail [] atleastone = atleastone
+          isSimpleTail ('_':[]) _    = False
+          isSimpleTail ('_':'_':_) _ = False
+          isSimpleTail (c:cs) found  = isAsciiAlnumUnder c && isSimpleTail cs (found || c == '_')
 
 toAsciiCode :: Char -> String
 toAsciiCode = flip showHex "" . ord
@@ -191,9 +194,9 @@ mangleLength :: Int -> String
 mangleLength = show
 
 mangleIdentifier :: String -> Identifier
-mangleIdentifier x@(_:_)  | all isAsciiAlphaNum x                       = x               -- [a-zA-Z0-9]+
-mangleIdentifier x@(c:cs) | isAsciiAlphaNum c && isSimpleUnderscore cs  = "_" ++ x ++ "_" -- [a-zA-Z0-9]+(_[a-zA-Z0-9]+)+
-mangleIdentifier x = concatMap mangleChar x ++ "_" ++ mangleLength (length x) ++ "__"     -- .*
+mangleIdentifier x@(_:_) | all isAsciiAlphaNum x = x        -- [a-zA-Z0-9]+
+mangleIdentifier x@(_:_) | isSimpleUnderscore x  = x ++ "_" -- [a-zA-Z0-9]+(_[a-zA-Z0-9]+)+
+mangleIdentifier x = concatMap mangleChar x ++ "_" ++ mangleLength (length x) ++ "__" -- .*
 
 -- A.1.1.4 Constants
 

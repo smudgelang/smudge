@@ -13,7 +13,7 @@ EXAMPLE_DEPENDS=$(addsuffix .d,$(EXAMPLE_MAINS))
 CC=gcc
 CFLAGS=-Wall -Wextra -Wno-unused-parameter
 
-.PHONY: clean test
+.PHONY: clean docclean
 
 all: $(EXAMPLE_MAINS)
 

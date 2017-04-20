@@ -1,6 +1,11 @@
 Title: C Identifiers can't begin with numbers or underscores
 
-In both cases Smudge should detect that it will emit such an identifier in the
+For numbers Smudge should prepend an empty namespace (actually mapped to the
+empty string, not _0__), with the corresponding join underscores.  This retains
+injectivity because the empty output string is injective as there is no way to
+introduce it.
+
+For underscores Smudge should detect that it will emit such an identifier in the
 backend, and either emit a warning, or fail with an error.
 
 There should be an escape valve flag that lets the user prefix ALL names (it

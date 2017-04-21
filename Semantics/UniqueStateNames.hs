@@ -5,7 +5,8 @@ module Semantics.UniqueStateNames (
     UniqueStateNames
 ) where
 
-import Grammars.Smudge (WholeState, State(..), Annotated(..), StateMachineDeclarator(..))
+import Grammars.Smudge (StateMachine(..), WholeState, State(..))
+import Parsers.Id (at)
 import Model (TaggedName, disqualifyTag)
 import Semantics.Semantic (Passable(..), Severity(..), Fault(..))
 
@@ -23,8 +24,8 @@ instance Monoid UniqueStateNames where
 instance Passable UniqueStateNames where
     type Representation UniqueStateNames = [WholeState TaggedName]
     accumulate (s, _, _, _, _) = mappend (UniqueStateNames [s] (singleton s))
-    test (Annotated pos (StateMachineDeclarator sm_name), _) (UniqueStateNames sl ss) =
+    test (StateMachine sm_name, _) (UniqueStateNames sl ss) =
         case nub (sort sl \\ sort (toList ss)) \\ [StateEntry] of
         [] -> []
-        rs -> [Fault ERROR pos $ (disqualifyTag sm_name) ++ ": State names cannot repeat: " ++
+        rs -> [Fault ERROR (at sm_name) $ (disqualifyTag sm_name) ++ ": State names cannot repeat: " ++
                (intercalate ", " $ [disqualifyTag name | State name <- rs] ++ ["_" | StateAny <- rs])]

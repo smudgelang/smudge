@@ -1,7 +1,5 @@
 module Grammars.Smudge (
-    Annotated(..),
     Module(..),
-    StateMachineDeclarator(..),
     StateMachine(..),
     State(..),
     Event(..),
@@ -13,21 +11,14 @@ module Grammars.Smudge (
     WholeState,
 ) where
 
-import Text.ParserCombinators.Parsec (SourcePos) -- Sorry.
-
-data Annotated a = Annotated SourcePos a
-    deriving (Show, Eq, Ord)
-
 data Module a = Module String [StateMachine a]
 
-data StateMachineDeclarator a = StateMachineDeclarator a | StateMachineSame
+data StateMachine a = StateMachine a | StateMachineSame
     deriving (Show, Eq, Ord)
 
-instance Functor StateMachineDeclarator where
-    fmap f (StateMachineDeclarator a) = StateMachineDeclarator (f a)
-    fmap _ StateMachineSame           = StateMachineSame
-
-type StateMachine a = Annotated (StateMachineDeclarator a)
+instance Functor StateMachine where
+    fmap f (StateMachine a) = StateMachine (f a)
+    fmap _ StateMachineSame = StateMachineSame
 
 data State a = State a | StateAny | StateSame | StateEntry
     deriving (Show, Eq, Ord)
@@ -47,7 +38,7 @@ instance Functor Event where
     fmap _ EventEnter = EventEnter
     fmap _ EventExit  = EventExit
 
-type QEvent a = (StateMachineDeclarator a, Event a)
+type QEvent a = (StateMachine a, Event a)
 
 data Function a = FuncVoid | FuncTyped (QEvent a) | FuncEvent (QEvent a)
     deriving (Show, Eq, Ord)

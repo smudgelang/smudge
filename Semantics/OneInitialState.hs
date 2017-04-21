@@ -6,7 +6,8 @@ module Semantics.OneInitialState (
     OneInitialState
 ) where
 
-import Grammars.Smudge (State(..), Annotated(..), StateMachineDeclarator(..))
+import Grammars.Smudge (StateMachine(..), State(..))
+import Parsers.Id (at)
 import Model (EnterExitState(..), Happening, disqualifyTag)
 import Semantics.Semantic (Passable(..), Severity(..), Fault(..))
 
@@ -24,10 +25,10 @@ instance (Graph gr) => Passable (OneInitialState gr) where
     type Representation (OneInitialState gr) = gr EnterExitState Happening
     accumulate (i, _, EnterExitState {st = StateEntry}, o) a = mappend (OneInitialState i o) a
     accumulate                                           _ a = a
-    test (Annotated pos (StateMachineDeclarator sm_name), g) (OneInitialState is os) =
+    test (StateMachine sm_name, g) (OneInitialState is os) =
         case (length is, length os) of
         (0, 1) -> []
-        (0, 0) -> [Fault ERROR pos $ (disqualifyTag sm_name) ++ ": 1 initial state is required"]
-        (0, n) -> [Fault ERROR pos $ (disqualifyTag sm_name) ++ ": 1 initial state is required, but " ++ (show n) ++
+        (0, 0) -> [Fault ERROR (at sm_name) $ (disqualifyTag sm_name) ++ ": 1 initial state is required"]
+        (0, n) -> [Fault ERROR (at sm_name) $ (disqualifyTag sm_name) ++ ": 1 initial state is required, but " ++ (show n) ++
                    " were given: " ++ (intercalate ", " $ [disqualifyTag name | State name <- [st ees | Just ees <- map (lab g . snd) os]])]
-        (_, _) -> [Fault BUG pos $ (disqualifyTag sm_name) ++ ": Invalid entry state construction.  This is a bug in smudge."]
+        (_, _) -> [Fault BUG (at sm_name) $ (disqualifyTag sm_name) ++ ": Invalid entry state construction.  This is a bug in smudge."]

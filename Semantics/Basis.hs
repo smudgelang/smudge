@@ -15,9 +15,7 @@ import Model (
   )
 import Semantics.Alias (Alias, rename)
 import Grammars.Smudge (
-  StateMachine,
-  Annotated(..),
-  StateMachineDeclarator(..),
+  StateMachine(..),
   )
 
 import Data.Map (fromList)
@@ -42,11 +40,11 @@ bindBasis aliases sms = mappend exports externs
             (qualify (smName, "Free_Message"),       ([wrapper smName], "")),
             (qualify (smName, "Handle_Message"),     ([wrapper smName], "")),
             (qualify (smName, "Current_state_name"), ([], "char"))]
-                | Annotated _ (StateMachineDeclarator smName) <- sms]
+                | StateMachine smName <- sms]
           externs = insertFunctions mempty External $ concat [[
             -- add more sm-specific externals here
             (qualify (smName, "Send_Message"), ([wrapper smName], ""))]
-                | Annotated _ (StateMachineDeclarator smName) <- sms] ++ [
+                | StateMachine smName <- sms] ++ [
             -- add more smudge-wide externals here
             (rename' "free",        ([void], "")),
             (rename' "panic_print", ([str, str, str], "")),

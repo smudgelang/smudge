@@ -4,9 +4,7 @@ module Parsers.Smudge (
 ) where
 
 import Grammars.Smudge (
-  Annotated(..),
   StateMachine(..),
-  StateMachineDeclarator(..),
   State(..),
   Event(..),
   QEvent,
@@ -24,7 +22,6 @@ import Parsers.Id (
 
 import Text.ParserCombinators.Parsec (
   Parser,
-  getPosition,
   sepEndBy,
   sepEndBy1,
   many1,
@@ -44,7 +41,7 @@ smudgle :: Parser [(StateMachine Identifier, [WholeState Identifier])]
 smudgle = many1 state_machine
 
 state_machine :: Parser (StateMachine Identifier, [WholeState Identifier])
-state_machine = (,) <$> (empty *> sm_name_plus_pos <* empty) <*> state_machine_spec <* empty
+state_machine = (,) <$> (empty *> state_machine_name <* empty) <*> state_machine_spec <* empty
 
 state_machine_spec :: Parser [WholeState Identifier]
 state_machine_spec = (char '{' >> empty) *> state_list <* (empty >> char '}')
@@ -107,13 +104,8 @@ state_title = (,) <$> state_name <*> pure []
               <|> (,) <$> state_any <*> pure []
               <|> (,) <$> (char '*' >> empty *> state_name) <*> pure [Initial]
 
-state_machine_name :: Parser (StateMachineDeclarator Identifier)
-state_machine_name = StateMachineDeclarator <$> identifier
-
-sm_name_plus_pos :: Parser (StateMachine Identifier)
-sm_name_plus_pos = do pos <- getPosition
-                      sm <- state_machine_name
-                      return (Annotated pos sm)
+state_machine_name :: Parser (StateMachine Identifier)
+state_machine_name = StateMachine <$> identifier
 
 state_name :: Parser (State Identifier)
 state_name = State <$> identifier

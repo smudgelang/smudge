@@ -1,5 +1,7 @@
 module Parsers.Id (
     Name,
+    Location,
+    Declared(..),
     Identifier,
     host_identifier,
     identifier,
@@ -9,6 +11,7 @@ module Parsers.Id (
 
 import Text.ParserCombinators.Parsec (
   Parser,
+  getPosition,
   parse,
   getInput,
   eof,
@@ -25,18 +28,42 @@ import Text.ParserCombinators.Parsec (
   alphaNum,
   )
 
+import Text.ParserCombinators.Parsec.Pos (
+  SourcePos,
+  initialPos,
+  )
+
 import Data.Either (rights)
+import Control.Arrow (first)
 
 type Name = String
+type Location = SourcePos
 
-data Identifier = RawId Name | CookedId Name
+class Declared a where
+    at :: a -> Location
+
+data PureIdentifier = RawId Name | CookedId Name
     deriving (Eq, Ord)
 
-instance Show Identifier where
+instance Show PureIdentifier where
     show (RawId name) = case parse (unquoted <* eof) "" name of
                           Right _ -> name
                           Left _ -> show name
     show (CookedId name) = '@' : name
+
+data Identifier = Identifier Location PureIdentifier
+
+instance Eq Identifier where
+    (Identifier _ a) == (Identifier _ b) = a == b
+
+instance Ord Identifier where
+    compare (Identifier _ a) (Identifier _ b) = compare a b
+
+instance Declared Identifier where
+    at (Identifier pos _) = pos
+
+instance Show Identifier where
+    show (Identifier _ a) = show a
 
 instance Read Identifier where
     readsPrec d = readParen False
@@ -46,21 +73,21 @@ instance Read Identifier where
                           return (id, rest)
 
 rawtest :: (Name -> Bool) -> Identifier -> Bool
-rawtest f (RawId name) = f name
-rawtest _ (CookedId name) = False
+rawtest f (Identifier _ (RawId name)) = f name
+rawtest _ (Identifier _ (CookedId name)) = False
 
 mangle :: (Name -> Name) -> Identifier -> Name
-mangle f (RawId name) = f name
-mangle _ (CookedId name) = name
+mangle f (Identifier _ (RawId name)) = f name
+mangle _ (Identifier _ (CookedId name)) = name
 
 host_identifier :: Parser Identifier
 host_identifier = char '@' *> c_identifier
 
 c_identifier :: Parser Identifier
-c_identifier = CookedId <$> ((:) <$> nondigit <*> many (nondigit <|> digit))
+c_identifier = Identifier <$> getPosition <*> (CookedId <$> ((:) <$> nondigit <*> many (nondigit <|> digit)))
 
 identifier :: Parser Identifier
-identifier = RawId <$> (unquoted <|> quoted)
+identifier = Identifier <$> getPosition <*> (RawId <$> (unquoted <|> quoted))
 
 unquoted :: Parser Name
 unquoted = try ((:) <$> id_char <*> (many1 id_char))

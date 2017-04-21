@@ -8,9 +8,7 @@ module Backends.GraphViz (
 
 import Backends.Backend (Backend(..))
 import Grammars.Smudge (
-  Annotated(..),
   StateMachine(..),
-  StateMachineDeclarator(..),
   State(..),
   Event(..),
   Function(..),
@@ -37,7 +35,7 @@ import Data.Text.Internal.Lazy (Text(..))
 import System.Console.GetOpt
 import System.FilePath (FilePath, dropExtension)
 
-type QualifiedState = (StateMachineDeclarator TaggedName, EnterExitState)
+type QualifiedState = (StateMachine TaggedName, EnterExitState)
 type UnqualifiedGraph = Gr EnterExitState Happening
 type QualifiedGraph = Gr QualifiedState Happening
 type NodeMap = M.Map G.Node G.Node
@@ -53,8 +51,8 @@ instance Monoid Label where
 instance Labellable TaggedName where
     toLabelValue = toLabelValue . disqualifyTag
 
-instance Labellable (StateMachineDeclarator TaggedName) where
-    toLabelValue (StateMachineDeclarator sm) = toLabelValue sm
+instance Labellable (StateMachine TaggedName) where
+    toLabelValue (StateMachine sm) = toLabelValue sm
     toLabelValue s                 = toLabelValue $ show s
 
 instance Labellable (State TaggedName) where
@@ -98,7 +96,7 @@ smudgeParams sideEffects noTransitions clusterBox title entryNodes =
         where
             cluster (n, nl@(sm, _)) = C (smToString sm) (N (n, nl))
             clusterAttrs c = [GraphAttrs [toLabel c, Concentrate True]]
-            smToString (StateMachineDeclarator s) = disqualifyTag s
+            smToString (StateMachine s) = disqualifyTag s
             fmtNode (_, (_, EnterExitState {st = StateEntry})) = [shape Circle, style filled, fillColor Black, toLabel ""]
             fmtNode (_, l) = [toLabel l]
             keep (n, _, ese) = [filtEntry n (toLabel ese), arrow ese]
@@ -115,10 +113,10 @@ outputFormats = [Eps, Bmp, Canon, DotOutput, Eps, Fig, Gd, Gd2, Gif, Ico,
                  Imap, Cmapx, ImapNP, CmapxNP, Jpeg, Pdf, Plain, Png,
                  Ps, Ps2, Svg, SvgZ, Tiff, Vml, VmlZ, Vrml, WBmp]
 
-gfold :: [(StateMachineDeclarator TaggedName, UnqualifiedGraph)] -> QualifiedGraph
+gfold :: [(StateMachine TaggedName, UnqualifiedGraph)] -> QualifiedGraph
 gfold = mconcat . (map qualify)
     where
-        qualify :: (StateMachineDeclarator TaggedName, UnqualifiedGraph) -> QualifiedGraph
+        qualify :: (StateMachine TaggedName, UnqualifiedGraph) -> QualifiedGraph
         qualify (sm, ug) = G.gmap (\ (i, n, l, o) -> (i, n, (sm, l), o)) ug
 
 instance Backend GraphVizOption where
@@ -136,8 +134,7 @@ instance Backend GraphVizOption where
     generate os gswust inputName = sequence [(runner os) (runGraphviz d) (format os) (outputName os)]
         where d = (graphToDot (smudgeParams renderSE renderNT (length gs > 1) inputName entryNodes) g') {graphID = Just (toGraphID " ")}
               g' = gfold gs
-              gs = [(smd, g) | (Annotated _ smd, g) <- gs_]
-              (gs_, _, _) = gswust
+              (gs, _, _) = gswust
               entryNodes = [n | (n, (_, EnterExitState {st = StateEntry})) <- G.labNodes g']
               renderSE = not $ SuppressSideEffects `elem` os
               renderNT = not $ SuppressNoTransition `elem` os

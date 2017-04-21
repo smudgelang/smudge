@@ -24,9 +24,7 @@ module Model (
 ) where
 
 import Grammars.Smudge (
-  Annotated(..),
   StateMachine(..),
-  StateMachineDeclarator(..),
   State(..),
   Event(..),
   QEvent,
@@ -37,6 +35,7 @@ import Grammars.Smudge (
   )
 import Parsers.Id (
   Name,
+  Declared(..),
   Identifier,
   mangle,
   )
@@ -80,6 +79,9 @@ instance Read a => Read (Qualified a) where
                         '.' : s -> fmap (first (a <|)) $ readA s
                         otherwise -> [(a :| [], s)]
 
+instance Declared a => Declared (Qualified a) where
+    at = extractWith seq at
+
 type QualifiedName = Qualified Identifier
 
 class Qualifiable n where
@@ -97,7 +99,7 @@ instance Qualifiable Name where
 instance (Qualifiable s, Qualifiable n) => Qualifiable (s, n) where
     qualify (s, n) = qualify s <> qualify n
 
-extractWith :: (a -> a -> a) -> (Identifier -> a) -> QualifiedName -> a
+extractWith :: (a -> a -> a) -> (b -> a) -> Qualified b -> a
 extractWith ff f (Qualified ns) = foldr1 ff $ fmap f ns
 
 mangleWith :: (Name -> Name -> Name) -> (Name -> Name) -> QualifiedName -> Name
@@ -114,6 +116,13 @@ data TaggedName =
         | TagBuiltin QualifiedName
     deriving (Show, Eq, Ord)
 
+instance Declared TaggedName where
+    at (TagMachine n) = at n
+    at (TagState n) = at n
+    at (TagEvent n) = at n
+    at (TagFunction n) = at n
+    at (TagBuiltin n) = at n
+
 instance Qualifiable TaggedName where
     qualify (TagMachine n) = n
     qualify (TagState n) = n
@@ -129,30 +138,30 @@ passInitialState sms = map (\(sm, wss) -> (sm, foldr init [] wss)) sms
     where init ws@(s, fs, en, es, ex) wss | elem Initial fs = (StateEntry, [], [], [(EventEnter, [], s)], []) : (s, filter (/= Initial) fs, en, es, ex) : wss
           init ws wss = ws : wss    
 
-pickSm :: StateMachineDeclarator a -> StateMachineDeclarator a -> StateMachineDeclarator a
-pickSm _ s@(StateMachineDeclarator _) = s
-pickSm s@(StateMachineDeclarator _) _ = s
+pickSm :: StateMachine a -> StateMachine a -> StateMachine a
+pickSm _ s@(StateMachine _) = s
+pickSm s@(StateMachine _) _ = s
 pickSm StateMachineSame _ = undefined
 
-instance Qualifiable (StateMachineDeclarator Identifier) where
-    qualify (StateMachineDeclarator n) = qualify n
+instance Qualifiable (StateMachine Identifier) where
+    qualify (StateMachine n) = qualify n
     qualify StateMachineSame           = undefined
 
 instance Qualifiable (Event Identifier) where
     qualify (Event e) = qualify e
     qualify _         = undefined
 
-qQE :: StateMachineDeclarator Identifier -> QEvent Identifier -> QualifiedName
+qQE :: StateMachine Identifier -> QEvent Identifier -> QualifiedName
 qQE sm (sm', ev) = qualify (pickSm sm sm', ev)
 
-qName :: StateMachineDeclarator Identifier -> SideEffect Identifier -> QualifiedName
+qName :: StateMachine Identifier -> SideEffect Identifier -> QualifiedName
 qName _  (s, FuncVoid)    = qualify s
 qName _  (s, FuncTyped _) = qualify s
 qName sm (_, FuncEvent e) = qQE sm e
 
 passFullyQualify :: [(StateMachine Identifier, [WholeState Identifier])] -> [(StateMachine QualifiedName, [WholeState QualifiedName])]
 passFullyQualify sms = map qual sms
-    where qual (Annotated a sm, wss) = (Annotated a $ qual_sm sm, map qual_ws wss)
+    where qual (sm, wss) = (qual_sm sm, map qual_ws wss)
             where qual_sm = fmap qualify
                   qual_ws (st, fs, en, es, ex) = (qual_st st, fs, map qual_fn en, map qual_eh es, map qual_fn ex)
                   qual_eh (ev, ses, s) = (qual_ev ev, map qual_fn ses, qual_st s)
@@ -166,7 +175,7 @@ passFullyQualify sms = map qual sms
 passRename :: Alias QualifiedName -> [(StateMachine QualifiedName, [WholeState QualifiedName])] -> [(StateMachine QualifiedName, [WholeState QualifiedName])]
 passRename aliases sms = map ren sms
     where rename' = rename aliases
-          ren (Annotated a sm, wss) = (Annotated a $ fmap rename' sm, map ren_ws wss)
+          ren (sm, wss) = (fmap rename' sm, map ren_ws wss)
           ren_ws (st, fs, en, es, ex) = (fmap rename' st, fs, map ren_fn en, map ren_eh es, map ren_fn ex)
           ren_eh (ev, ses, s) = (fmap rename' ev, map ren_fn ses, fmap rename' s)
           ren_qe (sm, ev) = (fmap rename' sm, fmap rename' ev)
@@ -176,7 +185,7 @@ passRename aliases sms = map ren sms
 
 passTagCategories :: [(StateMachine QualifiedName, [WholeState QualifiedName])] -> [(StateMachine TaggedName, [WholeState TaggedName])]
 passTagCategories sms = map tag sms
-    where tag (Annotated a sm, wss) = (Annotated a $ fmap TagMachine sm, map tag_ws wss)
+    where tag (sm, wss) = (fmap TagMachine sm, map tag_ws wss)
           tag_ws (st, fs, en, es, ex) = (fmap TagState st, fs, map tag_fn en, map tag_eh es, map tag_fn ex)
           tag_eh (ev, ses, s) = (fmap TagEvent ev, map tag_fn ses, fmap TagState s)
           tag_qe (sm', ev) = (fmap TagMachine sm', fmap TagEvent ev)

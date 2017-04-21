@@ -17,9 +17,7 @@ module Backends.SmudgeIR (
 ) where
 
 import Grammars.Smudge (
-  Annotated(..),
   StateMachine(..),
-  StateMachineDeclarator(..),
   State(..),
   Event(..),
   Function(..),
@@ -109,7 +107,7 @@ lowerSymTab gs syms = [
         DataDef $ TyDef name $ EvtDec ty | (name, (b, Ty ty)) <- toList syms
     ] ++ [
         DataDef $ TyDef eventEnum $ SumDec eventEnum [(qualify (qualify "EVID", e), Just e) | Event e <- events_for g] -- a kludge to get it into the header
-            | (Annotated _ (StateMachineDeclarator smName), g) <- gs, let eventEnum = (\(Ty p :-> r) -> p) $ snd (syms ! TagFunction (qualify (smName, "Handle_Message")))
+            | (StateMachine smName, g) <- gs, let eventEnum = (\(Ty p :-> r) -> p) $ snd (syms ! TagFunction (qualify (smName, "Handle_Message")))
     ] ++ [
         FunDef (qualify n) args f [] [] | (n, f@(_, _ :-> _)) <- toList syms
     ]
@@ -117,7 +115,7 @@ lowerSymTab gs syms = [
         args = map (qualify . ('a':) . show) [1..]
 
 lowerMachine :: Bool -> SymbolTable -> (StateMachine TaggedName, Gr EnterExitState Happening) -> SmudgeIR
-lowerMachine debug syms (Annotated _ (StateMachineDeclarator smName), g') = [
+lowerMachine debug syms (StateMachine smName, g') = [
         DataDef $ TyDef stateEnum $ SumDec stateEnum [(st_id s, Nothing) | s <- states],
         DataDef $ VarDef Internal $ ValDec stateVar (Ty stateEnum) (Init $ Value $ Var $ st_id initial)
     ] ++

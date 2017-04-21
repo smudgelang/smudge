@@ -6,15 +6,15 @@ module Semantics.DeclaredEventNames (
 ) where
 
 import Grammars.Smudge (
-  Annotated(..),
-  StateMachineDeclarator(..),
   Event(..),
   QEvent,
   Function(..),
   SideEffect,
   WholeState,
   )
+import Grammars.Smudge (StateMachine(..))
 import Model (TaggedName, disqualifyTag)
+import Parsers.Id (at)
 import Semantics.Semantic (Passable(..), Severity(..), Fault(..))
 
 import Data.List (intercalate)
@@ -36,8 +36,8 @@ instance Passable DeclaredEventNames where
     accumulate (_, _, en, eh, ex) =
         mappend $ DeclaredEventNames (fromList [e | (e@(Event _), _, _) <- eh])
                     (fromList $ qesOfSes en ++ concat [qesOfSes ses | (_, ses, _) <- eh] ++ qesOfSes ex)
-    test (Annotated pos sm@(StateMachineDeclarator sm_name), _) (DeclaredEventNames eh se) =
+    test (sm@(StateMachine sm_name), _) (DeclaredEventNames eh se) =
         case toList ((map snd $ filter ((== sm) . fst) se) \\ eh) of
         [] -> []
-        es -> [Fault ERROR pos $ (disqualifyTag sm_name) ++ ": Event names not declared: " ++
+        es -> [Fault ERROR (at sm_name) $ (disqualifyTag sm_name) ++ ": Event names not declared: " ++
                (intercalate ", " $ [disqualifyTag name | Event name <- es])]

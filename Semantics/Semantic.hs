@@ -13,15 +13,14 @@ module Semantics.Semantic (
 
 import Model (TaggedName)
 import Grammars.Smudge (StateMachine)
+import Parsers.Id (Location)
 
-import Text.ParserCombinators.Parsec (SourcePos) -- Sorry.
 import Data.Graph.Inductive.Graph (Graph, Context, ufold)
 import Data.Monoid (Monoid, mempty)
 
 data Severity = ERROR | BUG
     deriving (Show, Eq, Ord)
 
-type Location = SourcePos
 type Description = String
 data Fault = Fault Severity Location Description
 

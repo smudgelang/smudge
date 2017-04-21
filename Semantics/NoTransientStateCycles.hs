@@ -5,8 +5,9 @@ module Semantics.NoTransientStateCycles (
     NoTransientStateCycles
 ) where
 
-import Grammars.Smudge (State(..), Event(EventEnter), Annotated(..), StateMachineDeclarator(..))
+import Grammars.Smudge (StateMachine(..), State(..), Event(EventEnter))
 import Model (EnterExitState(..), Happening(..), disqualifyTag)
+import Parsers.Id (at)
 import Semantics.Semantic (Passable(..), Severity(..), Fault(..))
 import Trashcan.Graph (cycles)
 
@@ -23,10 +24,10 @@ instance (Graph gr) => Monoid (NoTransientStateCycles gr) where
 instance (Graph gr) => Passable (NoTransientStateCycles gr) where
     type Representation (NoTransientStateCycles gr) = gr EnterExitState Happening
     accumulate = tfilter
-    test (Annotated pos (StateMachineDeclarator sm_name), _) (NoTransientStateCycles g) =
+    test (StateMachine sm_name, _) (NoTransientStateCycles g) =
         case (cycles g) of
         [] -> []
-        cs -> [Fault ERROR pos $ (disqualifyTag sm_name) ++ ": Transient state cycles are forbidden: " ++
+        cs -> [Fault ERROR (at sm_name) $ (disqualifyTag sm_name) ++ ": Transient state cycles are forbidden: " ++
                (intercalate " -> " $ [disqualifyTag name | State name <- [st ees | Just ees <- map (lab g) c]]) | c <- cs]
 
 tfilter :: (Graph gr) => Context EnterExitState Happening -> NoTransientStateCycles gr -> NoTransientStateCycles gr

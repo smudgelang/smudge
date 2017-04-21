@@ -7,7 +7,7 @@ module Semantics.OneInitialState (
 ) where
 
 import Grammars.Smudge (StateMachine(..), State(..))
-import Parsers.Id (at)
+import Parsers.Id (at, showLineCol)
 import Model (EnterExitState(..), Happening, disqualifyTag)
 import Semantics.Semantic (Passable(..), Severity(..), Fault(..))
 
@@ -30,5 +30,5 @@ instance (Graph gr) => Passable (OneInitialState gr) where
         (0, 1) -> []
         (0, 0) -> [Fault ERROR (at sm_name) $ (disqualifyTag sm_name) ++ ": 1 initial state is required"]
         (0, n) -> [Fault ERROR (at sm_name) $ (disqualifyTag sm_name) ++ ": 1 initial state is required, but " ++ (show n) ++
-                   " were given: " ++ (intercalate ", " $ [disqualifyTag name | State name <- [st ees | Just ees <- map (lab g . snd) os]])]
+                   " were given: " ++ (intercalate ", " $ [disqualifyTag name ++ " " ++ showLineCol (at name) | State name <- [st ees | Just ees <- map (lab g . snd) os]])]
         (_, _) -> [Fault BUG (at sm_name) $ (disqualifyTag sm_name) ++ ": Invalid entry state construction.  This is a bug in smudge."]

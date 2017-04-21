@@ -17,8 +17,7 @@ import Model (TaggedName, disqualifyTag)
 import Parsers.Id (at)
 import Semantics.Semantic (Passable(..), Severity(..), Fault(..))
 
-import Data.List (intercalate)
-import Data.Set (Set, singleton, fromList, toList, map, filter, (\\))
+import Data.Set (Set, fromList, toList, map, filter, (\\))
 import Prelude hiding (filter, map)
 
 data DeclaredEventNames = DeclaredEventNames (Set (Event TaggedName)) (Set (QEvent TaggedName))
@@ -39,5 +38,5 @@ instance Passable DeclaredEventNames where
     test (sm@(StateMachine sm_name), _) (DeclaredEventNames eh se) =
         case toList ((map snd $ filter ((== sm) . fst) se) \\ eh) of
         [] -> []
-        es -> [Fault ERROR (at sm_name) $ (disqualifyTag sm_name) ++ ": Event names not declared: " ++
-               (intercalate ", " $ [disqualifyTag name | Event name <- es])]
+        es -> [Fault ERROR (at name) $ (disqualifyTag sm_name) ++ ": Event name not declared: " ++
+               disqualifyTag name | Event name <- es]

@@ -10,7 +10,6 @@ import Parsers.Id (at)
 import Model (TaggedName, disqualifyTag)
 import Semantics.Semantic (Passable(..), Severity(..), Fault(..))
 
-import Data.List (intercalate)
 import Data.Set (Set, singleton, fromList, toList, (\\))
 
 data DeclaredStateNames = DeclaredStateNames (Set (State TaggedName)) (Set (State TaggedName))
@@ -25,5 +24,5 @@ instance Passable DeclaredStateNames where
     test (StateMachine sm_name, _) (DeclaredStateNames sf st) =
         case toList (st \\ sf) of
         [] -> []
-        ss -> [Fault ERROR (at sm_name) $ (disqualifyTag sm_name) ++ ": State names not declared: " ++
-               (intercalate ", " $ [disqualifyTag name | State name <- ss])]
+        ss -> [Fault ERROR (at name) $ (disqualifyTag sm_name) ++ ": State name not declared: " ++
+               disqualifyTag name | State name <- ss]

@@ -5,7 +5,6 @@ module Semantics.UninstantiableTypes (
     UninstantiableTypes
 ) where
 
-import Grammars.Smudge (StateMachine(..))
 import Model (TaggedName, qualify)
 import Parsers.Id (at)
 import Semantics.Solver (Ty, instantiable, SymbolTable)
@@ -21,8 +20,8 @@ instance Passable UninstantiableTypes where
     type Representation UninstantiableTypes = SymbolTable
     accumulate (_, (_, tau)) a | instantiable tau = a
     accumulate (n, (_, tau)) a                    = mappend (UninstantiableTypes [(n, tau)]) a
-    test (StateMachine sm_name, _) (UninstantiableTypes tys) =
+    test _ (UninstantiableTypes tys) =
         case tys of
         [] -> []
-        ts -> [Fault ERROR (at sm_name) $ "uninstantiable type: " ++
+        ts -> [Fault ERROR (at n) $ "uninstantiable type: " ++
                show (qualify n) ++ " : " ++ show t | (n, t) <- ts]

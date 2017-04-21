@@ -1,6 +1,7 @@
 module Parsers.Id (
     Name,
     Location,
+    showLineCol,
     Declared(..),
     Identifier,
     host_identifier,
@@ -31,6 +32,7 @@ import Text.ParserCombinators.Parsec (
 import Text.ParserCombinators.Parsec.Pos (
   SourcePos,
   initialPos,
+  setSourceName,
   )
 
 import Data.Either (rights)
@@ -38,6 +40,9 @@ import Control.Arrow (first)
 
 type Name = String
 type Location = SourcePos
+
+showLineCol :: Location -> String
+showLineCol pos = show $ setSourceName pos ""
 
 class Declared a where
     at :: a -> Location

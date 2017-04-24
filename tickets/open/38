@@ -8,3 +8,17 @@ spammy.
 Likewise, the ability to print something every time we enter a state
 would be good. This would go well with 31 in a debugging support
 release.
+
+E.g.:
+
+smudge --logevent
+smudge --logevent a --logevent "$b"
+smudge --logevent --logstate ~a --logevent ~"$b"
+
+smudge --logstate
+smudge --logstate A --logstate "$B"
+smudge --logstate --logstate ~A --logstate ~"$B"
+
+Without argument, everything is enabled.  A plain argument enables a single
+event or state.  An argument with a tilde disables.  Later flags supersede
+earlier flags.  This would insert calls to "SMUDGE_print".

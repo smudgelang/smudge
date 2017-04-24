@@ -2,8 +2,10 @@ Title: File-level compilation switches
 
 Add an optional line at the beginning of a smudgle, something like this:
 
-#--c-no-debug
+#c-no-debug
 
 before the beginning of the Smudge-syntaxed stuff. Use it to override the
 command line arguments actually given.
 
+The pound must be in the first column, the flag starting in the second column,
+and one switch per line with arguments, but no leading dashes.

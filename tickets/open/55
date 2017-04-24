@@ -7,7 +7,7 @@ Example session:
 $ smudge --interactive
 > SM = { *A [ x --> B ], B [ y --> A ] }
 SM
-> SM.y
+> SM.x
 SM A --> B
 > SM{B} = [ x --, y -(@foo)-> A ]
 SM

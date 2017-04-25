@@ -1,4 +1,7 @@
-module = state-machine empty *(state-machine empty)
+module = *pragma empty 1*state-machine
+pragma = emptytoeol "#" command [("=" / 1*WSP) argument] eol
+command = 1*(alphanum / sep)
+argument = 1*non-newline
 state-machine = state-machine-name empty state-machine-spec empty
 state-machine-spec = "{" empty state-list empty "}"
 state-list = state *(empty "," empty state) [empty ","]
@@ -31,6 +34,7 @@ symbol = "!" / "#" / "$" / "%" / "&" / "'" / "(" / ")" / "*" / "+" / "," / "." /
 eol = LF
 spaces = *(WSP / eol)
 empty = spaces comment empty / spaces
+emptytoeol = [spaces (comment / eol) emptytoeol]
 spacesep = (WSP / eol / comment) empty
 nondigit = ALPHA / "_"
 alphanum = ALPHA / DIGIT

@@ -2,6 +2,7 @@
 
 (setq smudge-highlights
       '(("//.*$" . font-lock-comment-face)
+        ("^#[-_0-9A-Za-z]+\\(\\(=\\|\\( \\|\t\\)+\\).*\\)?$" . font-lock-preprocessor-face)
         ("@[a-zA-Z][a-zA-Z0-9]*" . font-lock-function-name-face)))
 
 (defun smudge-indent-line ()

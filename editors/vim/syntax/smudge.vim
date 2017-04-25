@@ -1,7 +1,7 @@
 " Vim syntax file
 " Language: smudge
 " Maintainer: Nate Bragg <Nate_Bragg@bose.com>
-" Latest Revision: November 24th, 2014
+" Latest Revision: April 25th, 2017
 
 if version < 600
   syn clear
@@ -31,6 +31,8 @@ syn region smudgeSideEffectList matchgroup=smudgeSideEffectContainer start="(" e
 syn region smudgeEnterSideEffectList matchgroup=smudgeSideEffectContainer start="(" end=")" fold contained contains=smudgeFunction,smudgeEventName,smudgeQualifiedEventName,smudgeComment nextgroup=smudgeEventList,smudgeCommentAfterEnterSideEffect skipwhite skipempty
 syn match smudgeCommentAfterStateMachine "//.*$" contained contains=smudgeComment nextgroup=smudgeStateList,smudgeCommentAfterStateMachine skipwhite skipempty
 execute 'syn match smudgeStateMachine "'.s:id.'" nextgroup=smudgeStateList,smudgeCommentAfterStateMachine skipwhite skipempty'
+syn match smudgePragma "^#[-_0-9A-Za-z]\+\(\(=\|\( \|\t\)\+\).*\)\?$" nextgroup=smudgePragma,smudgeStateMachine,smudgeCommentAfterPragma skipwhite skipempty
+syn match smudgeCommentAfterPragma "//.*$" contained contains=smudgeComment nextgroup=smudgePragma,smudgeStateMachine,smudgeCommentAfterPragma skipwhite skipempty
 
 syn sync fromstart
 
@@ -56,6 +58,7 @@ if version >= 508 || !exists("did_hs_syntax_inits")
   HiLink smudgeEvent Identifier
   HiLink smudgeEventName Identifier
   HiLink smudgeFunction Number
+  HiLink smudgePragma PreProc
 
   delcommand HiLink
 endif

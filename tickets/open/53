@@ -9,3 +9,6 @@ command line arguments actually given.
 
 The pound must be in the first column, the flag starting in the second column,
 and one switch per line with arguments, but no leading dashes.
+
+They cannot appear after the beginning of a state machine, but can have
+interleaved comment and whitespace lines.

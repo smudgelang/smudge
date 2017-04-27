@@ -10,8 +10,11 @@ module Parsers.Id (
     mangle,
 ) where
 
-import Text.ParserCombinators.Parsec (
+import Text.Parsec.String (
   Parser,
+  )
+
+import Text.Parsec (
   getPosition,
   parse,
   getInput,
@@ -29,7 +32,7 @@ import Text.ParserCombinators.Parsec (
   alphaNum,
   )
 
-import Text.ParserCombinators.Parsec.Pos (
+import Text.Parsec.Pos (
   SourcePos,
   initialPos,
   setSourceName,

@@ -20,28 +20,37 @@ import Parsers.Id (
   host_identifier,
   )
 
-import Text.ParserCombinators.Parsec (
+import Text.Parsec.String (
   Parser,
+  )
+
+import Text.Parsec (
   sepEndBy,
   sepEndBy1,
   many1,
   option,
+  optional,
   noneOf,
+  notFollowedBy,
   skipMany,
   try,
   (<|>),
   (<?>),
   char,
+  anyChar,
   string,
   space,
   spaces,
+  endOfLine,
   )
 
+import Control.Monad (void)
+
 smudgle :: Parser [(StateMachine Identifier, [WholeState Identifier])]
-smudgle = many1 state_machine
+smudgle = empty >> many1 state_machine
 
 state_machine :: Parser (StateMachine Identifier, [WholeState Identifier])
-state_machine = (,) <$> (empty *> state_machine_name <* empty) <*> state_machine_spec <* empty
+state_machine = (,) <$> (state_machine_name <* empty) <*> state_machine_spec <* empty
 
 state_machine_spec :: Parser [WholeState Identifier]
 state_machine_spec = (char '{' >> empty) *> state_list <* (empty >> char '}')
@@ -120,10 +129,16 @@ event_any :: Parser (Event Identifier)
 event_any = char '_' *> return EventAny
 
 comment :: Parser ()
-comment = string "//" >> skipMany (noneOf "\r\n")
+comment = string "//" >> skipMany non_newline >> void endOfLine
 
 empty :: Parser ()
-empty = try (spaces *> comment *> empty) <|> spaces
+empty = spaces >> optional (comment >> empty)
 
 spacesep :: Parser ()
 spacesep = (space >> empty) <|> (comment >> empty)
+
+non_newline :: Parser Char
+non_newline = exclude_newline anyChar <?> "any non-new-line character"
+
+exclude_newline :: Parser Char -> Parser Char
+exclude_newline p = notFollowedBy endOfLine *> p

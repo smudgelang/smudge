@@ -12,3 +12,5 @@ and one switch per line with arguments, but no leading dashes.
 
 They cannot appear after the beginning of a state machine, but can have
 interleaved comment and whitespace lines.
+
+Smudgles should still be parseable independently, for future REPL support.

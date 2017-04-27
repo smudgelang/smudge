@@ -1,4 +1,5 @@
 module Parsers.Smudge (
+    smudge_file,
     state_machine,
     smudgle,
 ) where
@@ -27,9 +28,11 @@ import Text.Parsec.String (
 import Text.Parsec (
   sepEndBy,
   sepEndBy1,
+  many,
   many1,
   option,
   optional,
+  oneOf,
   noneOf,
   notFollowedBy,
   skipMany,
@@ -38,6 +41,7 @@ import Text.Parsec (
   (<?>),
   char,
   anyChar,
+  alphaNum,
   string,
   space,
   spaces,
@@ -45,6 +49,18 @@ import Text.Parsec (
   )
 
 import Control.Monad (void)
+
+smudge_file :: Parser ([[String]], [(StateMachine Identifier, [WholeState Identifier])])
+smudge_file = emptytoeol >> (,) <$> many (pragma <* emptytoeol) <*> smudgle
+
+pragma :: Parser [String]
+pragma = (:) <$> (("--" ++) <$> (char '#' *> command)) <*> option [] ((string "=" <|> many1 whitespace) *> ((:[]) <$> argument)) <* endOfLine
+
+command :: Parser String
+command = many1 (alphaNum <|> oneOf "-_")
+
+argument :: Parser String
+argument = many1 non_newline
 
 smudgle :: Parser [(StateMachine Identifier, [WholeState Identifier])]
 smudgle = empty >> many1 state_machine
@@ -134,8 +150,14 @@ comment = string "//" >> skipMany non_newline >> void endOfLine
 empty :: Parser ()
 empty = spaces >> optional (comment >> empty)
 
+emptytoeol :: Parser ()
+emptytoeol = optional $ skipMany whitespace >> (comment <|> void endOfLine) >> emptytoeol
+
 spacesep :: Parser ()
 spacesep = (space >> empty) <|> (comment >> empty)
+
+whitespace :: Parser Char
+whitespace = exclude_newline space <?> "any non-new-line whitespace"
 
 non_newline :: Parser Char
 non_newline = exclude_newline anyChar <?> "any non-new-line character"

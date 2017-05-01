@@ -295,7 +295,7 @@ instance Backend CStaticOption where
     generate os gswust outputTarget = sequence $ [writeTranslationUnit (renderHdr hdr []) headerName,
                                          writeTranslationUnit (renderSrc src [extHdrName, headerName]) outputName,
                                          writeTranslationUnit (renderHdr ext [headerName]) extHdrName] ++
-                                         if stubs then [writeTranslationUnit (renderSrc exs [extHdrName, headerName]) extSrcName] else []
+                                         if stubs then [writeTranslationUnit (renderStubs exs [extHdrName, headerName]) extSrcName] else []
         where hdr = fromList $ convertIR aliases True False $ lowerSymTab gs $ filterBind syms Exported
               src = fromList $ concat [convertIR aliases True True (lower debug ([g], syms)) | g <- gs]
               ext = fromList $ convertIR aliases True False $ lowerSymTab [] $ filterBind syms External
@@ -303,9 +303,10 @@ instance Backend CStaticOption where
               (gs, aliases, syms) = gswust
               inc ^++ src = (liftM (++src)) inc
               writeTranslationUnit render fp = (render fp) >>= (writeFile fp) >> (return fp)
-              renderHdr u includes fp = hdrLeader includes fp ^++ (renderPretty u ++ hdrTrailer)
-              renderSrc u includes fp = srcLeader includes fp ^++ (renderPretty u ++ srcTrailer)
-
+              renderLeaderTrailer leader trailer u includes fp = leader includes fp ^++ (renderPretty u ++ trailer)
+              renderHdr = renderLeaderTrailer hdrLeader hdrTrailer
+              renderSrc = renderLeaderTrailer srcLeader srcTrailer
+              renderStubs = renderLeaderTrailer stubLeader srcTrailer
               outputBaseName = dropExtension outputTarget
               outputExtName = outputBaseName ++ "_ext"
               renames = [o | o@(TargetPath _ _ _) <- os]
@@ -327,7 +328,12 @@ instance Backend CStaticOption where
                 do
                   gennedIncludes <- genIncludes includes fp
                   return $ concat [ward, gennedIncludes]
-                  
+
+              stubLeader includes fp =
+                do
+                  gennedIncludes <- genIncludes includes fp
+                  return $ concat [gennedIncludes]
+
               srcTrailer = ""
               reinclusionName fp = concat ["__", map (\a -> (if a == '.' then '_' else a)) (takeFileName fp), "__"]
               hdrLeader includes fp =

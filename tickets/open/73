@@ -1,0 +1,7 @@
+Title: Boolean command line switches should be invertable.
+
+Any command line option that's a boolean switch should have a "no" version
+of itself. e.g. --c-no-debug should have --c-yes-debug so that the pragmas
+can override command line when necessary.
+
+

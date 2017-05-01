@@ -10,3 +10,7 @@ dist/build/autogen/PackageInfo.hs:6:131: Warning:
 This appears to require upgrading cabal, which replaces PackageInfo with
 Paths_<pkgname>, where this is fixed.  See:
 https://www.haskell.org/cabal/users-guide/developing-packages.html#accessing-data-files-from-package-code
+
+Oorrrrrrrrrr not.  I forgot I wrote the code to generate PackageInfo!
+
+No wonder it was so hard to google :^/

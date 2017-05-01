@@ -1,6 +1,6 @@
 module Main where
 
-import PackageInfo (packageInfo, author, synopsis)
+import PackageInfo (version, appName, author, synopsis)
 import Backends.Backend (options, generate)
 import Backends.GraphViz (GraphVizOption(..))
 import Backends.CStatic (CStaticOption(..))
@@ -26,7 +26,6 @@ import Trashcan.Graph
 import Control.Monad (when)
 import Control.Arrow (second)
 import Control.Applicative ((<$>), (<*>))
-import Distribution.Package (packageVersion, packageName, PackageName(..))
 import Text.Parsec (parse, eof)
 import System.Console.GetOpt (usageInfo, getOpt, OptDescr(..), ArgDescr(..), ArgOrder(Permute))
 import System.Environment (getArgs)
@@ -34,7 +33,6 @@ import System.FilePath (joinPath, takeFileName, dropFileName, normalise)
 import System.Exit (exitFailure)
 import Data.Either (lefts, rights, isLeft)
 import Data.Map (fromList)
-import Data.Version (showVersion)
 import Data.Monoid (mempty)
 
 subcommand :: String -> (a -> b) -> [OptDescr a] -> [OptDescr b]
@@ -58,11 +56,8 @@ data EnvmntOption = Strict
                   | Rename String
     deriving (Show, Eq)
 
-app_name :: String
-app_name = ((\ (PackageName s) -> s) $ packageName packageInfo)
-
 header :: String
-header = "Usage: " ++ app_name ++ " [OPTIONS] file\n" ++
+header = "Usage: " ++ appName ++ " [OPTIONS] file\n" ++
          synopsis ++ "\n" ++
          "Written by " ++ author ++ "\n"
 
@@ -91,8 +86,7 @@ printUsage :: IO ()
 printUsage = putStr $ usageInfo header all_opts
 
 printVersion :: IO ()
-printVersion = putStrLn (app_name ++ " version: " ++
-                         (showVersion $ packageVersion packageInfo))
+printVersion = putStrLn (appName ++ " version: " ++ version)
 
 rename :: String -> Either String (QualifiedName, QualifiedName)
 rename s = case map (second reads) $ reads s of

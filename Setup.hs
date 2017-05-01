@@ -1,10 +1,12 @@
 import Distribution.PackageDescription (PackageDescription(..))
+import Distribution.Package (packageVersion, packageName, PackageIdentifier(..), PackageName(..))
 import Distribution.Simple (defaultMainWithHooks, simpleUserHooks, UserHooks(..), Args)
 import Distribution.Simple.BuildPaths (autogenModulesDir)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo)
 import Distribution.Simple.Setup (BuildFlags(..), fromFlag)
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, rewriteFile)
 import System.FilePath ((</>), (<.>))
+import Data.Version (showVersion)
 
 main = defaultMainWithHooks packageInfoUserHooks
 
@@ -13,6 +15,9 @@ packageInfoUserHooks =
     simpleUserHooks {
         buildHook = genPackageInfoHook
     }
+
+app_name :: PackageIdentifier -> String
+app_name packageInfo = ((\ (PackageName s) -> s) $ packageName packageInfo)
 
 genPackageInfoHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> BuildFlags -> IO ()
 genPackageInfoHook pkg lbi uhs bfs= do
@@ -23,10 +28,8 @@ genPackageInfoHook pkg lbi uhs bfs= do
     where cfg_name = "PackageInfo"
           generate pkg = "module " ++ cfg_name ++ " where\n" ++
                          "\n" ++
-                         "import Distribution.Package (PackageIdentifier(..), PackageName(..))\n" ++
-                         "import Distribution.Version (Version(..))\n" ++
-                         "\n" ++
-                         "packageInfo = " ++ (show $ package pkg) ++ "\n" ++
+                         "version     = " ++ (show $ showVersion $ packageVersion $ package pkg) ++ "\n" ++
+                         "appName     = " ++ (show $ app_name $ package pkg) ++ "\n" ++
                          "copyright   = " ++ (show $ copyright pkg) ++ "\n" ++
                          "maintainer  = " ++ (show $ maintainer pkg) ++ "\n" ++
                          "author      = " ++ (show $ author pkg) ++ "\n" ++

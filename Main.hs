@@ -1,6 +1,6 @@
 module Main where
 
-import PackageInfo (version, appName, author, synopsis)
+import PackageInfo (version, buildCommit, appName, author, synopsis)
 import Backends.Backend (options, generate)
 import Backends.GraphViz (GraphVizOption(..))
 import Backends.CStatic (CStaticOption(..))
@@ -87,6 +87,7 @@ printUsage = putStr $ usageInfo header all_opts
 
 printVersion :: IO ()
 printVersion = putStrLn (appName ++ " version: " ++ version)
+            >> putStrLn ("build commit: " ++ buildCommit)
 
 rename :: String -> Either String (QualifiedName, QualifiedName)
 rename s = case map (second reads) $ reads s of

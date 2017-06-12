@@ -131,7 +131,7 @@ instance Backend GraphVizOption where
                 Option [] ["suppress-nontransition"] (NoArg SuppressNoTransition)
                  "Suppress non-transitioning events from output."])
 
-    generate os gswust inputName = sequence [(runner os) (runGraphviz d) (format os) (outputName os)]
+    generate os cfg gswust inputName = sequence [(runner os) (runGraphviz d) (format os) (outputName os)]
         where d = (graphToDot (smudgeParams renderSE renderNT (length gs > 1) inputName entryNodes) g') {graphID = Just (toGraphID " ")}
               g' = gfold gs
               (gs, _, _) = gswust

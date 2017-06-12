@@ -1,7 +1,7 @@
 module Main where
 
 import PackageInfo (version, buildCommit, appName, author, synopsis)
-import Backends.Backend (options, generate)
+import Backends.Backend (options, generate, Config(..), defaultConfig)
 import Backends.GraphViz (GraphVizOption(..))
 import Backends.CStatic (CStaticOption(..))
 import Model (
@@ -56,6 +56,10 @@ data EnvmntOption = Strict
                   | Rename String
     deriving (Show, Eq)
 
+data CommonOption = LogEvent |
+                    NoDebug
+    deriving (Show, Eq)
+
 header :: String
 header = "Usage: " ++ appName ++ " [OPTIONS] file\n" ++
          synopsis ++ "\n" ++
@@ -71,7 +75,12 @@ envopts = [Option []    ["strict"] (NoArg Strict) "Require all types to match st
            Option []    ["namespace"] (ReqArg Namespace "NEW") "Replace namespace.",
            Option []    ["rename"] (ReqArg Rename "\"OLD NEW\"") "Replace identifier."]
 
-data Options = SystemOption SystemOption | EnvmntOption EnvmntOption | GraphVizOption GraphVizOption | CStaticOption CStaticOption
+cmnopts :: [OptDescr CommonOption]
+cmnopts = [Option []    ["logevent"] (NoArg LogEvent) "Enable event tracing.",
+           Option []    ["c-no-debug"] (NoArg NoDebug)
+                         "Don't generate debugging information."]
+
+data Options = SystemOption SystemOption | EnvmntOption EnvmntOption | CommonOption CommonOption | GraphVizOption GraphVizOption | CStaticOption CStaticOption
     deriving (Show, Eq)
 
 all_opts :: [OptDescr Options]
@@ -79,6 +88,7 @@ all_opts = concat [subcommand "" SystemOption sysopts] ++ fileopts
 
 fileopts :: [OptDescr Options]
 fileopts = concat [subcommand "" EnvmntOption envopts,
+                   subcommand "" CommonOption cmnopts,
                    (subcommand <$> fst <*> return CStaticOption <*> snd) options,
                    (subcommand <$> fst <*> return GraphVizOption <*> snd) options]
 
@@ -154,12 +164,16 @@ report_failure n = putStrLn ("Exiting with " ++ show n ++ " error" ++ (if n == 1
 
 --make_output :: String -> [Options] -> ([(StateMachine, Gr EnterExitState Happening)], Alias, SymbolTable) -> IO ()
 make_output fileName os gswst = do
+    let noDebug = elem (CommonOption NoDebug) os
+    let logEvent = elem (CommonOption LogEvent) os
+    let dbgCfg = if noDebug then defaultConfig { debug=False } else defaultConfig
+    let config = if logEvent then dbgCfg { logEvent=True } else dbgCfg
     let gvos = [a | GraphVizOption a <- os]
-    outputNames <- generate gvos gswst fileName
+    outputNames <- generate gvos config gswst fileName
     mapM_ putStrLn $ do outputName <- outputNames
                         ["Wrote file \"" ++ outputName ++ "\""]
     let csos = [a | CStaticOption a <- os]
-    outputNames <- generate csos gswst fileName
+    outputNames <- generate csos config gswst fileName
     mapM_ putStrLn $ do outputName <- outputNames
                         ["Wrote file \"" ++ outputName ++ "\""]
 

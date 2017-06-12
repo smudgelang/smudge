@@ -4,7 +4,10 @@ module Backends.CStatic (
     CStaticOption(..)
 ) where
 
-import Backends.Backend (Backend(..))
+import Backends.Backend (
+  Backend(..),
+  Config(..)
+  )
 import Backends.SmudgeIR (
   SmudgeIR,
   Def(..),
@@ -68,7 +71,6 @@ data FileCategory = ExtFile | IntFile
     deriving (Show, Eq)
 
 data CStaticOption = TargetPath FileType FileCategory FilePath
-                   | NoDebug
                    | GenStubs
     deriving (Show, Eq)
 
@@ -289,15 +291,13 @@ instance Backend CStaticOption where
                 Option [] ["ext_h"] (ReqArg (TargetPath Header ExtFile) "FILE")
                  "The name of the target ext header file if not derived from source file.",
                 Option [] ["stubs"] (NoArg GenStubs)
-                 "generate stub implementation.",
-                Option [] ["no-debug"] (NoArg NoDebug)
-                 "Don't generate debugging information"])
-    generate os gswust outputTarget = sequence $ [writeTranslationUnit (renderHdr hdr []) headerName,
+                 "generate stub implementation."])
+    generate os cfg gswust outputTarget = sequence $ [writeTranslationUnit (renderHdr hdr []) headerName,
                                          writeTranslationUnit (renderSrc src [extHdrName, headerName]) outputName,
                                          writeTranslationUnit (renderHdr ext [headerName]) extHdrName] ++
                                          if stubs then [writeTranslationUnit (renderStubs exs [extHdrName, headerName]) extSrcName] else []
         where hdr = fromList $ convertIR aliases True False $ lowerSymTab gs $ filterBind syms Exported
-              src = fromList $ concat [convertIR aliases True True (lower debug ([g], syms)) | g <- gs]
+              src = fromList $ concat [convertIR aliases True True (lower (debug cfg) ([g], syms)) | g <- gs]
               ext = fromList $ convertIR aliases True False $ lowerSymTab [] $ filterBind syms External
               exs = fromList $ convertIR aliases False True $ lowerSymTab [] $ filterBind syms External
               (gs, aliases, syms) = gswust
@@ -342,5 +342,4 @@ instance Backend CStaticOption where
                   return $ concat [ward, "#ifndef ", reinclusionName fp, "\n", "#define ", reinclusionName fp, "\n",
                                    gennedIncludes]
               hdrTrailer = "#endif\n"
-              debug = null $ filter (==NoDebug) os
               stubs = not $ null $ filter (==GenStubs) os

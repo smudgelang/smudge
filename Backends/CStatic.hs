@@ -297,7 +297,7 @@ instance Backend CStaticOption where
                                          writeTranslationUnit (renderHdr ext [headerName]) extHdrName] ++
                                          if stubs then [writeTranslationUnit (renderStubs exs [extHdrName, headerName]) extSrcName] else []
         where hdr = fromList $ convertIR aliases True False $ lowerSymTab gs $ filterBind syms Exported
-              src = fromList $ concat [convertIR aliases True True (lower (debug cfg) ([g], syms)) | g <- gs]
+              src = fromList $ concat [convertIR aliases True True (lower cfg ([g], syms)) | g <- gs]
               ext = fromList $ convertIR aliases True False $ lowerSymTab [] $ filterBind syms External
               exs = fromList $ convertIR aliases False True $ lowerSymTab [] $ filterBind syms External
               (gs, aliases, syms) = gswust

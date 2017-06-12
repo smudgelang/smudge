@@ -16,6 +16,7 @@ module Backends.SmudgeIR (
     lowerSymTab
 ) where
 
+import Backends.Backend (Config(..))
 import Grammars.Smudge (
   StateMachine(..),
   State(..),
@@ -99,8 +100,8 @@ mangleEv EventAny = qualify "any"
 events_for :: Gr EnterExitState Happening -> [Event TaggedName]
 events_for g = nub $ sort [e | (_, _, Happening {event=e@(Event _)}) <- labEdges g]
 
-lower :: Bool -> ([(StateMachine TaggedName, Gr EnterExitState Happening)], SymbolTable) -> SmudgeIR
-lower debug (gs, syms) = concatMap (lowerMachine debug syms) gs
+lower :: Config -> ([(StateMachine TaggedName, Gr EnterExitState Happening)], SymbolTable) -> SmudgeIR
+lower cfg (gs, syms) = concatMap (lowerMachine cfg syms) gs
 
 lowerSymTab :: [(StateMachine TaggedName, Gr EnterExitState Happening)] -> SymbolTable -> SmudgeIR
 lowerSymTab gs syms = [
@@ -114,12 +115,12 @@ lowerSymTab gs syms = [
     where 
         args = map (qualify . ('a':) . show) [1..]
 
-lowerMachine :: Bool -> SymbolTable -> (StateMachine TaggedName, Gr EnterExitState Happening) -> SmudgeIR
-lowerMachine debug syms (StateMachine smName, g') = [
+lowerMachine :: Config -> SymbolTable -> (StateMachine TaggedName, Gr EnterExitState Happening) -> SmudgeIR
+lowerMachine cfg syms (StateMachine smName, g') = [
         DataDef $ TyDef stateEnum $ SumDec stateEnum [(st_id s, Nothing) | s <- states],
         DataDef $ VarDef Internal $ ValDec stateVar (Ty stateEnum) (Init $ Value $ Var $ st_id initial)
     ] ++
-        (if debug then [stateNameFun] else [])
+        (if debug cfg then [stateNameFun] else [])
       ++ [
         currentStateNameFun
     ] ++ [
@@ -152,7 +153,7 @@ lowerMachine debug syms (StateMachine smName, g') = [
         handle_f = qualify (smName, "Handle_Message")
         initialize_f = qualify (smName, "initialize")
         unhandled_f e = qualify (qualify (smName, "UNHANDLED_EVENT"), mangleEv e)
-        call_panic_f args = ExprS $ if debug then FunCall (qualify "panic_print") args else FunCall (qualify "panic") []
+        call_panic_f args = ExprS $ if debug cfg then FunCall (qualify "panic_print") args else FunCall (qualify "panic") []
         stateEnum = TagState $ qualify (smName, "State")
         stateVar = qualify (smName, "state")
         eventEnum = (\(Ty p :-> r) -> p) $ snd (syms ! TagFunction handle_f)
@@ -177,7 +178,7 @@ lowerMachine debug syms (StateMachine smName, g') = [
 
         currentStateNameFun :: Def
         currentStateNameFun = FunDef f_name [] (syms ! TagFunction f_name) []
-                                     [Return $ if debug then FunCall stateName_f [Value $ Var stateVar] else Literal ""]
+                                     [Return $ if debug cfg then FunCall stateName_f [Value $ Var stateVar] else Literal ""]
             where f_name = qualify (smName, "Current_state_name")
 
         unhandledEventFun :: [(State TaggedName, Event TaggedName)] -> Event TaggedName -> Def
@@ -185,7 +186,7 @@ lowerMachine debug syms (StateMachine smName, g') = [
             where f_name = unhandled_f e
                   name_var = qualify "event_name"
                   event_var = head eventNames
-                  ds = if (not $ null handler) || not debug then [] else [VarDef Unresolved $ ValDec name_var (Ty char) (Init $ Literal $ disqualifyTag evName)]
+                  ds = if (not $ null handler) || not (debug cfg) then [] else [VarDef Unresolved $ ValDec name_var (Ty char) (Init $ Literal $ disqualifyTag evName)]
                   es = [case handler of
                            [(s, e')] -> ExprS $ FunCall (qualify (sName smName s, mangleEv e')) (if e == e' then [Value $ Var event_var] else [])
                            [] -> call_panic_f [Literal panic_s, FunCall stateName_f [Value $ Var stateVar], Value $ Var name_var]]

@@ -82,7 +82,7 @@ checkAndConvert sms os = do
             when (any fatal fs) $ report_failure $ length fs
 
             let basis = bindBasis aliases $ map fst sms''
-            let st = if elem (EnvmntOption Strict) os
+            let st = if elem (EnvmntOption (Strict True)) os
                      then elaborateMono basis sms'''
                      else elaboratePoly basis sms'''
             -- This is a bit of a hack around the definition of Passable
@@ -103,8 +103,8 @@ report_failure n = putStrLn ("Exiting with " ++ show n ++ " error" ++ (if n == 1
 
 --make_output :: String -> [Options] -> ([(StateMachine, Gr EnterExitState Happening)], Alias, SymbolTable) -> IO ()
 make_output fileName os gswst = do
-    let noDebug = elem (CommonOption NoDebug) os
-    let logEvent = elem (CommonOption LogEvent) os
+    let noDebug = elem (CommonOption (Debug False)) os
+    let logEvent = elem (CommonOption (LogEvent True)) os
     let dbgCfg = if noDebug then defaultConfig { debug=False } else defaultConfig
     let config = if logEvent then dbgCfg { logEvent=True } else dbgCfg
     let gvos = [a | GraphVizOption a <- os]

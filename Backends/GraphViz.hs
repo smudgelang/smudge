@@ -22,6 +22,7 @@ import Model (
   EnterExitState(..)
   )
 import Trashcan.Graph
+import Trashcan.GetOpt (OptDescr(..), ArgDescr(..))
 
 import Data.GraphViz
 import Data.GraphViz.Commands
@@ -32,7 +33,6 @@ import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.List (intercalate, intersperse)
 import Data.Monoid
 import Data.Text.Internal.Lazy (Text(..))
-import System.Console.GetOpt
 import System.FilePath (FilePath, dropExtension)
 
 type QualifiedState = (StateMachine TaggedName, EnterExitState)
@@ -105,7 +105,7 @@ smudgeParams sideEffects noTransitions clusterBox title entryNodes =
             arrow (Happening _ _ [])                        = edgeEnds Forward
             arrow (Happening _ _ fs) | elem NoTransition fs = if noTransitions then edgeEnds NoDir else style invis
 
-data GraphVizOption = Format GraphvizOutput | OutFile FilePath | SuppressSideEffects | SuppressNoTransition
+data GraphVizOption = Format GraphvizOutput | OutFile FilePath | RenderSideEffects Bool | SuppressNoTransition
     deriving (Show, Eq)
 
 outputFormats :: [GraphvizOutput]
@@ -126,7 +126,7 @@ instance Backend GraphVizOption where
                   (intercalate "," $ map show outputFormats)),
                 Option [] ["o"] (ReqArg OutFile "FILE")
                  "The name of the target file if not derived from source file.",
-                Option [] ["no-se"] (NoArg SuppressSideEffects)
+                Option [] ["no-se"] (BoolArg RenderSideEffects)
                  "Suppress side effects from output",
                 Option [] ["suppress-nontransition"] (NoArg SuppressNoTransition)
                  "Suppress non-transitioning events from output."])
@@ -136,7 +136,7 @@ instance Backend GraphVizOption where
               g' = gfold gs
               (gs, _, _) = gswust
               entryNodes = [n | (n, (_, EnterExitState {st = StateEntry})) <- G.labNodes g']
-              renderSE = not $ SuppressSideEffects `elem` os
+              renderSE = not $ RenderSideEffects False `elem` os
               renderNT = not $ SuppressNoTransition `elem` os
 
               getFirstOrDefault :: ([a] -> b) -> b -> [a] -> b

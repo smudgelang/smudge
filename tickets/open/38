@@ -13,12 +13,12 @@ E.g.:
 
 smudge --logevent
 smudge --logevent a --logevent "$b"
-smudge --logevent --logstate ~a --logevent ~"$b"
+smudge --logevent --no-logevent a --no-logevent "$b"
 
 smudge --logstate
 smudge --logstate A --logstate "$B"
-smudge --logstate --logstate ~A --logstate ~"$B"
+smudge --logstate --no-logstate A --no-logstate "$B"
 
-Without argument, everything is enabled.  A plain argument enables a single
-event or state.  An argument with a tilde disables.  Later flags supersede
+Without argument, everything is enabled.  A "no-" prefix to the flag causes
+logging for those states and events to be disabled.  Later flags supersede
 earlier flags.  This would insert calls to "SMUDGE_print".

@@ -10,7 +10,7 @@ import Semantics.Solver (SymbolTable)
 import Semantics.Alias (Alias)
 
 import Data.Graph.Inductive.PatriciaTree (Gr)
-import System.Console.GetOpt (OptDescr)
+import Trashcan.GetOpt (OptDescr)
 import System.FilePath (FilePath)
 
 data Config = Config {

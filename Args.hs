@@ -7,37 +7,26 @@ module Args (
     getFileOpt
 ) where
 
+import Trashcan.GetOpt (usageInfo, getOpt, OptDescr(..), ArgDescr(..), ArgOrder(Permute))
 import PackageInfo (version, buildCommit, appName, author, synopsis)
 import Backends.Backend (options)
 import Backends.GraphViz (GraphVizOption(..))
 import Backends.CStatic (CStaticOption(..))
 
-import System.Console.GetOpt (usageInfo, getOpt, OptDescr(..), ArgDescr(..), ArgOrder(Permute))
 import System.Exit (exitSuccess, exitFailure)
-
-subcommand :: String -> (a -> b) -> [OptDescr a] -> [OptDescr b]
-subcommand name f os = map makeSub os
-    where makeSub (Option ls ws v d) = Option ls sws sv d
-           where sws = case name of
-                       "" -> ws
-                       _  -> map ((name ++) . ('-' :)) ws
-                 sv = case v of
-                      NoArg a -> NoArg (f a)
-                      ReqArg g s -> ReqArg (f . g) s
-                      OptArg g s -> OptArg (f . g) s
 
 data SystemOption = Version
                   | Help
                   | OutDir FilePath
     deriving (Show, Eq)
 
-data EnvmntOption = Strict
+data EnvmntOption = Strict Bool
                   | Namespace String
                   | Rename String
     deriving (Show, Eq)
 
-data CommonOption = LogEvent |
-                    NoDebug
+data CommonOption = LogEvent Bool |
+                    Debug Bool
     deriving (Show, Eq)
 
 header :: String
@@ -51,26 +40,30 @@ sysopts = [Option ['v'] ["version"] (NoArg Version) "Version information.",
            Option []    ["outdir"] (ReqArg OutDir "DIR") "Output directory."]
 
 envopts :: [OptDescr EnvmntOption]
-envopts = [Option []    ["strict"] (NoArg Strict) "Require all types to match strictly",
+envopts = [Option []    ["[no-]strict"] (BoolArg Strict) "[DON'T] Require all types to match strictly",
            Option []    ["namespace"] (ReqArg Namespace "NEW") "Replace namespace.",
            Option []    ["rename"] (ReqArg Rename "\"OLD NEW\"") "Replace identifier."]
 
 cmnopts :: [OptDescr CommonOption]
-cmnopts = [Option []    ["logevent"] (NoArg LogEvent) "Enable event tracing.",
-           Option []    ["c-no-debug"] (NoArg NoDebug)
-                         "Don't generate debugging information."]
+cmnopts = [Option []    ["[no-]logevent"] (BoolArg LogEvent) "[DON'T] Enable event tracing.",
+           Option []    ["[no-]debug"] (BoolArg Debug) "[DON'T] Generate debugging information."]
+
+deprecated_c_no_debug :: [OptDescr CommonOption]
+deprecated_c_no_debug =
+          [Option []    ["no-debug"] (BoolArg Debug) "[DEPRECATED] Don't generate debugging information."]
 
 data Options = SystemOption SystemOption | EnvmntOption EnvmntOption | CommonOption CommonOption | GraphVizOption GraphVizOption | CStaticOption CStaticOption
     deriving (Show, Eq)
 
 all_opts :: [OptDescr Options]
-all_opts = concat [subcommand "" SystemOption sysopts] ++ fileopts
+all_opts = [Subcommand "" SystemOption sysopts] ++ fileopts
 
 fileopts :: [OptDescr Options]
-fileopts = concat [subcommand "" EnvmntOption envopts,
-                   subcommand "" CommonOption cmnopts,
-                   (subcommand <$> fst <*> return CStaticOption <*> snd) options,
-                   (subcommand <$> fst <*> return GraphVizOption <*> snd) options]
+fileopts = [Subcommand "" EnvmntOption envopts,
+            Subcommand "" CommonOption cmnopts,
+            Subcommand "c" CommonOption deprecated_c_no_debug,
+            (Subcommand <$> fst <*> return CStaticOption <*> snd) options,
+            (Subcommand <$> fst <*> return GraphVizOption <*> snd) options]
 
 printUsage :: IO ()
 printUsage = putStr (usageInfo header all_opts)

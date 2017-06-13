@@ -40,6 +40,7 @@ import Parsers.Id (
   mangle,
   )
 import Semantics.Alias (Alias, rename)
+import Trashcan.GetOpt (OptDescr(..), ArgDescr(..))
 import Trashcan.FilePath (relPath)
 import Trashcan.These (
   These(..),
@@ -54,7 +55,6 @@ import Control.Arrow (first, second, (***), (&&&))
 import Control.Monad (liftM)
 import Control.Monad.State (StateT, evalState, state)
 import Data.Maybe (catMaybes, isNothing)
-import System.Console.GetOpt
 import System.FilePath (
   FilePath,
   dropExtension,

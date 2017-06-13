@@ -11,19 +11,28 @@ import Args (
   )
 import Backends.Backend (generate, Config(..), defaultConfig)
 import Model (
+  EnterExitState,
+  Happening,
   passInitialState,
   passFullyQualify,
   passRename,
   passTagCategories,
   passWholeStateToGraph,
   QualifiedName,
+  TaggedName,
+  )
+import Grammars.Smudge (
+  StateMachine,
+  WholeState,
   )
 import Semantics.Solver (
+  SymbolTable,
   elaborateMono,
   elaboratePoly,
   )
+import Parsers.Id (Identifier)
 import Parsers.Smudge (smudge_file)
-import Semantics.Alias (merge)
+import Semantics.Alias (Alias, merge)
 import Semantics.Basis (basisAlias, bindBasis)
 import Semantics.Semantic (Severity(..), Fault(..), fatal)
 import Semantics (make_passes, name_passes, type_passes)
@@ -36,6 +45,7 @@ import Text.Parsec (parse, eof)
 import System.Environment (getArgs)
 import System.FilePath (joinPath, takeFileName, dropFileName, normalise)
 import System.Exit (exitFailure)
+import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Either (lefts, rights, isLeft)
 import Data.Map (fromList)
 import Data.Monoid (mempty)
@@ -45,7 +55,7 @@ rename s = case map (second reads) $ reads s of
             [(a, [(b, "")])] -> Right (a, b)
             otherwise      -> Left s
 
---processFile :: String -> [Options] -> IO ([(StateMachine TaggedName, Gr EnterExitState Happening)], Alias QualifiedName, SymbolTable)
+processFile :: String -> [Options] -> IO ()
 processFile fileName os = do
     compilationUnit <-
         if fileName == "-"
@@ -63,7 +73,7 @@ processFile fileName os = do
           prefix ((SystemOption (OutDir p)):_) = p
           prefix (_:t) = prefix t
 
---checkAndConvert :: [(StateMachine Identifier, WholeState Identifier)] -> [Options] -> IO ([(StateMachine TaggedName, Gr EnterExitState Happening)], Alias QualifiedName, SymbolTable)
+checkAndConvert :: [(StateMachine Identifier, [WholeState Identifier])] -> [Options] -> IO ([(StateMachine TaggedName, Gr EnterExitState Happening)], Alias QualifiedName, SymbolTable)
 checkAndConvert sms os = do
     let rename_errors = lefts renames
     mapM (putStrLn . ("Parse error in rename flag: " ++)) rename_errors
@@ -101,7 +111,7 @@ checkAndConvert sms os = do
 report_failure :: Int -> IO a
 report_failure n = putStrLn ("Exiting with " ++ show n ++ " error" ++ (if n == 1 then "" else "s")) >> exitFailure
 
---make_output :: String -> [Options] -> ([(StateMachine, Gr EnterExitState Happening)], Alias, SymbolTable) -> IO ()
+make_output :: String -> [Options] -> ([(StateMachine TaggedName, Gr EnterExitState Happening)], Alias QualifiedName, SymbolTable) -> IO ()
 make_output fileName os gswst = do
     let noDebug = elem (CommonOption (Debug False)) os
     let logEvent = elem (CommonOption (LogEvent True)) os

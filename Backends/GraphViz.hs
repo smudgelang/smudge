@@ -24,14 +24,36 @@ import Model (
 import Trashcan.Graph
 import Trashcan.GetOpt (OptDescr(..), ArgDescr(..))
 
-import Data.GraphViz
-import Data.GraphViz.Commands
+import Data.GraphViz (
+  GraphvizParams(..),
+  GraphvizOutput(..),
+  Labellable(..),
+  NodeCluster(..),
+  GlobalAttributes(..),
+  ToGraphID(..),
+  DotGraph(..),
+  defaultParams,
+  runGraphviz,
+  graphToDot,
+  addExtension,
+  )
+import Data.GraphViz.Attributes (
+  toLabel,
+  shape,
+  style,
+  filled,
+  invis,
+  edgeEnds,
+  fillColor,
+  Shape(Circle),
+  X11Color(Black),
+  DirType(Forward, NoDir),
+  )
 import Data.GraphViz.Attributes.Complete (Label(..), Attribute(Concentrate))
 import qualified Data.Graph.Inductive.Graph as G
 import qualified Data.Map as M
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.List (intercalate, intersperse)
-import Data.Monoid
 import Data.Text.Internal.Lazy (Text(..))
 import System.FilePath (FilePath, dropExtension)
 
@@ -131,7 +153,7 @@ instance Backend GraphVizOption where
                 Option [] ["suppress-nontransition"] (NoArg SuppressNoTransition)
                  "Suppress non-transitioning events from output."])
 
-    generate os cfg gswust inputName = sequence [(runner os) (runGraphviz d) (format os) (outputName os)]
+    generate os cfg gswust inputName = sequence [runner (runGraphviz d) format outputName]
         where d = (graphToDot (smudgeParams renderSE renderNT (length gs > 1) inputName entryNodes) g') {graphID = Just (toGraphID " ")}
               g' = gfold gs
               (gs, _, _) = gswust
@@ -139,12 +161,6 @@ instance Backend GraphVizOption where
               renderSE = not $ RenderSideEffects False `elem` os
               renderNT = not $ SuppressNoTransition `elem` os
 
-              getFirstOrDefault :: ([a] -> b) -> b -> [a] -> b
-              getFirstOrDefault _ d     [] = d
-              getFirstOrDefault f _ (x:xs) = f xs
-              format ((Format f):_) = f
-              format xs = getFirstOrDefault format DotOutput xs
-              outputName ((OutFile f):_) = f
-              outputName xs = getFirstOrDefault outputName (dropExtension inputName) xs
-              runner ((OutFile _):_) = id
-              runner xs = getFirstOrDefault runner addExtension xs
+              format = head $ [f | Format f <- os] ++ [DotOutput]
+              outputName = head $ [f | OutFile f <- os] ++ [dropExtension inputName]
+              runner = head $ [id | OutFile _ <- os] ++ [addExtension]

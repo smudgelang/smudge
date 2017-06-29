@@ -52,7 +52,7 @@ followed by an arrow followed by a state name. The event causes the
 state machine to go to the named state. In this example, the events
 are *coin* and *person*. Note that not every event is handled by
 every state. Smudge will generate an error if *coin* is sent to a
-state machine that's in *unlocked*.
+*turnstile* that's *unlocked*.
 
 Generate Stubs
 --------------
@@ -65,11 +65,17 @@ path. Then run Smudge on the example.
 
    smudge initial.smudge
 
-This will generate some dot output (the picture above), a C file and a
-pair of headers. They all get dropped in the same directory as the
-.smudge file. Since this is a brand new state machine, we can have
-Smudge generate some boilerplate with the ``--c-stubs`` command line
-option.
+This will generate some dot output (the picture above, see sidebar on
+the next page), a C file and a pair of headers. They all get dropped
+in the same directory as the .smudge file. Since this is a brand new
+state machine, we can have Smudge generate some boilerplate with the
+``--c-stubs`` command line option.
+
+.. sidebar:: Install GraphViz
+
+    Make sure to install GraphViz to generate this diagram; if
+    GraphViz is missing, Smudge will not generate this dot output,
+    and will exit with an error, so make sure to install it.
 
 ::
 

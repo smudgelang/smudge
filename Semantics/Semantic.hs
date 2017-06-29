@@ -23,13 +23,19 @@ data Severity = ERROR | BUG
 
 type Description = String
 data Fault = Fault Severity Location Description
+           | RuntimeFault Severity Description
+
+fatalSeverity :: Severity -> Bool
+fatalSeverity ERROR = True
+fatalSeverity BUG   = True
 
 fatal :: Fault -> Bool
-fatal (Fault ERROR _ _) = True
-fatal (Fault BUG _ _) = True
+fatal (Fault s _ _) = fatalSeverity s
+fatal (RuntimeFault s _) = fatalSeverity s
 
 instance Show Fault where
     show (Fault s l d) = show s ++ " at " ++ show l ++ ":\n" ++ d
+    show (RuntimeFault s d) = show s ++ " during execution:\n" ++ d
 
 class AbstractFoldable f where
     type FoldContext f :: *

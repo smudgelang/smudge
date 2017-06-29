@@ -23,6 +23,7 @@ import Model (
   )
 import Trashcan.Graph
 import Trashcan.GetOpt (OptDescr(..), ArgDescr(..))
+import Semantics.Semantic (Fault(..), Severity(..))
 
 import Data.GraphViz (
   GraphvizParams(..),
@@ -33,6 +34,7 @@ import Data.GraphViz (
   ToGraphID(..),
   DotGraph(..),
   defaultParams,
+  isGraphvizInstalled,
   runGraphviz,
   graphToDot,
   addExtension,
@@ -55,7 +57,8 @@ import qualified Data.Map as M
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.List (intercalate, intersperse)
 import Data.Text.Internal.Lazy (Text(..))
-import Control.Monad.Trans (liftIO)
+import Control.Monad.Trans.Except (ExceptT(..), withExceptT)
+import Control.Exception (try, SomeException(..))
 import System.FilePath (FilePath, dropExtension)
 
 type QualifiedState = (StateMachine TaggedName, EnterExitState)
@@ -154,7 +157,11 @@ instance Backend GraphVizOption where
                 Option [] ["suppress-nontransition"] (NoArg SuppressNoTransition)
                  "Suppress non-transitioning events from output."])
 
-    generate os cfg gswust inputName = liftIO $ sequence [runner (runGraphviz d) format outputName]
+    generate os cfg gswust inputName =
+        ExceptT $ do result <- try $ sequence [runner (runGraphviz d) format outputName]
+                     case result of
+                        Left e -> friendlyMessage e >>= return . Left
+                        Right r -> return $ Right r
         where d = (graphToDot (smudgeParams renderSE renderNT (length gs > 1) inputName entryNodes) g') {graphID = Just (toGraphID " ")}
               g' = gfold gs
               (gs, _, _) = gswust
@@ -165,3 +172,7 @@ instance Backend GraphVizOption where
               format = head $ [f | Format f <- os] ++ [DotOutput]
               outputName = head $ [f | OutFile f <- os] ++ [dropExtension inputName]
               runner = head $ [id | OutFile _ <- os] ++ [addExtension]
+
+              friendlyMessage (SomeException e) =
+                do installed <- isGraphvizInstalled
+                   return $ RuntimeFault ERROR $ if installed then show e else "GraphViz not found.  Please install GraphViz."

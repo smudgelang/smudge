@@ -55,6 +55,7 @@ import qualified Data.Map as M
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.List (intercalate, intersperse)
 import Data.Text.Internal.Lazy (Text(..))
+import Control.Monad.Trans (liftIO)
 import System.FilePath (FilePath, dropExtension)
 
 type QualifiedState = (StateMachine TaggedName, EnterExitState)
@@ -153,7 +154,7 @@ instance Backend GraphVizOption where
                 Option [] ["suppress-nontransition"] (NoArg SuppressNoTransition)
                  "Suppress non-transitioning events from output."])
 
-    generate os cfg gswust inputName = sequence [runner (runGraphviz d) format outputName]
+    generate os cfg gswust inputName = liftIO $ sequence [runner (runGraphviz d) format outputName]
         where d = (graphToDot (smudgeParams renderSE renderNT (length gs > 1) inputName entryNodes) g') {graphID = Just (toGraphID " ")}
               g' = gfold gs
               (gs, _, _) = gswust

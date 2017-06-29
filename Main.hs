@@ -39,6 +39,7 @@ import Semantics (make_passes, name_passes, type_passes)
 import Trashcan.Graph
 
 import Control.Monad (when)
+import Control.Monad.Trans.Except (runExceptT)
 import Control.Arrow (second)
 import Control.Applicative ((<$>), (<*>))
 import Text.Parsec (parse, eof)
@@ -118,13 +119,15 @@ make_output fileName os gswst = do
     let dbgCfg = if noDebug then defaultConfig { debug=False } else defaultConfig
     let config = if logEvent then dbgCfg { logEvent=True } else dbgCfg
     let gvos = [a | GraphVizOption a <- os]
-    outputNames <- generate gvos config gswst fileName
-    mapM_ putStrLn $ do outputName <- outputNames
-                        ["Wrote file \"" ++ outputName ++ "\""]
+    gres <- runExceptT $ generate gvos config gswst fileName
     let csos = [a | CStaticOption a <- os]
-    outputNames <- generate csos config gswst fileName
+    cres <- runExceptT $ generate csos config gswst fileName
+    let fs = lefts [gres, cres]
+    let outputNames = concat $ rights [gres, cres]
     mapM_ putStrLn $ do outputName <- outputNames
                         ["Wrote file \"" ++ outputName ++ "\""]
+    mapM print fs
+    when (any fatal fs) $ report_failure $ length fs
 
 main = do
     args <- getArgs

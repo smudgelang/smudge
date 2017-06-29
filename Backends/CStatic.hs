@@ -54,6 +54,7 @@ import Unparsers.C89 (renderPretty)
 import Control.Arrow (first, second, (***), (&&&))
 import Control.Monad (liftM)
 import Control.Monad.State (StateT, evalState, state)
+import Control.Monad.Trans (liftIO)
 import Data.Maybe (catMaybes, isNothing)
 import System.FilePath (
   FilePath,
@@ -292,7 +293,7 @@ instance Backend CStaticOption where
                  "The name of the target ext header file if not derived from source file.",
                 Option [] ["stubs"] (NoArg GenStubs)
                  "generate stub implementation."])
-    generate os cfg gswust outputTarget = sequence $ [writeTranslationUnit (renderHdr hdr []) headerName,
+    generate os cfg gswust outputTarget = liftIO $ sequence $ [writeTranslationUnit (renderHdr hdr []) headerName,
                                          writeTranslationUnit (renderSrc src [extHdrName, headerName]) outputName,
                                          writeTranslationUnit (renderHdr ext [headerName]) extHdrName] ++
                                          if stubs then [writeTranslationUnit (renderStubs exs [extHdrName, headerName]) extSrcName] else []

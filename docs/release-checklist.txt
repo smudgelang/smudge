@@ -1,7 +1,7 @@
 A pseudo-script checklist for Smudge release version x.y.z:
   * Replace upstream and x.y.z in the instructions below
   * For the sake of sanity, make a new sandbox:
-        hg clone [upstream] smudge-release
+        git clone [upstream] smudge-release
   * Bump the version to x.y.z:
         sed -i 's/^\(Version: *\)[0-9.]\+$/\1x.y.z/' smudge.cabal
   * Update the release notes in README, including closed tickets
@@ -11,7 +11,7 @@ A pseudo-script checklist for Smudge release version x.y.z:
         make release
   * Test against a known set of Smudge files, checking the output.
   * Tag the version:
-        hg tag x.y.z
+        git tag x.y.z
   * Push:
-        hg push
+        git push
   * Announce, including the release notes.

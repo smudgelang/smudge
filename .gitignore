@@ -1,0 +1,16 @@
+syntax:glob
+dist
+TAGS
+tags
+*~
+*.c
+*.h
+*.dot
+*.png
+*.svg
+*.swo
+*.swp
+*.orig
+*.rej
+graphviz-2999.17.0.1
+*.pdf

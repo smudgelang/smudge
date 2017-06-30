@@ -8,4 +8,4 @@ touch $fn
 echo Title: $title > $fn
 echo >> $fn
 ${FCEDIT:-${VISUAL:-${EDITOR:-vi}}} $fn
-hg add $fn
+git add $fn

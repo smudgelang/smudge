@@ -23,10 +23,16 @@ packageInfoUserHooks =
 app_name :: PackageIdentifier -> String
 app_name packageInfo = ((\ (PackageName s) -> s) $ packageName packageInfo)
 
+try_commands :: String -> [(String, [String])] -> IO String
+try_commands def [] = return def
+try_commands def ((cmd, args):cmds) = do
+    (code, out, _) <- readProcessWithExitCode cmd args ""
+    if code == ExitSuccess then return out else try_commands def cmds
+
 build_commit :: IO String
 build_commit = do
-    (code, out, _) <- readProcessWithExitCode "hg" ["id", "-i"] ""
-    return $ if code == ExitSuccess then dropWhileEnd isSpace out else "UNKNOWN"
+    out <- try_commands "UNKNOWN" [("git", ["rev-parse", "--short=12", "HEAD"]), ("hg", ["id", "-i"])]
+    return $ dropWhileEnd isSpace out
 
 genPackageInfoHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> BuildFlags -> IO ()
 genPackageInfoHook pkg lbi uhs bfs= do

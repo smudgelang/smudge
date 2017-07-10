@@ -24,6 +24,7 @@ basisAlias :: String -> Alias QualifiedName
 basisAlias "" = mempty
 basisAlias namespace = fromList $ map q [
             -- add more here
+            "debug_print",
             "free",
             "panic_print",
             "panic"]
@@ -46,6 +47,7 @@ bindBasis aliases sms = mappend exports externs
             (qualify (smName, "Send_Message"), ([wrapper smName], ""))]
                 | StateMachine smName <- sms] ++ [
             -- add more smudge-wide externals here
+            (rename' "debug_print", ([str, str, str], "")),
             (rename' "free",        ([void], "")),
             (rename' "panic_print", ([str, str, str], "")),
             (rename' "panic",       ([], ""))]

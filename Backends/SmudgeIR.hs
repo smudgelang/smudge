@@ -155,6 +155,7 @@ lowerMachine cfg syms (StateMachine smName, g') = [
         initialize_f = qualify (smName, "initialize")
         unhandled_f e = qualify (qualify (smName, "UNHANDLED_EVENT"), mangleEv e)
         call_panic_f args = ExprS $ if debug cfg then FunCall (qualify "panic_print") args else FunCall (qualify "panic") []
+        call_print_f args = ExprS $ if debug cfg then FunCall (qualify "debug_print") args else FunCall (qualify "debug_print") [Literal "" | arg <- args]
         wrap_name = qualify "wrapper"
         stateEnum = TagState $ qualify (smName, "State")
         stateVar = qualify (smName, "state")
@@ -236,8 +237,10 @@ lowerMachine cfg syms (StateMachine smName, g') = [
 
         handleMessageFun :: Def
         handleMessageFun = FunDef handle_f [wrap_name] (syms ! TagFunction handle_f) [] es
-            where es = [ExprS $ FunCall initialize_f [],
-                        Cases (Value $ SumVar wrap_name) cases defaults]
+            where es = [ExprS $ FunCall initialize_f []] ++
+                       (if logEvent cfg then [call_print_f [Literal format_s, FunCall stateName_f [Value $ Var stateVar], FunCall eventName_f [Value $ Var wrap_name]]] else []) ++
+                       [Cases (Value $ SumVar wrap_name) cases defaults]
+                  format_s = disqualifyTag smName ++ "[%s]: Handling \"%s\"\n"
                   cases = [(evt_id e, [ExprS $ FunCall (qualify (qe, "handle")) [Value $ Field (SumVar wrap_name) qe]]) | Event e <- events, let qe = qualify e]
                   defaults = [call_panic_f [Literal panic_s, FunCall stateName_f [Value $ Var stateVar], Literal ""]]
                   panic_s = disqualifyTag smName ++ "[%s]: Invalid event ID\n"

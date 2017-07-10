@@ -1,0 +1,8 @@
+Title: Throw error on state machine with no events.
+
+This state machine is nonsensical. We shouldn't allow state machines
+with no interface.
+
+SM { A [_ --> B], B [_ --> A] }
+
+

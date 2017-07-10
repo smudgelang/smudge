@@ -1,0 +1,6 @@
+Title: Error message for unreachable states
+
+This state machine should throw an error:
+
+sm { *A[x --> B], B [_ --> A], C[_ --> A] }
+

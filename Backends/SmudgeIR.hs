@@ -120,7 +120,7 @@ lowerMachine cfg syms (StateMachine smName, g') = [
         DataDef $ TyDef stateEnum $ SumDec stateEnum [(st_id s, Nothing) | s <- states],
         DataDef $ VarDef Internal $ ValDec stateVar (Ty stateEnum) (Init $ Value $ Var $ st_id initial)
     ] ++
-        (if debug cfg then [stateNameFun] else [])
+        (if debug cfg then [stateNameFun, eventNameFun] else [])
       ++ [
         currentStateNameFun
     ] ++ [
@@ -149,11 +149,13 @@ lowerMachine cfg syms (StateMachine smName, g') = [
         eventNames = map qualify $ ["e"] ++ map (('e':) . show) [2..]
         char = TagBuiltin $ qualify "char"
         stateName_f = qualify (smName, "State_name")
+        eventName_f = qualify (smName, "Event_name")
         send_f = qualify (smName, "Send_Message")
         handle_f = qualify (smName, "Handle_Message")
         initialize_f = qualify (smName, "initialize")
         unhandled_f e = qualify (qualify (smName, "UNHANDLED_EVENT"), mangleEv e)
         call_panic_f args = ExprS $ if debug cfg then FunCall (qualify "panic_print") args else FunCall (qualify "panic") []
+        wrap_name = qualify "wrapper"
         stateEnum = TagState $ qualify (smName, "State")
         stateVar = qualify (smName, "state")
         eventEnum = (\(Ty p :-> r) -> p) $ snd (syms ! TagFunction handle_f)
@@ -176,6 +178,15 @@ lowerMachine cfg syms (StateMachine smName, g') = [
                   count_var = qualify "state_count"
                   state_var = qualify "s"
 
+        eventNameFun :: Def
+        eventNameFun = FunDef eventName_f [event_var] (Internal, Ty eventEnum :-> Ty char) ds es
+            where ds = [VarDef Internal $ ListDec names_var (Ty char) $ Init [Literal (disqualifyTag e) | Event e <- events],
+                        VarDef Internal $ SizeDec count_var $ Init names_var]
+                  es = [Return $ SafeIndex (Var names_var) (SumVar event_var) (Var count_var) "INVALID_EVENT"]
+                  names_var = qualify "event_name"
+                  count_var = qualify "event_count"
+                  event_var = qualify "e"
+
         currentStateNameFun :: Def
         currentStateNameFun = FunDef f_name [] (syms ! TagFunction f_name) []
                                      [Return $ if debug cfg then FunCall stateName_f [Value $ Var stateVar] else Literal ""]
@@ -186,10 +197,10 @@ lowerMachine cfg syms (StateMachine smName, g') = [
             where f_name = unhandled_f e
                   name_var = qualify "event_name"
                   event_var = head eventNames
-                  ds = if (not $ null handler) || not (debug cfg) then [] else [VarDef Unresolved $ ValDec name_var (Ty char) (Init $ Literal $ disqualifyTag evName)]
+                  ds = if (not $ null handler) || not (debug cfg) then [] else [VarDef Unresolved $ SumVDec wrap_name (Ty eventEnum) $ Init (evt_id evName, Value $ Var event_var)]
                   es = [case handler of
                            [(s, e')] -> ExprS $ FunCall (qualify (sName smName s, mangleEv e')) (if e == e' then [Value $ Var event_var] else [])
-                           [] -> call_panic_f [Literal panic_s, FunCall stateName_f [Value $ Var stateVar], Value $ Var name_var]]
+                           [] -> call_panic_f [Literal panic_s, FunCall stateName_f [Value $ Var stateVar], FunCall eventName_f [Value $ Var wrap_name]]]
                   panic_s = disqualifyTag smName ++ "[%s]: Unhandled event \"%s\"\n"
 
         initializeFun :: QualifiedName -> Def
@@ -208,7 +219,6 @@ lowerMachine cfg syms (StateMachine smName, g') = [
         sendEventFun :: Event TaggedName -> Def
         sendEventFun e@(Event evName) = FunDef f_name eventNames (syms ! TagFunction f_name) ds es
             where f_name = qualify evName
-                  wrap_name = qualify "wrapper"
                   ds = [VarDef Unresolved $ SumVDec wrap_name (Ty eventEnum) $ Init (evt_id evName, Value $ Var event_var)]
                   es = [ExprS $ FunCall send_f [Value $ Var wrap_name]]
                   event_var = head eventNames
@@ -228,7 +238,6 @@ lowerMachine cfg syms (StateMachine smName, g') = [
         handleMessageFun = FunDef handle_f [wrap_name] (syms ! TagFunction handle_f) [] es
             where es = [ExprS $ FunCall initialize_f [],
                         Cases (Value $ SumVar wrap_name) cases defaults]
-                  wrap_name = qualify "wrapper"
                   cases = [(evt_id e, [ExprS $ FunCall (qualify (qe, "handle")) [Value $ Field (SumVar wrap_name) qe]]) | Event e <- events, let qe = qualify e]
                   defaults = [call_panic_f [Literal panic_s, FunCall stateName_f [Value $ Var stateVar], Literal ""]]
                   panic_s = disqualifyTag smName ++ "[%s]: Invalid event ID\n"
@@ -237,7 +246,6 @@ lowerMachine cfg syms (StateMachine smName, g') = [
         freeMessageFun = FunDef f_name [wrap_name] (syms ! TagFunction f_name) [] es
             where f_name = qualify (smName, "Free_Message")
                   es = [Cases (Value $ SumVar wrap_name) cases defaults]
-                  wrap_name = qualify "wrapper"
                   cases = [(evt_id e, [ExprS $ FunCall (qualify "free") [Value $ Field (SumVar wrap_name) $ qualify e]]) | Event e <- events]
                   defaults = [call_panic_f [Literal panic_s, FunCall stateName_f [Value $ Var stateVar], Literal ""]]
                   panic_s = disqualifyTag smName ++ "[%s]: Invalid event ID\n"

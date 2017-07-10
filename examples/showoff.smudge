@@ -6,7 +6,7 @@
     ],
     A
     [
-        _ -(SM3."External")-> B
+        _ -(SM2."External")-> B
     ],
     D --> A,
     B (@enterB)
@@ -23,13 +23,7 @@
     ]
 }
 
-"State Machine 2!"
-{
-  * A [_ --> B],
-    B [_ --> A]
-}
-
-SM3
+SM2
 {
     _ ["External" --> START],
   * START (@startTimer)

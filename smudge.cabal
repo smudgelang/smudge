@@ -16,7 +16,7 @@ Synopsis:            A tool to interpret state machines and automatically genera
 -- Description:         
 
 -- The license under which the package is released.
-License:             AllRightsReserved
+License:             BSD3
 
 -- The file containing the license text.
 License-file:        LICENSE

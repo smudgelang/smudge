@@ -1,3 +1,7 @@
+-- Copyright 2017 Bose Corporation.
+-- This software is released under the 3-Clause BSD License.
+-- The license can be viewed at https://github.com/BoseCorp/Smudge/blob/master/LICENSE
+
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Backends.SmudgeIR (

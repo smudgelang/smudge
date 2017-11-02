@@ -53,6 +53,7 @@ release: build doc
 	$(MAKE) -C docs/tutorial docclean
 	cp -r examples dist/release
 	cp -r docs/tutorial dist/release
+	cp LICENSE dist/release
 	cp README dist/release
 	./tar-up-release.sh $(SMUDGE_TARGET) $(PLATFORM)
 

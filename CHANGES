@@ -1,15 +1,3 @@
-Smudge is a state machine and uml diagram generation engine.
-
-Smudge is both a language for describing state machines as well as a
-compiler that interprets and validates those descriptions to generate
-code and documentation for them. Example state machines can be found
-in the examples directory. In particular, first.smudge has extensive
-comments to describe what it's doing.
-
-There's also a tutorial called tutorial.pdf.
-
--- Revision History --
-
 v0.5: A major release, that makes backwards incompatible changes to
       the generated code for the C backend.
 

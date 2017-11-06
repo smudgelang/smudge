@@ -1,4 +1,4 @@
-SMUDGE ?= ../../dist/build/smudge/smudge
+SMUDGE ?= stack exec smudge --
 SMUDGE_OPTIONS=--dot-fmt=Svg
 SMUDGE_OPTIONS_PNG=--dot-fmt=Png
 

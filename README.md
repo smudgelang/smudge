@@ -40,24 +40,22 @@ to start learning Smudge.
 ### Building From Source
 
 First, make sure you have `ghc` installed, along with
-`cabal-install`. In order to build the documentation, you'll also need
+`haskell-stack`. In order to build the documentation, you'll also need
 `rst2pdf` and `pdflatex`.
 
 Then, in your shell of choice, run:
 
     $ make
 
-If `cabal` complains, you might have to run
-
-    $ cabal install
-    $ make
+This may take a bit the first time you build, as stack will have to
+download and configure the build environment.
 
 This should work on Windows under Cygwin, as well as reasonably recent
 versions of Debian and Ubuntu. It has worked on other distros and
 MacOS, and if you have trouble getting it to build we encourage you to
 ask for help on [gitter](https://gitter.im/smudge-sm/Lobby). It
-generates an executable in `dist/build/smudge` called `smudge` (or
-`smudge.exe` on Windows) that you can use to compile Smudge code.
+generates an executable called `smudge` (or `smudge.exe` on Windows) that
+you can use to compile Smudge code by running `stack exec smudge`.
 
 ## How to Use Smudge
 

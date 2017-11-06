@@ -1,6 +1,7 @@
 SRCS=$(wildcard *.smudge)
 COUNTEREXAMPLES=$(wildcard counterexamples/*.smudge)
-SMUDGE=../dist/build/smudge/smudge
+SMUDGEEXE=$(shell stack path --local-install-root)/bin/smudge
+SMUDGE=stack exec smudge --
 OBJS=$(addsuffix .svg, $(basename $(SRCS)))
 OPTIONS ?= --dot-no-se --dot-fmt=Svg
 
@@ -8,10 +9,10 @@ OPTIONS ?= --dot-no-se --dot-fmt=Svg
 
 all: $(OBJS) test
 
-test: $(COUNTEREXAMPLES) $(SMUDGE)
+test: $(COUNTEREXAMPLES) $(SMUDGEEXE)
 	$(foreach f, $(COUNTEREXAMPLES), ! $(SMUDGE) $(OPTIONS) $f &&) true
 
-%.svg: %.smudge $(SMUDGE)
+%.svg: %.smudge $(SMUDGEEXE)
 	$(SMUDGE) $(OPTIONS) $<
 
 clean:

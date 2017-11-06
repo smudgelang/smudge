@@ -1,5 +1,5 @@
 syntax:glob
-dist
+.stack-work
 TAGS
 tags
 *~

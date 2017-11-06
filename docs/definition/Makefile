@@ -1,6 +1,6 @@
 .PHONY: all clean
 
-DIST_PATH=../../dist/def
+DIST_PATH=$(shell stack path --local-install-root)/def
 
 all: $(DIST_PATH)/smudge-definition.pdf
 

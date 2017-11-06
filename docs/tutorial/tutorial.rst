@@ -281,7 +281,7 @@ pointers passed to ``SMUDGE_free`` are the same as those passed to
 ::
 
    $ make dynamic_payloads
-   ../../dist/build/smudge/smudge --dot-fmt=Svg side_effects.smudge
+   stack exec smudge -- --dot-fmt=Svg side_effects.smudge
    Wrote file "side_effects.svg"
    Wrote file "side_effects.h"
    Wrote file "side_effects.c"

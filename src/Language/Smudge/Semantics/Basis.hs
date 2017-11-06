@@ -15,7 +15,8 @@ import Language.Smudge.Semantics.Solver (
 import Language.Smudge.Semantics.Model (
   QualifiedName,
   qualify,
-  TaggedName(..),
+  TaggedName,
+  Tagged(..),
   )
 import Language.Smudge.Semantics.Alias (Alias, rename)
 import Language.Smudge.Grammar (

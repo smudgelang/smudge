@@ -31,7 +31,8 @@ import Language.Smudge.Semantics.Model (
   QualifiedName,
   Qualifiable(qualify),
   extractWith,
-  TaggedName(..),
+  TaggedName,
+  Tagged(..),
   )
 import Language.Smudge.Semantics.Solver (
   Ty(..), 

@@ -18,7 +18,8 @@ module Language.Smudge.Semantics.Model (
     mangleWith,
     disqualify,
     disqualifyTag,
-    TaggedName(..),
+    TaggedName,
+    Tagged(..),
     qName,
     passInitialState,
     passFullyQualify,
@@ -112,15 +113,17 @@ mangleWith ff f = extractWith ff (mangle f)
 disqualify :: QualifiedName -> Name
 disqualify = mangleWith seq id
 
-data TaggedName =
-          TagMachine QualifiedName
-        | TagState QualifiedName
-        | TagEvent QualifiedName
-        | TagFunction QualifiedName
-        | TagBuiltin QualifiedName
+data Tagged a =
+          TagMachine a
+        | TagState a
+        | TagEvent a
+        | TagFunction a
+        | TagBuiltin a
     deriving (Show, Eq, Ord)
 
-instance Declared TaggedName where
+type TaggedName = Tagged QualifiedName
+
+instance Declared a => Declared (Tagged a) where
     at (TagMachine n) = at n
     at (TagState n) = at n
     at (TagEvent n) = at n

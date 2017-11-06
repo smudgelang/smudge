@@ -32,7 +32,8 @@ import Language.Smudge.Grammar (
 import Language.Smudge.Semantics.Model (
   qualify,
   QualifiedName,
-  TaggedName(..),
+  TaggedName,
+  Tagged(..),
   )
 import Language.Smudge.Parsers.Id (Name)
 import Language.Smudge.Passes.Passes (AbstractFoldable(..))

@@ -34,7 +34,8 @@ import Language.Smudge.Semantics.Model (
   Happening(..),
   QualifiedName,
   Qualifiable(qualify),
-  TaggedName(..),
+  TaggedName,
+  Tagged(..),
   extractWith,
   disqualifyTag,
   )

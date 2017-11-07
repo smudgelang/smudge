@@ -8,7 +8,6 @@ module Language.Smudge.Backends.SmudgeIR (
     SmudgeIR,
     Def(..),
     DataDef(..),
-    Dec(..),
     TyDec(..),
     Init(..),
     UnInit,
@@ -60,9 +59,6 @@ data Def x = FunDef x [x] (Binding, Ty) [DataDef x] [Stmt x]
 
 data DataDef x = TyDef (Tagged x) (TyDec x)
                | VarDef Binding (VarDec Init x)
-
-data Dec x = TyDec x (TyDec x)
-           | VarDec (VarDec UnInit x)
 
 data TyDec x = EvtDec (Tagged x)
              | SumDec (Tagged x) [(x, Maybe (Tagged x))]

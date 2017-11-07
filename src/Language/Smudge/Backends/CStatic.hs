@@ -16,7 +16,6 @@ import Language.Smudge.Backends.SmudgeIR (
   SmudgeIR,
   Def(..),
   DataDef(..),
-  Dec(..),
   TyDec(..),
   Init(..),
   VarDec(..),

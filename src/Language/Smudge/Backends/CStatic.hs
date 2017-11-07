@@ -129,23 +129,24 @@ infixl 4 <*.>
 pop :: Monad m => StateT [a] m a
 pop = state $ head &&& tail
 
-convertIR :: Alias QualifiedName -> Bool -> Bool -> SmudgeIR -> [ExternalDeclaration]
+convertIR :: Alias QualifiedName -> Bool -> Bool -> SmudgeIR QualifiedName -> [ExternalDeclaration]
 convertIR aliases dodec dodef ir =
             (if dodec then map (ExternalDeclaration . Right . convertDef) ir else []) ++
             (if dodef then concatMap (map (ExternalDeclaration . Left) . defineDef) ir else [])
     where
+        defineDef :: Def QualifiedName -> [FunctionDefinition]
         defineDef (FunDef name ps (b, ty) ds es) = [defun (first (bind b) $ convertNamedDeclarator ps name ty) $ convertBlock ds es]
         defineDef (DataDef _)                    = []
 
-        convertDef :: Def -> Declaration
+        convertDef :: Def QualifiedName -> Declaration
         convertDef (FunDef name ps (b, ty) ds es) = define (first (bind b) $ convertDeclarator name ty) Nothing
         convertDef (DataDef d)                    = convertDec d
 
-        convertDec :: DataDef -> Declaration
+        convertDec :: DataDef QualifiedName -> Declaration
         convertDec (TyDef x d)  = define (typedef x $ convertTyDec d) Nothing
         convertDec (VarDef b d) = uncurry define $ first (first (bind b)) $ convertVarDef d
 
-        convertTyDec :: TyDec -> SpecifierQualifierList
+        convertTyDec :: TyDec QualifiedName -> SpecifierQualifierList
         convertTyDec (EvtDec ty)   = convertStruct ty
         convertTyDec (SumDec x cs) = if all isNothing cvs then convertEnum x cxs else taggedUnion
             where (cxs, cvs) = unzip cs
@@ -155,7 +156,7 @@ convertIR aliases dodec dodef ir =
                   tag_name = Declarator Nothing $ IDirectDeclarator id_field
                   union_name = Declarator Nothing $ IDirectDeclarator event_field
 
-        convertVarDef :: VarDec Init -> ((SpecifierQualifierList, Declarator), Maybe Initializer)
+        convertVarDef :: VarDec Init QualifiedName -> ((SpecifierQualifierList, Declarator), Maybe Initializer)
         convertVarDef v@(ValDec _ _ (Init e))   = (convertVarDec v, Just $ AInitializer $ convertExpr e)
         convertVarDef v@(SumVDec _ _ _)         = (convertVarDec v, Nothing)
         convertVarDef v@(ListDec _ _ (Init es)) = (convertVarDec v, Just $ LInitializer LEFTCURLY (fromList $ map (AInitializer . convertExpr) es) Nothing RIGHTCURLY)
@@ -165,7 +166,7 @@ convertIR aliases dodec dodef ir =
                                                                                (Just $ This $ fromList [POINTER Nothing])) RIGHTPAREN) (:#)
                   count_e = (#:) (a_size_e `DIV` ptr_size_e) (:#)
 
-        convertVarDec :: VarDec a -> (SpecifierQualifierList, Declarator)
+        convertVarDec :: VarDec a QualifiedName -> (SpecifierQualifierList, Declarator)
         convertVarDec (ValDec x ty _)  = convertDeclarator x ty
         convertVarDec (SumVDec x ty _) = convertDeclarator x ty
         convertVarDec (ListDec x ty _) = second (convertFromAbsDeclarator x . Just . addList . theseAndThat Nothing id . sequence) $ convertAbsDeclarator ty
@@ -243,7 +244,7 @@ convertIR aliases dodec dodef ir =
                   namep (ParameterDeclaration spec@(SimpleList (B VOID) _) declr) = ParameterDeclaration spec <$> fmap Left <$> mapM (either id <$> (convertFromAbsDeclarator <$> pop <*.> Just) <*$>) declr
                   namep (ParameterDeclaration spec declr) = ParameterDeclaration spec <$> Just <$> Left <$> maybe (Declarator Nothing . IDirectDeclarator . convertQName) (either const (flip convertFromAbsDeclarator . Just)) declr <$> pop
 
-        convertBlock :: [DataDef] -> [Stmt] -> CompoundStatement
+        convertBlock :: [DataDef QualifiedName] -> [Stmt QualifiedName] -> CompoundStatement
         convertBlock ds ss = CompoundStatement LEFTCURLY
                                 (if null ds then Nothing else Just $ fromList $ map convertDec ds)
                                 (if null ss then Nothing else Just $ fromList $ map convertStmt $ sum_inits ++ ss)
@@ -251,6 +252,7 @@ convertIR aliases dodec dodef ir =
             where sum_inits = concat [[ExprS $ Assign v (Value $ Var ctor), ExprS $ Assign (Field v ctor) e]
                                       | VarDef _ (SumVDec x _ (Init (ctor, e))) <- ds, let v = SumVar x]
 
+        convertStmt :: Stmt QualifiedName -> Statement
         convertStmt (Cases e cs ds) = makeSwitch (fromList [convertExpr e]) (map (convertToConstExpr *** map convertStmt) cs) (map convertStmt ds)
         convertStmt (If e ss)       = SStatement $ IF LEFTPAREN (fromList [convertExpr e]) RIGHTPAREN (CStatement $ convertBlock [] ss) Nothing
         convertStmt (Return e)      = JStatement $ RETURN (Just $ fromList [convertExpr e]) SEMICOLON
@@ -258,6 +260,7 @@ convertIR aliases dodec dodef ir =
 
         convertToConstExpr q = (#:) (convertQName q) (:#)
 
+        convertExpr :: Expr QualifiedName -> AssignmentExpression
         convertExpr (FunCall x es)      = (#:) (apply ((#:) (convertQName x) (:#)) (map convertExpr es)) (:#)
         convertExpr (Literal v)         = (#:) (show v) (:#)
         convertExpr (Null)              = (#:) "0" (:#)
@@ -268,6 +271,7 @@ convertIR aliases dodec dodef ir =
             where bounds_check_e = (#:) (((#:) (convertVar i) (:#)) `LESS_THAN` ((#:) (convertVar b) (:#))) (:#)
                   array_index_e = (#:) (EPostfixExpression (convertVar a) LEFTSQUARE (fromList [(#:) (convertVar i) (:#)]) RIGHTSQUARE) (:#)
 
+        convertVar :: Var QualifiedName -> PostfixExpression
         convertVar (Var x)     = (#:) (convertQName x) (:#)
         convertVar (SumVar x)  = (#:) (convertQName x) (:#) `DOT` id_field
         convertVar (Field (SumVar x) f) = (#:) (convertQName x) (:#) `DOT` event_field `DOT` convertQName (extractWith seq (qualify . (,) (qualify "e")) f)

@@ -53,44 +53,44 @@ import Data.Graph.Inductive.Graph (labNodes, labEdges, lab, out, suc, insEdges, 
 import Data.List (nub, sort)
 import qualified Data.Map as Map (toList)
 
-type SmudgeIR = [Def]
+type SmudgeIR x = [Def x]
 
-data Def = FunDef QualifiedName [QualifiedName] (Binding, Ty) [DataDef] [Stmt]
-         | DataDef DataDef
+data Def x = FunDef x [x] (Binding, Ty) [DataDef x] [Stmt x]
+           | DataDef (DataDef x)
 
-data DataDef = TyDef TaggedName TyDec
-             | VarDef Binding (VarDec Init)
+data DataDef x = TyDef (Tagged x) (TyDec x)
+               | VarDef Binding (VarDec Init x)
 
-data Dec = TyDec QualifiedName TyDec
-         | VarDec (VarDec UnInit)
+data Dec x = TyDec x (TyDec x)
+           | VarDec (VarDec UnInit x)
 
-data TyDec = EvtDec TaggedName
-           | SumDec TaggedName [(QualifiedName, Maybe TaggedName)]
+data TyDec x = EvtDec (Tagged x)
+             | SumDec (Tagged x) [(x, Maybe (Tagged x))]
 
 newtype Init a = Init a
 data UnInit a = UnInit
 
-data VarDec f = ValDec QualifiedName Ty (f Expr)
-              | SumVDec QualifiedName Ty (f (QualifiedName, Expr))
-              | ListDec QualifiedName Ty (f [Expr])
-              | SizeDec QualifiedName (f QualifiedName)
+data VarDec f x = ValDec x Ty (f (Expr x))
+                | SumVDec x Ty (f (x, Expr x))
+                | ListDec x Ty (f [Expr x])
+                | SizeDec x (f x)
 
-data Stmt = Cases Expr [(QualifiedName, [Stmt])] [Stmt]
-          | If Expr [Stmt]
-          | Return Expr
-          | ExprS Expr
+data Stmt x = Cases (Expr x) [(x, [Stmt x])] [Stmt x]
+            | If (Expr x) [Stmt x]
+            | Return (Expr x)
+            | ExprS (Expr x)
 
-data Expr = FunCall QualifiedName [Expr]
-          | Literal String
-          | Null
-          | Value Var
-          | Assign Var Expr
-          | Neq QualifiedName QualifiedName
-          | SafeIndex Var Var Var String
+data Expr x = FunCall x [Expr x]
+            | Literal String
+            | Null
+            | Value (Var x)
+            | Assign (Var x) (Expr x)
+            | Neq x x
+            | SafeIndex (Var x) (Var x) (Var x) String
 
-data Var = Var QualifiedName
-         | SumVar QualifiedName
-         | Field Var QualifiedName
+data Var x = Var x
+           | SumVar x
+           | Field (Var x) x
 
 sName :: TaggedName -> State TaggedName -> QualifiedName
 sName _ (State s) = qualify s
@@ -105,10 +105,10 @@ mangleEv EventAny = qualify "any"
 events_for :: Gr EnterExitState Happening -> [Event TaggedName]
 events_for g = nub $ sort [e | (_, _, Happening {event=e@(Event _)}) <- labEdges g]
 
-lower :: Config -> ([(StateMachine TaggedName, Gr EnterExitState Happening)], SymbolTable) -> SmudgeIR
+lower :: Config -> ([(StateMachine TaggedName, Gr EnterExitState Happening)], SymbolTable) -> SmudgeIR QualifiedName
 lower cfg (gs, syms) = concatMap (lowerMachine cfg syms) gs
 
-lowerSymTab :: [(StateMachine TaggedName, Gr EnterExitState Happening)] -> SymbolTable -> SmudgeIR
+lowerSymTab :: [(StateMachine TaggedName, Gr EnterExitState Happening)] -> SymbolTable -> SmudgeIR QualifiedName
 lowerSymTab gs syms = [
         DataDef $ TyDef name $ EvtDec ty | (name, (b, Ty ty)) <- toList syms
     ] ++ [
@@ -120,7 +120,7 @@ lowerSymTab gs syms = [
     where 
         args = map (qualify . ('a':) . show) [1..]
 
-lowerMachine :: Config -> SymbolTable -> (StateMachine TaggedName, Gr EnterExitState Happening) -> SmudgeIR
+lowerMachine :: Config -> SymbolTable -> (StateMachine TaggedName, Gr EnterExitState Happening) -> SmudgeIR QualifiedName
 lowerMachine cfg syms (StateMachine smName, g') = [
         DataDef $ TyDef stateEnum $ SumDec stateEnum [(st_id s, Nothing) | s <- states],
         DataDef $ VarDef Internal $ ValDec stateVar (Ty stateEnum) (Init $ Value $ Var $ st_id initial)
@@ -175,7 +175,7 @@ lowerMachine cfg syms (StateMachine smName, g') = [
         initial = head [qualify s | (n, EnterExitState {st = StateEntry}) <- labNodes g, n' <- suc g n,
                                     Just (EnterExitState {st = (State s)}) <- [lab g n']]
 
-        stateNameFun :: Def
+        stateNameFun :: Def QualifiedName
         stateNameFun = FunDef stateName_f [state_var] (Internal, Ty stateEnum :-> Ty char) ds es
             where ds = [VarDef Internal $ ListDec names_var (Ty char) $ Init [Literal (disqualifyTag s) | s <- states],
                         VarDef Internal $ SizeDec count_var $ Init names_var]
@@ -184,7 +184,7 @@ lowerMachine cfg syms (StateMachine smName, g') = [
                   count_var = qualify "state_count"
                   state_var = qualify "s"
 
-        eventNameFun :: Def
+        eventNameFun :: Def QualifiedName
         eventNameFun = FunDef eventName_f [event_var] (Internal, Ty eventEnum :-> Ty char) ds es
             where ds = [VarDef Internal $ ListDec names_var (Ty char) $ Init [Literal (disqualifyTag e) | Event e <- events],
                         VarDef Internal $ SizeDec count_var $ Init names_var]
@@ -193,12 +193,12 @@ lowerMachine cfg syms (StateMachine smName, g') = [
                   count_var = qualify "event_count"
                   event_var = qualify "e"
 
-        currentStateNameFun :: Def
+        currentStateNameFun :: Def QualifiedName
         currentStateNameFun = FunDef f_name [] (syms ! TagFunction f_name) []
                                      [Return $ if debug cfg then FunCall stateName_f [Value $ Var stateVar] else Literal ""]
             where f_name = qualify (smName, "Current_state_name")
 
-        unhandledEventFun :: [(State TaggedName, Event TaggedName)] -> Event TaggedName -> Def
+        unhandledEventFun :: [(State TaggedName, Event TaggedName)] -> Event TaggedName -> Def QualifiedName
         unhandledEventFun handler e@(Event evName) = FunDef f_name eventNames (Internal, Ty evName :-> Void) ds es
             where f_name = unhandled_f e
                   name_var = qualify "event_name"
@@ -209,7 +209,7 @@ lowerMachine cfg syms (StateMachine smName, g') = [
                            [] -> call_panic_f [Literal panic_s, FunCall stateName_f [Value $ Var stateVar], FunCall eventName_f [Value $ Var wrap_name]]]
                   panic_s = disqualifyTag smName ++ "[%s]: Unhandled event \"%s\"\n"
 
-        initializeFun :: QualifiedName -> Def
+        initializeFun :: QualifiedName -> Def QualifiedName
         initializeFun s = FunDef initialize_f [] (Internal, Void :-> Void) ds es
             where init_var = qualify "initialized"
                   init_enum = TagState $ qualify "init_flag"
@@ -222,14 +222,14 @@ lowerMachine cfg syms (StateMachine smName, g') = [
                             ExprS $ FunCall (qualify (s, "enter")) [],
                             ExprS $ Var init_var `Assign` Value (Var init_init)]]
 
-        sendEventFun :: Event TaggedName -> Def
+        sendEventFun :: Event TaggedName -> Def QualifiedName
         sendEventFun e@(Event evName) = FunDef f_name eventNames (syms ! TagFunction f_name) ds es
             where f_name = qualify evName
                   ds = [VarDef Unresolved $ SumVDec wrap_name (Ty eventEnum) $ Init (evt_id evName, Value $ Var event_var)]
                   es = [ExprS $ FunCall send_f [Value $ Var wrap_name]]
                   event_var = head eventNames
 
-        handleEventFun :: Event TaggedName -> [(State TaggedName, (State TaggedName, Event TaggedName))] -> [State TaggedName] -> Def
+        handleEventFun :: Event TaggedName -> [(State TaggedName, (State TaggedName, Event TaggedName))] -> [State TaggedName] -> Def QualifiedName
         handleEventFun e@(Event evName) ss unss = FunDef f_name eventNames (Internal, snd $ syms ! TagFunction (qualify evName)) [] es
             where f_name = qualify (qualify evName, "handle")
                   es = [Cases (Value $ Var stateVar) cases defaults]
@@ -240,7 +240,7 @@ lowerMachine cfg syms (StateMachine smName, g') = [
                        ++ [(st_id s, [call_unhandled]) | (State s) <- unss]
                   defaults = [call_unhandled]
 
-        handleMessageFun :: Def
+        handleMessageFun :: Def QualifiedName
         handleMessageFun = FunDef handle_f [wrap_name] (syms ! TagFunction handle_f) [] es
             where es = [ExprS $ FunCall initialize_f []] ++
                        (if logEvent cfg then [call_print_f [Literal format_s, FunCall stateName_f [Value $ Var stateVar], FunCall eventName_f [Value $ Var wrap_name]]] else []) ++
@@ -250,7 +250,7 @@ lowerMachine cfg syms (StateMachine smName, g') = [
                   defaults = [call_panic_f [Literal panic_s, FunCall stateName_f [Value $ Var stateVar], Literal ""]]
                   panic_s = disqualifyTag smName ++ "[%s]: Invalid event ID\n"
 
-        freeMessageFun :: Def
+        freeMessageFun :: Def QualifiedName
         freeMessageFun = FunDef f_name [wrap_name] (syms ! TagFunction f_name) [] es
             where f_name = qualify (smName, "Free_Message")
                   es = [Cases (Value $ SumVar wrap_name) cases defaults]
@@ -258,7 +258,7 @@ lowerMachine cfg syms (StateMachine smName, g') = [
                   defaults = [call_panic_f [Literal panic_s, FunCall stateName_f [Value $ Var stateVar], Literal ""]]
                   panic_s = disqualifyTag smName ++ "[%s]: Invalid event ID\n"
 
-        stateEventFun :: State TaggedName -> Happening -> State TaggedName -> Bool -> Def
+        stateEventFun :: State TaggedName -> Happening -> State TaggedName -> Bool -> Def QualifiedName
         stateEventFun st h st' do_exit = FunDef f_name eventNames (Internal, ty) [] $ map ExprS es
             where f_name = qualify (sName smName st, mangleEv $ event h)
                   ty = case event h of
@@ -283,7 +283,7 @@ lowerMachine cfg syms (StateMachine smName, g') = [
                          (Happening _ ses [])                        -> [apply_se se | se <- ses] ++ (if do_exit then [call_exit] else []) ++ [assign_state, call_enter]
                          (Happening _ ses fs) | elem NoTransition fs -> [apply_se se | se <- ses]
 
-        anyExitFun :: [State TaggedName] -> Def
+        anyExitFun :: [State TaggedName] -> Def QualifiedName
         anyExitFun ss = FunDef f_name [] (Internal, Void :-> Void) [] es
             where f_name = qualify (sName smName StateAny, mangleEv EventExit)
                   es = [Cases (Value $ Var stateVar) cases []]

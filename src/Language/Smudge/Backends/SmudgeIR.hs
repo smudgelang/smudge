@@ -62,12 +62,20 @@ instance Functor Def where
     fmap f (FunDef name ps (b, ty) ds ss) = FunDef (f name) (map f ps) (b, ty) (map (fmap f) ds) (map (fmap f) ss)
     fmap f (DataDef d) = DataDef $ fmap f d
 
+instance Foldable Def where
+    foldMap f (FunDef name ps (b, ty) ds ss) = f name `mappend` foldMap f ps `mappend` foldMap (foldMap f) ds `mappend` foldMap (foldMap f) ss
+    foldMap f (DataDef d) = foldMap f d
+
 data DataDef x = TyDef (Tagged x) (TyDec x)
                | VarDef Binding (VarDec Init x)
 
 instance Functor DataDef where
     fmap f (TyDef x d) = TyDef (fmap f x) (fmap f d)
     fmap f (VarDef b d) = VarDef b (fmap f d)
+
+instance Foldable DataDef where
+    foldMap f (TyDef x d) = foldMap f x `mappend` foldMap f d
+    foldMap f (VarDef b d) = foldMap f d
 
 data TyDec x = EvtDec (Tagged x)
              | SumDec (Tagged x) [(x, Maybe (Tagged x))]
@@ -76,14 +84,25 @@ instance Functor TyDec where
     fmap f (EvtDec ty) = EvtDec $ fmap f ty
     fmap f (SumDec x cs) = SumDec (fmap f x) (map (f *** fmap (fmap f)) cs)
 
+instance Foldable TyDec where
+    foldMap f (EvtDec ty) = foldMap f ty
+    foldMap f (SumDec x cs) = foldMap f x `mappend` foldMap (uncurry mappend . (f *** foldMap (foldMap f))) cs
+
 newtype Init a = Init a
-data UnInit a = UnInit
 
 instance Functor Init where
     fmap f (Init a) = Init (f a)
 
+instance Foldable Init where
+    foldMap f (Init a) = f a
+
+data UnInit a = UnInit
+
 instance Functor UnInit where
     fmap f UnInit = UnInit
+
+instance Foldable UnInit where
+    foldMap f UnInit = mempty
 
 data VarDec f x = ValDec x Ty (f (Expr x))
                 | SumVDec x Ty (f (x, Expr x))
@@ -96,6 +115,12 @@ instance Functor f => Functor (VarDec f) where
     fmap f (ListDec x ty i) = ListDec (f x) ty (fmap (map (fmap f)) i)
     fmap f (SizeDec x i) = SizeDec (f x) (fmap f i)
 
+instance Foldable f => Foldable (VarDec f) where
+    foldMap f (ValDec x ty i) = f x `mappend` foldMap (foldMap f) i
+    foldMap f (SumVDec x ty i) = f x `mappend` foldMap (uncurry mappend . (f *** foldMap f)) i
+    foldMap f (ListDec x ty i) = f x `mappend` foldMap (foldMap (foldMap f)) i
+    foldMap f (SizeDec x i) = f x `mappend` foldMap f i
+
 data Stmt x = Cases (Expr x) [(x, [Stmt x])] [Stmt x]
             | If (Expr x) [Stmt x]
             | Return (Expr x)
@@ -106,6 +131,12 @@ instance Functor Stmt where
     fmap f (If e ss) = If (fmap f e) (map (fmap f) ss)
     fmap f (Return e) = Return $ fmap f e
     fmap f (ExprS e) = ExprS $ fmap f e
+
+instance Foldable Stmt where
+    foldMap f (Cases e cs ds) = foldMap f e `mappend` foldMap (uncurry mappend . (f *** foldMap (foldMap f))) cs `mappend` foldMap (foldMap f) ds
+    foldMap f (If e ss) = foldMap f e `mappend` foldMap (foldMap f) ss
+    foldMap f (Return e) = foldMap f e
+    foldMap f (ExprS e) = foldMap f e
 
 data Expr x = FunCall x [Expr x]
             | Literal String
@@ -124,6 +155,15 @@ instance Functor Expr where
     fmap f (Neq x1 x2) = Neq (f x1) (f x2)
     fmap f (SafeIndex a i b d) = SafeIndex (fmap f a) (fmap f i) (fmap f b) d
 
+instance Foldable Expr where
+    foldMap f (FunCall x es) = f x `mappend` foldMap (foldMap f) es
+    foldMap f (Literal v) = mempty
+    foldMap f  Null = mempty
+    foldMap f (Value v) = foldMap f v
+    foldMap f (Assign v e) = foldMap f v `mappend` foldMap f e
+    foldMap f (Neq x1 x2) = f x1 `mappend` f x2
+    foldMap f (SafeIndex a i b d) = foldMap f a `mappend` foldMap f i `mappend` foldMap f b
+
 data Var x = Var x
            | SumVar x
            | Field (Var x) x
@@ -132,6 +172,11 @@ instance Functor Var where
     fmap f (Var x) = Var $ f x
     fmap f (SumVar x) = SumVar $ f x
     fmap f (Field v x) = Field (fmap f v) (f x)
+
+instance Foldable Var where
+    foldMap f (Var x) = f x
+    foldMap f (SumVar x) = f x
+    foldMap f (Field v x) = foldMap f v `mappend` f x
 
 sName :: TaggedName -> State TaggedName -> QualifiedName
 sName _ (State s) = qualify s

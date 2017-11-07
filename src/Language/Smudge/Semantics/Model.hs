@@ -128,6 +128,13 @@ instance Functor Tagged where
     fmap f (TagFunction x) = TagFunction $ f x
     fmap f (TagBuiltin x) = TagBuiltin $ f x
 
+instance Foldable Tagged where
+    foldMap f (TagMachine x) = f x
+    foldMap f (TagState x) = f x
+    foldMap f (TagEvent x) = f x
+    foldMap f (TagFunction x) = f x
+    foldMap f (TagBuiltin x) = f x
+
 type TaggedName = Tagged QualifiedName
 
 instance Declared a => Declared (Tagged a) where

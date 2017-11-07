@@ -47,6 +47,7 @@ import Language.Smudge.Semantics.Solver (
   (!),
   )
 
+import Control.Arrow ((***))
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Graph (labNodes, labEdges, lab, out, suc, insEdges, nodes, delNodes)
 import Data.List (nub, sort)
@@ -57,24 +58,54 @@ type SmudgeIR x = [Def x]
 data Def x = FunDef x [x] (Binding, Ty) [DataDef x] [Stmt x]
            | DataDef (DataDef x)
 
+instance Functor Def where
+    fmap f (FunDef name ps (b, ty) ds ss) = FunDef (f name) (map f ps) (b, ty) (map (fmap f) ds) (map (fmap f) ss)
+    fmap f (DataDef d) = DataDef $ fmap f d
+
 data DataDef x = TyDef (Tagged x) (TyDec x)
                | VarDef Binding (VarDec Init x)
+
+instance Functor DataDef where
+    fmap f (TyDef x d) = TyDef (fmap f x) (fmap f d)
+    fmap f (VarDef b d) = VarDef b (fmap f d)
 
 data TyDec x = EvtDec (Tagged x)
              | SumDec (Tagged x) [(x, Maybe (Tagged x))]
 
+instance Functor TyDec where
+    fmap f (EvtDec ty) = EvtDec $ fmap f ty
+    fmap f (SumDec x cs) = SumDec (fmap f x) (map (f *** fmap (fmap f)) cs)
+
 newtype Init a = Init a
 data UnInit a = UnInit
+
+instance Functor Init where
+    fmap f (Init a) = Init (f a)
+
+instance Functor UnInit where
+    fmap f UnInit = UnInit
 
 data VarDec f x = ValDec x Ty (f (Expr x))
                 | SumVDec x Ty (f (x, Expr x))
                 | ListDec x Ty (f [Expr x])
                 | SizeDec x (f x)
 
+instance Functor f => Functor (VarDec f) where
+    fmap f (ValDec x ty i) = ValDec (f x) ty (fmap (fmap f) i)
+    fmap f (SumVDec x ty i) = SumVDec (f x) ty (fmap (f *** fmap f) i)
+    fmap f (ListDec x ty i) = ListDec (f x) ty (fmap (map (fmap f)) i)
+    fmap f (SizeDec x i) = SizeDec (f x) (fmap f i)
+
 data Stmt x = Cases (Expr x) [(x, [Stmt x])] [Stmt x]
             | If (Expr x) [Stmt x]
             | Return (Expr x)
             | ExprS (Expr x)
+
+instance Functor Stmt where
+    fmap f (Cases e cs ds) = Cases (fmap f e) (map (f *** map (fmap f)) cs) (map (fmap f) ds)
+    fmap f (If e ss) = If (fmap f e) (map (fmap f) ss)
+    fmap f (Return e) = Return $ fmap f e
+    fmap f (ExprS e) = ExprS $ fmap f e
 
 data Expr x = FunCall x [Expr x]
             | Literal String
@@ -84,9 +115,23 @@ data Expr x = FunCall x [Expr x]
             | Neq x x
             | SafeIndex (Var x) (Var x) (Var x) String
 
+instance Functor Expr where
+    fmap f (FunCall x es) = FunCall (f x) (map (fmap f) es)
+    fmap f (Literal v) = Literal v
+    fmap f  Null = Null
+    fmap f (Value v) = Value $ fmap f v
+    fmap f (Assign v e) = Assign (fmap f v) (fmap f e)
+    fmap f (Neq x1 x2) = Neq (f x1) (f x2)
+    fmap f (SafeIndex a i b d) = SafeIndex (fmap f a) (fmap f i) (fmap f b) d
+
 data Var x = Var x
            | SumVar x
            | Field (Var x) x
+
+instance Functor Var where
+    fmap f (Var x) = Var $ f x
+    fmap f (SumVar x) = SumVar $ f x
+    fmap f (Field v x) = Field (fmap f v) (f x)
 
 sName :: TaggedName -> State TaggedName -> QualifiedName
 sName _ (State s) = qualify s

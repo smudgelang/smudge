@@ -121,6 +121,13 @@ data Tagged a =
         | TagBuiltin a
     deriving (Show, Eq, Ord)
 
+instance Functor Tagged where
+    fmap f (TagMachine x) = TagMachine $ f x
+    fmap f (TagState x) = TagState $ f x
+    fmap f (TagEvent x) = TagEvent $ f x
+    fmap f (TagFunction x) = TagFunction $ f x
+    fmap f (TagBuiltin x) = TagBuiltin $ f x
+
 type TaggedName = Tagged QualifiedName
 
 instance Declared a => Declared (Tagged a) where

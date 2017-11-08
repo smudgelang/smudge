@@ -135,6 +135,13 @@ instance Foldable Tagged where
     foldMap f (TagFunction x) = f x
     foldMap f (TagBuiltin x) = f x
 
+instance Traversable Tagged where
+    traverse f (TagMachine x) = TagMachine <$> f x
+    traverse f (TagState x) = TagState <$> f x
+    traverse f (TagEvent x) = TagEvent <$> f x
+    traverse f (TagFunction x) = TagFunction <$> f x
+    traverse f (TagBuiltin x) = TagBuiltin <$> f x
+
 type TaggedName = Tagged QualifiedName
 
 instance Declared a => Declared (Tagged a) where

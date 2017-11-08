@@ -53,6 +53,9 @@ import Data.Graph.Inductive.Graph (labNodes, labEdges, lab, out, suc, insEdges, 
 import Data.List (nub, sort)
 import qualified Data.Map as Map (toList)
 
+seqtup :: Applicative f => (f a, f b) -> f (a, b)
+seqtup (a, b) = (,) <$> a <*> b
+
 type SmudgeIR x = [Def x]
 
 data Def x = FunDef x [x] (Binding, Ty) [DataDef x] [Stmt x]
@@ -66,6 +69,10 @@ instance Foldable Def where
     foldMap f (FunDef name ps (b, ty) ds ss) = f name `mappend` foldMap f ps `mappend` foldMap (foldMap f) ds `mappend` foldMap (foldMap f) ss
     foldMap f (DataDef d) = foldMap f d
 
+instance Traversable Def where
+    traverse f (FunDef name ps (b, ty) ds ss) = FunDef <$> f name <*> traverse f ps <*> pure (b, ty) <*> traverse (traverse f) ds <*> traverse (traverse f) ss
+    traverse f (DataDef d) = DataDef <$> traverse f d
+
 data DataDef x = TyDef (Tagged x) (TyDec x)
                | VarDef Binding (VarDec Init x)
 
@@ -76,6 +83,10 @@ instance Functor DataDef where
 instance Foldable DataDef where
     foldMap f (TyDef x d) = foldMap f x `mappend` foldMap f d
     foldMap f (VarDef b d) = foldMap f d
+
+instance Traversable DataDef where
+    traverse f (TyDef x d) = TyDef <$> traverse f x <*> traverse f d
+    traverse f (VarDef b d) = VarDef b <$> traverse f d
 
 data TyDec x = EvtDec (Tagged x)
              | SumDec (Tagged x) [(x, Maybe (Tagged x))]
@@ -88,6 +99,10 @@ instance Foldable TyDec where
     foldMap f (EvtDec ty) = foldMap f ty
     foldMap f (SumDec x cs) = foldMap f x `mappend` foldMap (uncurry mappend . (f *** foldMap (foldMap f))) cs
 
+instance Traversable TyDec where
+    traverse f (EvtDec ty) = EvtDec <$> traverse f ty
+    traverse f (SumDec x cs) = SumDec <$> traverse f x <*> traverse (seqtup . (f *** traverse (traverse f))) cs
+
 newtype Init a = Init a
 
 instance Functor Init where
@@ -96,6 +111,9 @@ instance Functor Init where
 instance Foldable Init where
     foldMap f (Init a) = f a
 
+instance Traversable Init where
+    traverse f (Init a) = Init <$> f a
+
 data UnInit a = UnInit
 
 instance Functor UnInit where
@@ -103,6 +121,9 @@ instance Functor UnInit where
 
 instance Foldable UnInit where
     foldMap f UnInit = mempty
+
+instance Traversable UnInit where
+    traverse f UnInit = pure UnInit
 
 data VarDec f x = ValDec x Ty (f (Expr x))
                 | SumVDec x Ty (f (x, Expr x))
@@ -121,6 +142,12 @@ instance Foldable f => Foldable (VarDec f) where
     foldMap f (ListDec x ty i) = f x `mappend` foldMap (foldMap (foldMap f)) i
     foldMap f (SizeDec x i) = f x `mappend` foldMap f i
 
+instance Traversable f => Traversable (VarDec f) where
+    traverse f (ValDec x ty i) = ValDec <$> f x <*> pure ty <*> traverse (traverse f) i
+    traverse f (SumVDec x ty i) = SumVDec <$> f x <*> pure ty <*> traverse (seqtup . (f *** traverse f)) i
+    traverse f (ListDec x ty i) = ListDec <$> f x <*> pure ty <*> traverse (traverse (traverse f)) i
+    traverse f (SizeDec x i) = SizeDec <$> f x <*> traverse f i
+
 data Stmt x = Cases (Expr x) [(x, [Stmt x])] [Stmt x]
             | If (Expr x) [Stmt x]
             | Return (Expr x)
@@ -137,6 +164,12 @@ instance Foldable Stmt where
     foldMap f (If e ss) = foldMap f e `mappend` foldMap (foldMap f) ss
     foldMap f (Return e) = foldMap f e
     foldMap f (ExprS e) = foldMap f e
+
+instance Traversable Stmt where
+    traverse f (Cases e cs ds) = Cases <$> traverse f e <*> traverse (seqtup . (f *** traverse (traverse f))) cs <*> traverse (traverse f) ds
+    traverse f (If e ss) = If <$> traverse f e <*> traverse (traverse f) ss
+    traverse f (Return e) = Return <$> traverse f e
+    traverse f (ExprS e) = ExprS <$> traverse f e
 
 data Expr x = FunCall x [Expr x]
             | Literal String
@@ -164,6 +197,15 @@ instance Foldable Expr where
     foldMap f (Neq x1 x2) = f x1 `mappend` f x2
     foldMap f (SafeIndex a i b d) = foldMap f a `mappend` foldMap f i `mappend` foldMap f b
 
+instance Traversable Expr where
+    traverse f (FunCall x es) = FunCall <$> f x <*> traverse (traverse f) es
+    traverse f (Literal v) = pure $ Literal v
+    traverse f  Null = pure Null
+    traverse f (Value v) = Value <$> traverse f v
+    traverse f (Assign v e) = Assign <$> traverse f v <*> traverse f e
+    traverse f (Neq x1 x2) = Neq <$> f x1 <*> f x2
+    traverse f (SafeIndex a i b d) = SafeIndex <$> traverse f a <*> traverse f i <*> traverse f b <*> pure d
+
 data Var x = Var x
            | SumVar x
            | Field (Var x) x
@@ -177,6 +219,11 @@ instance Foldable Var where
     foldMap f (Var x) = f x
     foldMap f (SumVar x) = f x
     foldMap f (Field v x) = foldMap f v `mappend` f x
+
+instance Traversable Var where
+    traverse f (Var x) = Var <$> f x
+    traverse f (SumVar x) = SumVar <$> f x
+    traverse f (Field v x) = Field <$> traverse f v <*> f x
 
 sName :: TaggedName -> State TaggedName -> QualifiedName
 sName _ (State s) = qualify s
@@ -204,7 +251,7 @@ lowerSymTab gs syms = [
         FunDef (qualify n) args f [] [] | (n, f@(_, _ :-> _)) <- toList syms
     ]
     where 
-        args = map (qualify . ('a':) . show) [1..]
+        args = map (qualify . ('a':) . show) [1..127]
 
 lowerMachine :: Config -> SymbolTable -> (StateMachine TaggedName, Gr EnterExitState Happening) -> SmudgeIR QualifiedName
 lowerMachine cfg syms (StateMachine smName, g') = [
@@ -237,7 +284,7 @@ lowerMachine cfg syms (StateMachine smName, g') = [
                        | (n, EnterExitState {st = State _, ex = ex@(_:_)}) <- labNodes $ delNodes (finalStates g' ++ [n | n <- nodes g', (_, _, Happening EventExit _ _) <- out g' n]) g'] ++
                       [(n, n, Happening EventEnter en [NoTransition])
                        | (n, EnterExitState {en, st = State _}) <- labNodes $ delNodes [n | n <- nodes g', (_, _, Happening EventEnter _ _) <- out g' n] g']) g'
-        eventNames = map qualify $ ["e"] ++ map (('e':) . show) [2..]
+        eventNames = map qualify $ ["e"] ++ map (('e':) . show) [2..127]
         char = TagBuiltin $ qualify "char"
         stateName_f = qualify (smName, "State_name")
         eventName_f = qualify (smName, "Event_name")

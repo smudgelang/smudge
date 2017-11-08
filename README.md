@@ -47,11 +47,15 @@ Then, in your shell of choice, run:
 
     $ make
 
-This may take a bit the first time you build, as stack will have to
-download and configure the build environment.
+The first time you build, it might tell you to run
+
+    $ stack setup
+
+This may take a bit, as stack will have to download and configure the
+build environment.
 
 This should work on Windows under Cygwin, as well as reasonably recent
-versions of Debian and Ubuntu. It has worked on other distros and
+versions of Debian (with [issues](https://github.com/commercialhaskell/stack/blob/master/doc/faq.md#i-get-strange-ld-errors-about-recompiling-with--fpic)) and Ubuntu. It has worked on other distros and
 MacOS, and if you have trouble getting it to build we encourage you to
 ask for help on [gitter](https://gitter.im/smudge-sm/Lobby). It
 generates an executable called `smudge` (or `smudge.exe` on Windows) that

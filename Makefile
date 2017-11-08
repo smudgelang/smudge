@@ -9,7 +9,9 @@ SMUDGE_EXE=smudge
 PLATFORM=linux
 endif
 SMUDGE_BUILD_DIR=$(shell stack path --local-install-root)
-SMUDGE_RELEASE_DIR=$(SMUDGE_BUILD_DIR)/release
+SMUDGE_RELEASE_DIR=release
+SMUDGE_RELEASE_SUBDIR=smudge
+SMUDGE_RELEASE_STAGE_DIR=$(SMUDGE_RELEASE_DIR)/$(SMUDGE_RELEASE_SUBDIR)
 SMUDGE_TARGET=$(SMUDGE_BUILD_DIR)/bin/$(SMUDGE_EXE)
 
 .PHONY: all tags build examples doc newticket release todo clean distclean
@@ -44,14 +46,16 @@ release: build doc
 	if [ "$$REPLY" = "n" ]; then echo "Well, do that, then!"; exit 1; fi
 	rm -rf $(SMUDGE_RELEASE_DIR) # Make sure it's a clean new release build.
 	mkdir $(SMUDGE_RELEASE_DIR)
-	cp $(SMUDGE_TARGET) $(SMUDGE_RELEASE_DIR)
+	mkdir $(SMUDGE_RELEASE_STAGE_DIR)
+	cp $(SMUDGE_TARGET) $(SMUDGE_RELEASE_STAGE_DIR)
 	$(MAKE) -C docs/tutorial tutorial.pdf
 	$(MAKE) -C docs/tutorial docclean
-	cp -r examples $(SMUDGE_RELEASE_DIR)
-	cp -r docs/tutorial $(SMUDGE_RELEASE_DIR)
-	cp LICENSE $(SMUDGE_RELEASE_DIR)
-	cp README $(SMUDGE_RELEASE_DIR)
-	./tar-up-release.sh $(SMUDGE_BUILD_DIR) $(SMUDGE_RELEASE_DIR) $(SMUDGE_TARGET) $(PLATFORM)
+	cp -r examples $(SMUDGE_RELEASE_STAGE_DIR)
+	cp -r docs/tutorial $(SMUDGE_RELEASE_STAGE_DIR)
+	cp CHANGES $(SMUDGE_RELEASE_STAGE_DIR)
+	cp LICENSE $(SMUDGE_RELEASE_STAGE_DIR)
+	cp README.md $(SMUDGE_RELEASE_STAGE_DIR)
+	./tar-up-release.sh $(SMUDGE_RELEASE_DIR) $(SMUDGE_RELEASE_SUBDIR) $(SMUDGE_TARGET) $(PLATFORM)
 
 todo:
 	@find roadmap/$V | while read -r fn; do find -L tickets/ -xdev -samefile $$fn; done

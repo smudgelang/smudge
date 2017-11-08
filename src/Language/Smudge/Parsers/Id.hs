@@ -1,6 +1,6 @@
 -- Copyright 2017 Bose Corporation.
 -- This software is released under the 3-Clause BSD License.
--- The license can be viewed at https://github.com/BoseCorp/Smudge/blob/master/LICENSE
+-- The license can be viewed at https://github.com/Bose/Smudge/blob/master/LICENSE
 
 module Language.Smudge.Parsers.Id (
     Name,

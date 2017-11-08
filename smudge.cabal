@@ -2,7 +2,7 @@ name:                smudge
 version:             0.5
 synopsis:            A tool to interpret state machines and automatically generate documentation and implementation.
 -- description:         
-homepage:            https://github.com/BoseCorp/Smudge#readme
+homepage:            https://github.com/Bose/Smudge#readme
 license:             BSD3
 license-file:        LICENSE
 author:              Nate Bragg, Nathan Michaels
@@ -72,4 +72,4 @@ executable smudge
 
 source-repository head
   type:     git
-  location: https://github.com/BoseCorp/Smudge
+  location: https://github.com/Bose/Smudge

@@ -9,13 +9,13 @@ before_test:
 - curl -sS -ostack.zip -L --insecure http://www.stackage.org/stack/windows-i386
 - 7z x stack.zip stack.exe
 
-clone_folder: &quot;c:\\stack&quot;
+clone_folder: "c:\\stack"
 environment:
   global:
-    STACK_ROOT: &quot;c:\\sr&quot;
+    STACK_ROOT: "c:\\sr"
 
 test_script:
-- stack setup &gt; nul
-# The ugly echo &quot;&quot; hack is to avoid complaints about 0 being an invalid file
+- stack setup > nul
+# The ugly echo "" hack is to avoid complaints about 0 being an invalid file
 # descriptor
-- echo &quot;&quot; | stack --no-terminal test
+- echo "" | stack --no-terminal test

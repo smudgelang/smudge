@@ -1,3 +1,6 @@
+![Build Status](https://travis-ci.org/Bose/Smudge.svg?branch=master)
+![Build status](https://ci.appveyor.com/api/projects/status/w7mmpf0vmdo68wj8?svg=true)
+
 # The Smudge Programming Language
 
 Smudge is a state machine and uml diagram generation engine.

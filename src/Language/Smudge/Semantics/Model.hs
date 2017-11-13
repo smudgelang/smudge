@@ -151,12 +151,12 @@ instance Declared a => Declared (Tagged a) where
     at (TagFunction n) = at n
     at (TagBuiltin n) = at n
 
-instance Qualifiable TaggedName where
-    qualify (TagMachine n) = n
-    qualify (TagState n) = n
-    qualify (TagEvent n) = n
-    qualify (TagFunction n) = n
-    qualify (TagBuiltin n) = n
+instance Qualifiable a => Qualifiable (Tagged a) where
+    qualify (TagMachine n) = qualify n
+    qualify (TagState n) = qualify n
+    qualify (TagEvent n) = qualify n
+    qualify (TagFunction n) = qualify n
+    qualify (TagBuiltin n) = qualify n
 
 disqualifyTag :: TaggedName -> Name
 disqualifyTag = disqualify . qualify

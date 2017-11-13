@@ -207,7 +207,7 @@ convertIR aliases dodec dodef ir =
         constable (TagBuiltin _) = True
         constable _              = False
 
-        convertAbsDeclarator :: Ty -> (SpecifierQualifierList, Maybe AbstractDeclarator)
+        convertAbsDeclarator :: Ty QualifiedName -> (SpecifierQualifierList, Maybe AbstractDeclarator)
         convertAbsDeclarator Void                 = (fromList [Left VOID], Nothing)
         convertAbsDeclarator (Ty t) | constable t = (fromList [Right CONST, Left $ TypeSpecifier $ convertTName t], Just $ This $ fromList [POINTER Nothing])
         convertAbsDeclarator (Ty t)               = (fromList [Left $ TypeSpecifier $ convertTName t], Nothing)
@@ -220,7 +220,7 @@ convertIR aliases dodec dodef ir =
                   convertF (p :-> r) = second (toParam p :) $ convertF r
                   convertF        r  = (convertAbsDeclarator r, [])
 
-        convertDeclarator :: QualifiedName -> Ty -> (SpecifierQualifierList, Declarator)
+        convertDeclarator :: QualifiedName -> Ty QualifiedName -> (SpecifierQualifierList, Declarator)
         convertDeclarator x = second (convertFromAbsDeclarator x) . convertAbsDeclarator
 
         convertFromAbsDeclarator :: QualifiedName -> Maybe AbstractDeclarator -> Declarator
@@ -231,7 +231,7 @@ convertIR aliases dodec dodef ir =
                   instdir (CDirectAbstractDeclarator a LEFTSQUARE c RIGHTSQUARE) = CDirectDeclarator (maybename a) LEFTSQUARE c RIGHTSQUARE
                   instdir (PDirectAbstractDeclarator a LEFTPAREN p RIGHTPAREN)   = PDirectDeclarator (maybename a) LEFTPAREN (fmap Left p) RIGHTPAREN
 
-        convertNamedDeclarator :: [QualifiedName] -> QualifiedName -> Ty -> (SpecifierQualifierList, Declarator)
+        convertNamedDeclarator :: [QualifiedName] -> QualifiedName -> Ty QualifiedName -> (SpecifierQualifierList, Declarator)
         convertNamedDeclarator names = (second (flip evalState names . namedr) .) . convertDeclarator
             where namedr (Declarator ps dd) = Declarator ps <$> namedd dd
                   namedd (IDirectDeclarator i)                          = return $ IDirectDeclarator i

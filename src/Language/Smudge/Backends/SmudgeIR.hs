@@ -58,25 +58,42 @@ seqtup (a, b) = (,) <$> a <*> b
 
 type SmudgeIR x = [Def x]
 
-data Def x = FunDef x [x] (Binding, Ty) [DataDef x] [Stmt x]
+data Def x = FunDef x [x] (Binding, Ty x) [DataDef x] [Stmt x]
            | DataDef (DataDef x)
 
 instance Functor Def where
-    fmap f (FunDef name ps (b, ty) ds ss) = FunDef (f name) (map f ps) (b, ty) (map (fmap f) ds) (map (fmap f) ss)
+    fmap f (FunDef name ps (b, ty) ds ss) = FunDef (f name) (map f ps) (b, fmap f ty) (map (fmap f) ds) (map (fmap f) ss)
     fmap f (DataDef d) = DataDef $ fmap f d
 
 instance Foldable Def where
-    foldMap f (FunDef name ps (b, ty) ds ss) = f name `mappend` foldMap f ps `mappend` foldMap (foldMap f) ds `mappend` foldMap (foldMap f) ss
+    foldMap f (FunDef name ps (b, ty) ds ss) = f name `mappend` foldMap f ps `mappend` foldMap f ty `mappend` foldMap (foldMap f) ds `mappend` foldMap (foldMap f) ss
     foldMap f (DataDef d) = foldMap f d
 
 instance Traversable Def where
-    traverse f (FunDef name ps (b, ty) ds ss) = FunDef <$> f name <*> traverse f ps <*> pure (b, ty) <*> traverse (traverse f) ds <*> traverse (traverse f) ss
+    traverse f (FunDef name ps (b, ty) ds ss) = FunDef <$> f name <*> traverse f ps <*> ((,) b <$> traverse f ty) <*> traverse (traverse f) ds <*> traverse (traverse f) ss
     traverse f (DataDef d) = DataDef <$> traverse f d
 
-data Ty = Void
-        | Ty TaggedName
-        | Ty :-> Ty
+data Ty x = Void
+        | Ty (Tagged x)
+        | Ty x :-> Ty x
     deriving (Eq, Ord)
+
+infixr 7 :->
+
+instance Functor Ty where
+    fmap f Void = Void
+    fmap f (Ty n) = Ty $ fmap f n
+    fmap f (tau :-> tau') = fmap f tau :-> fmap f tau'
+
+instance Foldable Ty where
+    foldMap f Void = mempty
+    foldMap f (Ty n) = foldMap f n
+    foldMap f (tau :-> tau') = foldMap f tau `mappend` foldMap f tau'
+
+instance Traversable Ty where
+    traverse f Void = pure Void
+    traverse f (Ty n) = Ty <$> traverse f n
+    traverse f (tau :-> tau') = (:->) <$> traverse f tau <*> traverse f tau'
 
 data DataDef x = TyDef (Tagged x) (TyDec x)
                | VarDef Binding (VarDec Init x)
@@ -130,27 +147,27 @@ instance Foldable UnInit where
 instance Traversable UnInit where
     traverse f UnInit = pure UnInit
 
-data VarDec f x = ValDec x Ty (f (Expr x))
-                | SumVDec x Ty (f (x, Expr x))
-                | ListDec x Ty (f [Expr x])
+data VarDec f x = ValDec x (Ty x) (f (Expr x))
+                | SumVDec x (Ty x) (f (x, Expr x))
+                | ListDec x (Ty x) (f [Expr x])
                 | SizeDec x (f x)
 
 instance Functor f => Functor (VarDec f) where
-    fmap f (ValDec x ty i) = ValDec (f x) ty (fmap (fmap f) i)
-    fmap f (SumVDec x ty i) = SumVDec (f x) ty (fmap (f *** fmap f) i)
-    fmap f (ListDec x ty i) = ListDec (f x) ty (fmap (map (fmap f)) i)
+    fmap f (ValDec x ty i) = ValDec (f x) (fmap f ty) (fmap (fmap f) i)
+    fmap f (SumVDec x ty i) = SumVDec (f x) (fmap f ty) (fmap (f *** fmap f) i)
+    fmap f (ListDec x ty i) = ListDec (f x) (fmap f ty) (fmap (map (fmap f)) i)
     fmap f (SizeDec x i) = SizeDec (f x) (fmap f i)
 
 instance Foldable f => Foldable (VarDec f) where
-    foldMap f (ValDec x ty i) = f x `mappend` foldMap (foldMap f) i
-    foldMap f (SumVDec x ty i) = f x `mappend` foldMap (uncurry mappend . (f *** foldMap f)) i
-    foldMap f (ListDec x ty i) = f x `mappend` foldMap (foldMap (foldMap f)) i
+    foldMap f (ValDec x ty i) = f x `mappend` foldMap f ty `mappend` foldMap (foldMap f) i
+    foldMap f (SumVDec x ty i) = f x `mappend` foldMap f ty `mappend` foldMap (uncurry mappend . (f *** foldMap f)) i
+    foldMap f (ListDec x ty i) = f x `mappend` foldMap f ty `mappend` foldMap (foldMap (foldMap f)) i
     foldMap f (SizeDec x i) = f x `mappend` foldMap f i
 
 instance Traversable f => Traversable (VarDec f) where
-    traverse f (ValDec x ty i) = ValDec <$> f x <*> pure ty <*> traverse (traverse f) i
-    traverse f (SumVDec x ty i) = SumVDec <$> f x <*> pure ty <*> traverse (seqtup . (f *** traverse f)) i
-    traverse f (ListDec x ty i) = ListDec <$> f x <*> pure ty <*> traverse (traverse (traverse f)) i
+    traverse f (ValDec x ty i) = ValDec <$> f x <*> traverse f ty <*> traverse (traverse f) i
+    traverse f (SumVDec x ty i) = SumVDec <$> f x <*> traverse f ty <*> traverse (seqtup . (f *** traverse f)) i
+    traverse f (ListDec x ty i) = ListDec <$> f x <*> traverse f ty <*> traverse (traverse (traverse f)) i
     traverse f (SizeDec x i) = SizeDec <$> f x <*> traverse f i
 
 data Stmt x = Cases (Expr x) [(x, [Stmt x])] [Stmt x]
@@ -246,13 +263,13 @@ events_for g = nub $ sort [e | (_, _, Happening {event=e@(Event _)}) <- labEdges
 lower :: Config -> ([(StateMachine TaggedName, Gr EnterExitState Happening)], SymbolTable) -> SmudgeIR QualifiedName
 lower cfg (gs, syms) = concatMap (lowerMachine cfg syms) gs
 
-lowerTy :: Solver.Ty -> Ty
+lowerTy :: Solver.Ty -> Ty QualifiedName
 lowerTy      Solver.Void  = Void
 lowerTy     (Solver.Ty x) = Ty x
 lowerTy (t Solver.:-> t') = lowerTy t :-> lowerTy t'
 lowerTy                 t = error $ "Tried to lower '" ++ show t ++ "'.  This is a bug in smudge.\n"
 
-lowerSolverSyms :: SymbolTable -> Map TaggedName (Binding, Ty)
+lowerSolverSyms :: SymbolTable -> Map TaggedName (Binding, Ty QualifiedName)
 lowerSolverSyms = afold (uncurry insert . second (second lowerTy)) empty
 
 lowerSymTab :: [(StateMachine TaggedName, Gr EnterExitState Happening)] -> SymbolTable -> SmudgeIR QualifiedName
@@ -421,7 +438,7 @@ lowerMachine cfg ssyms (StateMachine smName, g') = [
                   assign_state = Var stateVar `Assign` Value (Var $ st_id dest_state)
                   call_enter = FunCall (qualify (sName smName st', "enter")) []
 
-                  isEventTy :: Ty -> Event TaggedName -> Bool
+                  isEventTy :: Ty QualifiedName -> Event TaggedName -> Bool
                   isEventTy a (Event e) = a == snd (syms ! e)
                   isEventTy _ _ = False
 

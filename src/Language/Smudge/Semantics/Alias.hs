@@ -6,10 +6,11 @@ module Language.Smudge.Semantics.Alias (
     Alias,
     merge,
     rename,
+    traverseAliases,
 ) where
 
 import Data.Map (Map, union, findWithDefault)
-import qualified Data.Map as Map (map)
+import qualified Data.Map as Map (map, fromList, toList)
 
 type Alias a = Map a a
 
@@ -18,3 +19,6 @@ merge a b = union b (Map.map (rename b) a)
 
 rename :: Ord a => Alias a -> a -> a
 rename aliases a = findWithDefault a a aliases
+
+traverseAliases :: (Ord a, Ord b, Applicative f) => (a -> f b) -> Alias a -> f (Alias b)
+traverseAliases f aliases = Map.fromList <$> traverse (\(k, v) -> (,) <$> f k <*> f v) (Map.toList aliases)

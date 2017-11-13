@@ -164,7 +164,7 @@ disqualifyTag = disqualify . qualify
 passInitialState :: [(StateMachine Identifier, [WholeState Identifier])] -> [(StateMachine Identifier, [WholeState Identifier])]
 passInitialState sms = map (\(sm, wss) -> (sm, foldr init [] wss)) sms
     where init ws@(s, fs, en, es, ex) wss | elem Initial fs = (StateEntry, [], [], [(EventEnter, [], s)], []) : (s, filter (/= Initial) fs, en, es, ex) : wss
-          init ws wss = ws : wss    
+          init ws wss = ws : wss
 
 pickSm :: StateMachine a -> StateMachine a -> StateMachine a
 pickSm _ s@(StateMachine _) = s

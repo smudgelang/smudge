@@ -42,8 +42,8 @@ import Language.Smudge.Semantics.Model (
 import Language.Smudge.Passes.Passes (afold)
 import Language.Smudge.Semantics.Operation (handlers, finalStates)
 import Language.Smudge.Semantics.Solver (
-  Binding(..), 
-  SymbolTable, 
+  Binding(..),
+  SymbolTable,
   )
 import qualified Language.Smudge.Semantics.Solver as Solver (Ty(..))
 
@@ -264,7 +264,7 @@ lowerSymTab gs ssyms = [
     ] ++ [
         FunDef (qualify n) args f [] [] | (n, f@(_, _ :-> _)) <- symslist
     ]
-    where 
+    where
         args = map (qualify . ('a':) . show) [1..127]
         syms = lowerSolverSyms ssyms
         symslist = toList syms

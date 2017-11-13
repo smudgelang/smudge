@@ -33,7 +33,7 @@ import qualified Data.Map as Map(map)
 import Control.Monad (guard)
 
 -- The `precedence` function enforces the precedence order for events:
--- 
+--
 -- state | event
 -- =============
 -- named | named

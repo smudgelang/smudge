@@ -35,7 +35,7 @@ import Language.Smudge.Semantics.Model (
   Tagged(..),
   )
 import Language.Smudge.Semantics.Solver (
-  Binding(..), 
+  Binding(..),
   filterBind,
   (!),
   )
@@ -98,7 +98,7 @@ makeSwitch var cs ds =
 
 makeEnum :: Identifier -> [Identifier] -> TypeSpecifier
 makeEnum x [] = ENUM (Left $ x)
-makeEnum x cs = 
+makeEnum x cs =
     ENUM (Right (Quad (if null x then Nothing else Just $ x)
     LEFTCURLY
     (fromList [Enumerator c Nothing | c <- cs])
@@ -111,7 +111,7 @@ makeUnion :: Identifier -> [(SpecifierQualifierList, Declarator)] -> TypeSpecifi
 makeUnion = makeStructOrUnion UNION
 
 makeStructOrUnion ctor x [] = ctor (Left $ x)
-makeStructOrUnion ctor x ss = 
+makeStructOrUnion ctor x ss =
     ctor (Right (Quad (if null x then Nothing else Just $ x)
     LEFTCURLY
     (fromList [StructDeclaration sqs (fromList [This declr]) SEMICOLON | (sqs, declr) <- ss])

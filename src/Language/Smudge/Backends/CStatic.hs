@@ -69,6 +69,7 @@ import Control.Monad.State (StateT, evalState, state)
 import Control.Monad.Identity (runIdentity)
 import Control.Monad.Trans (liftIO)
 import Control.Monad.Trans.Except (Except, mapExceptT, throwE)
+import Data.Char (isDigit)
 import Data.List (isPrefixOf)
 import Data.Maybe (catMaybes, isNothing)
 import System.FilePath (
@@ -309,9 +310,10 @@ passMangle aliases ir = do
         convertFQAE :: QualifiedName -> Except Fault (FullyQualAndEvent Identifier)
         convertFQAE x = FullyQualAndEvent <$> convertQName x <*> convertQName (extractWith seq (qualify . (,) (qualify "e")) x)
         convertQName :: Qualifiable q => q -> Except Fault Identifier
-        convertQName q = check $ snd $ extractWith joinIdentifier (rawtest isSimpleUnderscore &&& mangle mangleIdentifier) $ rename aliases $ qualify q
+        convertQName q = check $ finalize $ extractWith joinIdentifier (rawtest isSimpleUnderscore &&& mangle mangleIdentifier) $ rename aliases $ qualify q
             where joinIdentifier (su, x) (True, y)  = (su, x +-+ "" +-+ y)
                   joinIdentifier (su, x) (False, y) = (su, x +-+ y)
+                  finalize (su, x) = if any isDigit (take 1 x) then snd $ joinIdentifier (False, "") (su, x) else x
                   check x = if not $ isPrefixOf "_" x then return x
                             else throwE (RuntimeFault ERROR $ "Attempt to emit leading-underscore id which is a reserved id class in C89 §4.1.2: " ++ x)
 

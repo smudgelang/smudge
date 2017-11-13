@@ -7,6 +7,7 @@
 module Language.Smudge.Backends.SmudgeIR (
     SmudgeIR,
     Def(..),
+    Ty(..),
     DataDef(..),
     TyDec(..),
     Init(..),
@@ -38,20 +39,19 @@ import Language.Smudge.Semantics.Model (
   extractWith,
   disqualifyTag,
   )
+import Language.Smudge.Passes.Passes (afold)
 import Language.Smudge.Semantics.Operation (handlers, finalStates)
 import Language.Smudge.Semantics.Solver (
-  Ty(..), 
   Binding(..), 
-  toList,
   SymbolTable, 
-  (!),
   )
+import qualified Language.Smudge.Semantics.Solver as Solver (Ty(..))
 
-import Control.Arrow ((***))
+import Control.Arrow ((***), second)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Graph (labNodes, labEdges, lab, out, suc, insEdges, nodes, delNodes)
 import Data.List (nub, sort)
-import qualified Data.Map as Map (toList)
+import Data.Map (Map, empty, insert, (!), toList)
 
 seqtup :: Applicative f => (f a, f b) -> f (a, b)
 seqtup (a, b) = (,) <$> a <*> b
@@ -72,6 +72,11 @@ instance Foldable Def where
 instance Traversable Def where
     traverse f (FunDef name ps (b, ty) ds ss) = FunDef <$> f name <*> traverse f ps <*> pure (b, ty) <*> traverse (traverse f) ds <*> traverse (traverse f) ss
     traverse f (DataDef d) = DataDef <$> traverse f d
+
+data Ty = Void
+        | Ty TaggedName
+        | Ty :-> Ty
+    deriving (Eq, Ord)
 
 data DataDef x = TyDef (Tagged x) (TyDec x)
                | VarDef Binding (VarDec Init x)
@@ -241,20 +246,31 @@ events_for g = nub $ sort [e | (_, _, Happening {event=e@(Event _)}) <- labEdges
 lower :: Config -> ([(StateMachine TaggedName, Gr EnterExitState Happening)], SymbolTable) -> SmudgeIR QualifiedName
 lower cfg (gs, syms) = concatMap (lowerMachine cfg syms) gs
 
+lowerTy :: Solver.Ty -> Ty
+lowerTy      Solver.Void  = Void
+lowerTy     (Solver.Ty x) = Ty x
+lowerTy (t Solver.:-> t') = lowerTy t :-> lowerTy t'
+lowerTy                 t = error $ "Tried to lower '" ++ show t ++ "'.  This is a bug in smudge.\n"
+
+lowerSolverSyms :: SymbolTable -> Map TaggedName (Binding, Ty)
+lowerSolverSyms = afold (uncurry insert . second (second lowerTy)) empty
+
 lowerSymTab :: [(StateMachine TaggedName, Gr EnterExitState Happening)] -> SymbolTable -> SmudgeIR QualifiedName
-lowerSymTab gs syms = [
-        DataDef $ TyDef name $ EvtDec ty | (name, (b, Ty ty)) <- toList syms
+lowerSymTab gs ssyms = [
+        DataDef $ TyDef name $ EvtDec ty | (name, (b, Ty ty)) <- symslist
     ] ++ [
         DataDef $ TyDef eventEnum $ SumDec eventEnum [(qualify (qualify "EVID", e), Just e) | Event e <- events_for g] -- a kludge to get it into the header
             | (StateMachine smName, g) <- gs, let eventEnum = (\(Ty p :-> r) -> p) $ snd (syms ! TagFunction (qualify (smName, "Handle_Message")))
     ] ++ [
-        FunDef (qualify n) args f [] [] | (n, f@(_, _ :-> _)) <- toList syms
+        FunDef (qualify n) args f [] [] | (n, f@(_, _ :-> _)) <- symslist
     ]
     where 
         args = map (qualify . ('a':) . show) [1..127]
+        syms = lowerSolverSyms ssyms
+        symslist = toList syms
 
 lowerMachine :: Config -> SymbolTable -> (StateMachine TaggedName, Gr EnterExitState Happening) -> SmudgeIR QualifiedName
-lowerMachine cfg syms (StateMachine smName, g') = [
+lowerMachine cfg ssyms (StateMachine smName, g') = [
         DataDef $ TyDef stateEnum $ SumDec stateEnum [(st_id s, Nothing) | s <- states],
         DataDef $ VarDef Internal $ ValDec stateVar (Ty stateEnum) (Init $ Value $ Var $ st_id initial)
     ] ++
@@ -280,6 +296,7 @@ lowerMachine cfg syms (StateMachine smName, g') = [
          case s' of State _ -> True; StateAny -> True; _ -> False
     ]
     where
+        syms = lowerSolverSyms ssyms
         g = insEdges ([(n, n, Happening EventExit ex [NoTransition])
                        | (n, EnterExitState {st = State _, ex = ex@(_:_)}) <- labNodes $ delNodes (finalStates g' ++ [n | n <- nodes g', (_, _, Happening EventExit _ _) <- out g' n]) g'] ++
                       [(n, n, Happening EventEnter en [NoTransition])
@@ -302,9 +319,9 @@ lowerMachine cfg syms (StateMachine smName, g') = [
         st_id s = qualify (qualify "STID", s)
         states = [s | (_, EnterExitState {st = (State s)}) <- labNodes g]
         events = events_for g
-        s_handlers e = [(s, h) | (s, Just h@(State _, _)) <- Map.toList (handlers e g)]
-        unhandled e = [s | (s, Just (StateAny, _)) <- Map.toList (handlers e g)] ++ [s | (s, Nothing) <- Map.toList (handlers e g)]
-        any_handler e = nub [h | (_, Just h@(StateAny, _)) <- Map.toList (handlers e g)]
+        s_handlers e = [(s, h) | (s, Just h@(State _, _)) <- toList (handlers e g)]
+        unhandled e = [s | (s, Just (StateAny, _)) <- toList (handlers e g)] ++ [s | (s, Nothing) <- toList (handlers e g)]
+        any_handler e = nub [h | (_, Just h@(StateAny, _)) <- toList (handlers e g)]
         initial = head [qualify s | (n, EnterExitState {st = StateEntry}) <- labNodes g, n' <- suc g n,
                                     Just (EnterExitState {st = (State s)}) <- [lab g n']]
 

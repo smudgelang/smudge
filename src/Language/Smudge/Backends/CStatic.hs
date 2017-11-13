@@ -14,6 +14,7 @@ import Language.Smudge.Backends.Backend (
   )
 import Language.Smudge.Backends.SmudgeIR (
   SmudgeIR,
+  Ty(..),
   Def(..),
   DataDef(..),
   TyDec(..),
@@ -34,7 +35,6 @@ import Language.Smudge.Semantics.Model (
   Tagged(..),
   )
 import Language.Smudge.Semantics.Solver (
-  Ty(..), 
   Binding(..), 
   filterBind,
   (!),

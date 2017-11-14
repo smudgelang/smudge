@@ -23,6 +23,7 @@ import Language.Smudge.Semantics.Model (
   passTagCategories,
   passWholeStateToGraph,
   QualifiedName,
+  qualify,
   TaggedName,
   )
 import Language.Smudge.Grammar (
@@ -88,9 +89,11 @@ checkAndConvert sms os = do
         renames = map rename [r | EnvmntOption (Rename r) <- os]
         namespace = last $ "SMUDGE" : [n | EnvmntOption (Namespace n) <- os]
         aliases = merge (basisAlias namespace) $ fromList $ rights renames
+        nsprefix = if EnvmntOption (NsPrefix True) `elem` os && not (null namespace)
+                   then qualify . (,) namespace else id
         m sms = do
             let sms' = passInitialState sms
-            let sms'' = passRename aliases $ passFullyQualify sms'
+            let sms'' = passRename aliases nsprefix $ passFullyQualify sms'
             let sms''' = passTagCategories sms''
             let fs = concat $ map name_passes sms'''
             mapM print fs

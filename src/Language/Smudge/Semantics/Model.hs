@@ -200,9 +200,9 @@ passFullyQualify sms = map qual sms
                   qual_fn fn@(_, FuncTyped qe) = (qName sm fn, FuncTyped $ qual_qe qe)
                   qual_fn fn@(_, FuncEvent qe) = (qName sm fn, FuncEvent $ qual_qe qe)
 
-passRename :: Alias QualifiedName -> [(StateMachine QualifiedName, [WholeState QualifiedName])] -> [(StateMachine QualifiedName, [WholeState QualifiedName])]
-passRename aliases sms = map ren sms
-    where rename' = rename aliases
+passRename :: Alias QualifiedName -> (QualifiedName -> QualifiedName) -> [(StateMachine QualifiedName, [WholeState QualifiedName])] -> [(StateMachine QualifiedName, [WholeState QualifiedName])]
+passRename aliases nsprefix sms = map ren sms
+    where rename' = rename aliases . nsprefix
           ren (sm, wss) = (fmap rename' sm, map ren_ws wss)
           ren_ws (st, fs, en, es, ex) = (fmap rename' st, fs, map ren_fn en, map ren_eh es, map ren_fn ex)
           ren_eh (ev, ses, s) = (fmap rename' ev, map ren_fn ses, fmap rename' s)

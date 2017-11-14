@@ -26,6 +26,7 @@ data SystemOption = Version
 
 data EnvmntOption = Strict Bool
                   | Namespace String
+                  | NsPrefix Bool
                   | Rename String
     deriving (Show, Eq)
 
@@ -46,6 +47,7 @@ sysopts = [Option ['v'] ["version"] (NoArg Version) "Version information.",
 envopts :: [OptDescr EnvmntOption]
 envopts = [Option []    ["[no-]strict"] (BoolArg Strict) "[DON'T] Require all types to match strictly",
            Option []    ["namespace"] (ReqArg Namespace "NEW") "Replace namespace.",
+           Option []    ["[no-]nsprefix"] (BoolArg NsPrefix) "[DON'T] Prefix all identifiers with namespace.",
            Option []    ["rename"] (ReqArg Rename "\"OLD NEW\"") "Replace identifier."]
 
 cmnopts :: [OptDescr CommonOption]

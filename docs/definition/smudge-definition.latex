@@ -319,8 +319,9 @@ are handled as three different cases:
 Note that the output identifier language is \verb|[_a-zA-Z0-9]+| rather than
 C's; i.e., this mapping can produce output with leading underscores and decimal
 digits; the former is undefined behavior in C, while the latter is not in the
-language of C identifiers.  Both of these concerns are handled elsewhere, and
-no further consideration is given to them here.
+language of C identifiers.  Leading digits are repaired below during qualified
+identifier translation.  Leading underscores are handled elsewhere, and no
+further consideration is given to them here.
 
 Qualified identifiers are mangled by mangling unqualified identifiers, and then
 joining them by concatenation with two underscores if the second unqualified
@@ -455,6 +456,16 @@ concatenation for lengths $j+1, k+1$ is injective for all $k,j\leq k$.
 Concatenation is associative, so this is true for prepending as
 well\footnote{Although the proof in that direction is more convoluted, because
 all cases can output proper prefixes of some general case output.}.
+
+When the qualified identifier translation of an input $x$ produces an output
+$q(x)$ with a leading decimal digit, an additional qualified join sequence is
+performed, $\texttt{""}+\vunder+q(x)$.  The unqualified identifier translation
+is incapable of yielding the empty string, and so the proof reduces to that of
+the qualified identifier translation.  For illustrative purposes, though,
+consider some $y$ s.t. $q(y)=\texttt{""}+\vunder+q(x)$: with leading
+underscore(s), $y_1$ cannot be the alphanumeric or single underscore cases; it
+and $x_1$ must be the general case.  However, if that is true, $q(x)$ cannot be
+a suffix of $q(y)$, because the length codes must differ.
 
 With the unqualified, qualified, and single character translations separately
 proven injective, and as the overall translation is a composition of these, the

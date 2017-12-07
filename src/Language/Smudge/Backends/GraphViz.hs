@@ -139,9 +139,9 @@ data GraphVizOption = Format GraphvizOutput | OutFile FilePath | RenderSideEffec
     deriving (Show, Eq)
 
 outputFormats :: [GraphvizOutput]
-outputFormats = [Eps, Bmp, Canon, DotOutput, Eps, Fig, Gd, Gd2, Gif, Ico,
-                 Imap, Cmapx, ImapNP, CmapxNP, Jpeg, Pdf, Plain, Png,
-                 Ps, Ps2, Svg, SvgZ, Tiff, Vml, VmlZ, Vrml, WBmp]
+outputFormats = [Bmp, Canon, DotOutput, Eps, Fig, Gd, Gd2, Gif, Ico, Imap,
+                 Cmapx, ImapNP, CmapxNP, Jpeg, Pdf, Plain, PlainExt, Png,
+                 Ps, Ps2, Svg, SvgZ, Tiff, Vml, VmlZ, Vrml, WBmp, WebP]
 
 gfold :: [(StateMachine TaggedName, UnqualifiedGraph)] -> QualifiedGraph
 gfold = mconcat . (map qualify)

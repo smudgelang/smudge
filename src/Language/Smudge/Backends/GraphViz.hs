@@ -58,19 +58,19 @@ import Data.GraphViz.Attributes (
 import Data.GraphViz.Attributes.Complete (Label(..), Attribute(Concentrate))
 import qualified Data.Graph.Inductive.Graph as G
 import qualified Data.Map as M
+import Data.Function (on)
 import Data.Graph.Inductive.PatriciaTree (Gr)
-import Data.List (intercalate, intersperse)
+import Data.List (intercalate, intersperse, groupBy)
 import Data.Text.Internal.Lazy (Text(..))
+import GHC.Exts (the)
+import Control.Arrow (second)
 import Control.Monad.Trans.Except (ExceptT(..), withExceptT)
 import Control.Exception (try, SomeException(..))
 import System.FilePath (FilePath, dropExtension)
 
 type QualifiedState = (StateMachine TaggedName, EnterExitState)
 type UnqualifiedGraph = Gr EnterExitState Happening
-type QualifiedGraph = Gr QualifiedState Happening
-type NodeMap = M.Map G.Node G.Node
-type QualifiedContext = G.Context QualifiedState Happening
-type UnqualifiedContext = G.Context EnterExitState Happening
+type QualifiedGraph = Gr QualifiedState [Happening]
 
 
 -- Sinful.  This instance is incomplete.
@@ -112,6 +112,15 @@ instance Labellable (SideEffect TaggedName) where
 instance Labellable Happening where
     toLabelValue (Happening e ses _) = mconcat $ intersperse labelCrlf $ toLabelValue e : map toLabelValue ses
 
+toLabelList :: Labellable a => String -> [a] -> Label
+toLabelList sep = mconcat . intersperse (toLabelValue sep) . map toLabelValue
+
+instance Labellable [Happening] where
+    toLabelValue = toLabelList "\n\n"
+
+instance Labellable [Event TaggedName] where
+    toLabelValue = toLabelList ", "
+
 smudgeParams sideEffects noTransitions clusterBox title entryNodes =
     defaultParams
         { globalAttributes =
@@ -129,8 +138,9 @@ smudgeParams sideEffects noTransitions clusterBox title entryNodes =
             smToString (StateMachine s) = disqualifyTag s
             fmtNode (_, (_, EnterExitState {st = StateEntry})) = [shape Circle, style filled, fillColor Black, toLabel ""]
             fmtNode (_, l) = [toLabel l]
-            keep (n, _, ese) = [filtEntry n (toLabel ese), arrow ese]
-            drop (n, _, ese) = [filtEntry n (toLabel $ event ese), arrow ese]
+            fmt tl (n, _, eses) = (filtEntry n $ tl eses):map arrow (take 1 eses)
+            keep = fmt toLabel
+            drop = fmt (toLabel . map event)
             filtEntry n l = if n `elem` entryNodes then toLabel "" else l
             arrow (Happening _ _ [])                        = edgeEnds Forward
             arrow (Happening _ _ fs) | elem NoTransition fs = if noTransitions then edgeEnds NoDir else style invis
@@ -147,7 +157,9 @@ gfold :: [(StateMachine TaggedName, UnqualifiedGraph)] -> QualifiedGraph
 gfold = mconcat . (map qualify)
     where
         qualify :: (StateMachine TaggedName, UnqualifiedGraph) -> QualifiedGraph
-        qualify (sm, ug) = G.gmap (\ (i, n, l, o) -> (i, n, (sm, l), o)) ug
+        qualify (sm, ug) = G.gmap (\ (i, n, l, o) -> (condense i, n, (sm, l), condense o)) ug
+        condense :: G.Adj Happening -> G.Adj [Happening]
+        condense = map (second the . unzip) . groupBy ((==) `on` snd)
 
 instance Backend GraphVizOption where
     options = ("dot",

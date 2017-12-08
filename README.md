@@ -3,13 +3,10 @@
 
 # The Smudge Programming Language
 
-Smudge is a state machine and uml diagram generation engine.
-
-Smudge is both a language for describing state machines as well as a
-compiler that interprets and validates those descriptions to generate
-code and documentation for them. The compiler currently only supports
-generating C code. It's optimized for use on very limited embedded
-systems, but designed to be used anywhere that state machines are
+Smudge is a domain specific language for implementing state
+machines. The compiler generates standard C code as well as graphical
+state diagrams. Its output is optimized for use on very limited
+embedded systems, but designed to be used anywhere state machines are
 appropriate. Here's a simple example to show you what the language
 looks like:
 

@@ -26,6 +26,7 @@ import Language.Smudge.Semantics.Model (
   EnterExitState(..)
   )
 import Data.Graph.Extra
+import Data.GraphViz.Attributes.Extra (labelCrlf, toLabelList)
 import System.Console.GetOpt.Extra (OptDescr(..), ArgDescr(..))
 import Language.Smudge.Passes.Passes (Fault(..), Severity(..))
 
@@ -55,13 +56,12 @@ import Data.GraphViz.Attributes (
   X11Color(Black),
   DirType(Forward, NoDir),
   )
-import Data.GraphViz.Attributes.Complete (Label(..), Attribute(Concentrate))
+import Data.GraphViz.Attributes.Complete (Attribute(Concentrate))
 import qualified Data.Graph.Inductive.Graph as G
 import qualified Data.Map as M
 import Data.Function (on)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.List (intercalate, intersperse, groupBy)
-import Data.Text.Internal.Lazy (Text(..))
 import GHC.Exts (the)
 import Control.Arrow (second)
 import Control.Monad.Trans.Except (ExceptT(..), withExceptT)
@@ -72,11 +72,6 @@ type QualifiedState = (StateMachine TaggedName, EnterExitState)
 type UnqualifiedGraph = Gr EnterExitState Happening
 type QualifiedGraph = Gr QualifiedState [Happening]
 
-
--- Sinful.  This instance is incomplete.
-instance Monoid Label where
-    mempty = StrLabel Empty
-    mappend (StrLabel a) (StrLabel b) = StrLabel (mappend a b)
 
 instance Labellable TaggedName where
     toLabelValue = toLabelValue . disqualifyTag
@@ -89,9 +84,6 @@ instance Labellable (State TaggedName) where
     toLabelValue (State s) = toLabelValue s
     toLabelValue StateAny  = toLabelValue "Any"
     toLabelValue StateSame = toLabelValue "Same"
-
-labelCrlf :: Label
-labelCrlf = toLabelValue "\n"
 
 instance Labellable EnterExitState where
     toLabelValue EnterExitState {en, st, ex} = mconcat $ intersperse labelCrlf $ toLabelValue st : efl en "Enter:" ++ efl ex "Exit:"
@@ -111,9 +103,6 @@ instance Labellable (SideEffect TaggedName) where
 
 instance Labellable Happening where
     toLabelValue (Happening e ses _) = mconcat $ intersperse labelCrlf $ toLabelValue e : map toLabelValue ses
-
-toLabelList :: Labellable a => String -> [a] -> Label
-toLabelList sep = mconcat . intersperse (toLabelValue sep) . map toLabelValue
 
 instance Labellable [Happening] where
     toLabelValue = toLabelList "\n\n"

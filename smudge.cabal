@@ -41,6 +41,7 @@ library
   other-modules:     System.FilePath.Extra
                      Language.C89.Grammar
                      Language.C89.Unparser
+                     Data.GraphViz.Attributes.Extra
                      Data.These
   build-depends:     base >= 4.7 && < 5,
                      containers,

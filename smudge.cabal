@@ -54,7 +54,8 @@ library
                      pretty,
                      semigroups,
                      text,
-                     transformers
+                     transformers,
+                     word-wrap
   default-language:  Haskell2010
 
 executable smudge

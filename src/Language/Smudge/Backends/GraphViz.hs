@@ -26,7 +26,7 @@ import Language.Smudge.Semantics.Model (
   EnterExitState(..)
   )
 import Data.Graph.Extra
-import Data.GraphViz.Attributes.Extra (labelCrlf, toLabelList)
+import Data.GraphViz.Attributes.Extra (labelCrlf, toLabelList, wrapLabel)
 import System.Console.GetOpt.Extra (OptDescr(..), ArgDescr(..))
 import Language.Smudge.Passes.Passes (Fault(..), Severity(..))
 
@@ -108,7 +108,7 @@ instance Labellable [Happening] where
     toLabelValue = toLabelList "\n\n"
 
 instance Labellable [Event TaggedName] where
-    toLabelValue = toLabelList ", "
+    toLabelValue = wrapLabel 40 . toLabelList ", "
 
 smudgeParams sideEffects noTransitions clusterBox title entryNodes =
     defaultParams

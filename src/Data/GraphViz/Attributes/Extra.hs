@@ -6,6 +6,7 @@ module Data.GraphViz.Attributes.Extra (
     labelCrlf,
     toLabelList,
     toTable,
+    wrapLabel,
 ) where
 
 import Control.Arrow (first, (***), (&&&))
@@ -18,9 +19,10 @@ import Data.GraphViz.Attributes.Complete (
     )
 import qualified Data.GraphViz.Attributes.HTML as H
 import Data.List (intersperse, groupBy, sortBy, nub)
-import qualified Data.Text.Lazy as T (Text, empty, lines)
+import qualified Data.Text.Lazy as T (Text, empty, lines, toStrict, fromStrict)
 import Data.Word (Word16)
 import GHC.Exts (the)
+import Text.Wrap (wrapText, defaultWrapSettings)
 
 instance Monoid H.Table where
     mempty = H.HTable Nothing [] []
@@ -108,3 +110,7 @@ labelCrlf = toLabelValue "\n"
 
 toLabelList :: Labellable a => String -> [a] -> Label
 toLabelList sep = mconcat . intersperse (toLabelValue sep) . map toLabelValue
+
+wrapLabel :: Int -> Label -> Label
+wrapLabel w (StrLabel t) = StrLabel $ T.fromStrict $ wrapText defaultWrapSettings w $ T.toStrict t
+wrapLabel _ l = l -- wrapping this is meaningless

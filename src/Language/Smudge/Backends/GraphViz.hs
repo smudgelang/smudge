@@ -61,7 +61,7 @@ import qualified Data.Graph.Inductive.Graph as G
 import qualified Data.Map as M
 import Data.Function (on)
 import Data.Graph.Inductive.PatriciaTree (Gr)
-import Data.List (intercalate, intersperse, groupBy)
+import Data.List (intercalate, intersperse, groupBy, sortBy)
 import GHC.Exts (the)
 import Control.Arrow (second)
 import Control.Monad.Trans.Except (ExceptT(..), withExceptT)
@@ -148,7 +148,7 @@ gfold = mconcat . (map qualify)
         qualify :: (StateMachine TaggedName, UnqualifiedGraph) -> QualifiedGraph
         qualify (sm, ug) = G.gmap (\ (i, n, l, o) -> (condense i, n, (sm, l), condense o)) ug
         condense :: G.Adj Happening -> G.Adj [Happening]
-        condense = map (second the . unzip) . groupBy ((==) `on` snd)
+        condense = map (second the . unzip) . groupBy ((==) `on` snd) . sortBy (compare `on` snd)
 
 instance Backend GraphVizOption where
     options = ("dot",

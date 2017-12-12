@@ -5,17 +5,103 @@
 module Data.GraphViz.Attributes.Extra (
     labelCrlf,
     toLabelList,
+    toTable,
 ) where
 
+import Control.Arrow (first, (***), (&&&))
+import Data.Function (on)
 import Data.GraphViz (Labellable(..))
-import Data.GraphViz.Attributes.Complete (Label(..))
-import Data.List (intersperse)
-import Data.Text.Internal.Lazy (Text(..))
+import Data.GraphViz.Attributes.Complete (
+    Label(..),
+    RecordField(..),
+    RankDir(..)
+    )
+import qualified Data.GraphViz.Attributes.HTML as H
+import Data.List (intersperse, groupBy, sortBy, nub)
+import qualified Data.Text.Lazy as T (Text, empty, lines)
+import Data.Word (Word16)
+import GHC.Exts (the)
 
--- Sinful.  This instance is incomplete.
+instance Monoid H.Table where
+    mempty = H.HTable Nothing [] []
+    mappend (H.HTable f1 a1 r1) (H.HTable f2 a2 r2) =
+        H.HTable (nub <$> mappend f1 f2) (nub $ mappend a1 a2) (mappend r1 r2)
+
+instance Monoid H.Label where
+    mempty = H.Text []
+    mappend (H.Text a) (H.Text b) = H.Text $ mappend a b
+    mappend a b = H.Table $ mappend (toTable a) (toTable b)
+        where toTable (H.Table t) = t
+              toTable l = H.HTable Nothing [] [H.Cells [H.LabelCell [] l]]
+
 instance Monoid Label where
-    mempty = StrLabel Empty
+    mempty = StrLabel T.empty
     mappend (StrLabel a) (StrLabel b) = StrLabel (mappend a b)
+    mappend (RecordLabel a) (RecordLabel b) = RecordLabel (mappend a b)
+    mappend (StrLabel a) (RecordLabel b) = RecordLabel (mappend [FieldLabel a] b)
+    mappend (RecordLabel a) (StrLabel b) = RecordLabel (mappend a [FieldLabel b])
+    mappend a b = HtmlLabel $ mappend (toHtml a) (toHtml b)
+        where toHtml (HtmlLabel l) = l
+              toHtml (StrLabel l) = H.Text $ escapeNewlines l
+              toHtml (RecordLabel fs) = H.Table $ toTable FromTop fs
+
+escapeNewlines :: T.Text -> H.Text
+escapeNewlines = intersperse (H.Newline []) . map H.Str . T.lines
+
+toTable :: RankDir -> [RecordField] -> H.Table
+toTable dir = H.HTable Nothing [H.Border 0, H.CellBorder 1, H.CellPadding 8, H.CellSpacing 0] . map H.Cells . toAxis dir
+    where
+        height :: [RecordField] -> Word16
+        height = foldl lcm 1 . map fheight
+            where fheight (FlipFields fs) = width fs
+                  fheight _ = 1
+
+        width :: [RecordField] -> Word16
+        width = sum . widths
+
+        widths :: [RecordField] -> [Word16]
+        widths = map fwidth
+            where fwidth (FlipFields fs) = height fs
+                  fwidth _ = 1
+
+        scaled_widths :: Word16 -> [RecordField] -> [Word16]
+        scaled_widths w rs = map (* (w `div` width rs)) $ widths rs
+
+        toAxis :: RankDir -> [RecordField] -> [[H.Cell]]
+        toAxis FromTop    = by col
+        toAxis FromBottom = by col
+        toAxis FromLeft   = by row
+        toAxis FromRight  = by row
+
+        by :: ([RecordField] -> Word16 -> Word16 -> [(Word16, [H.Cell])]) -> [RecordField] -> [[H.Cell]]
+        by axis = intersperseEmptyRows 0 . (axis <*> width <*> height)
+            where intersperseEmptyRows :: Word16 -> [(Word16, [H.Cell])] -> [[H.Cell]]
+                  intersperseEmptyRows _           []            = []
+                  intersperseEmptyRows y ((y', cs):rs) | y == y' = cs:intersperseEmptyRows (y + 1) rs
+                  intersperseEmptyRows y           rs            = [emptyCell]:intersperseEmptyRows (y + 1) rs
+                  emptyCell :: H.Cell
+                  emptyCell = H.LabelCell [H.FixedSize True, H.Border 0, H.CellPadding 0, H.CellSpacing 0, H.Height 1, H.Width 1] mempty
+
+        bySize :: [RecordField] -> Word16 -> Word16 -> [(RecordField, (Word16, Word16))]
+        bySize rs w h = zip rs $ zip (scaled_widths w rs) $ repeat h
+
+        asFields :: RecordField -> [RecordField]
+        asFields (FlipFields fs) = fs
+        asFields f = [f]
+
+        row :: [RecordField] -> Word16 -> Word16 -> [(Word16, [H.Cell])]
+        row rs w h = stackByOffset $ map (first (col . asFields)) $ bySize rs w h
+            where stackByOffset = concatMap (uncurry (map . first . (+))) . (zip . scanl (+) 0 . map (fst . snd) <*> map (uncurry (uncurry . flip . ($))))
+
+        col :: [RecordField] -> Word16 -> Word16 -> [(Word16, [H.Cell])]
+        col rs w h = lineUpByOffset $ concatMap (uncurry $ uncurry . cells) $ bySize rs w h
+            where lineUpByOffset = map ((the *** concat) . unzip) . groupBy ((==) `on` fst) . sortBy (compare `on` fst)
+
+        cells :: RecordField -> Word16 -> Word16 -> [(Word16, [H.Cell])]
+        cells (LabelledTarget p s) w h = [(0, [H.LabelCell [H.RowSpan h, H.ColSpan w, H.Port p] (H.Text $ escapeNewlines s)])]
+        cells (PortName p)         w h = [(0, [H.LabelCell [H.RowSpan h, H.ColSpan w, H.Port p] mempty])]
+        cells (FieldLabel s)       w h = [(0, [H.LabelCell [H.RowSpan h, H.ColSpan w] (H.Text $ escapeNewlines s)])]
+        cells (FlipFields fs)      w h = row fs h w
 
 labelCrlf :: Label
 labelCrlf = toLabelValue "\n"

@@ -31,10 +31,13 @@ before_install:
 - export PATH=$HOME/.local/bin:$PATH
 - travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
 
+- sudo apt-get -qq update
+- sudo apt-get install -y graphviz
+
 install:
 # Build dependencies
-- make build STACK_FLAGS="--no-terminal --install-ghc" CABAL_FLAGS="--only-dependencies"
+- stack --no-terminal --install-ghc test --only-dependencies
 
 script:
 # Build the package, its tests, and its docs and run the tests
-- make build STACK_FLAGS="--no-terminal" CABAL_FLAGS="--haddock --no-haddock-deps"
+- make build examples STACK_FLAGS="--no-terminal" CABAL_FLAGS="--haddock --no-haddock-deps"

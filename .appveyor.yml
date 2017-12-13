@@ -4,10 +4,14 @@ build: off
 
 before_test:
 # http://help.appveyor.com/discussions/problems/6312-curl-command-not-found
-- set PATH=C:\MinGW\bin;C:\Program Files\Git\mingw64\bin;%PATH%
+- mkdir .local\bin
+- set PATH=%CD%\.local\bin;C:\MinGW\bin;C:\Program Files\Git\mingw64\bin;%PATH%
 
 - curl -sS -ostack.zip -L --insecure http://www.stackage.org/stack/windows-i386
-- 7z x stack.zip stack.exe
+- 7z e -o.local\bin stack.zip stack.exe
+
+- curl -sS -ographviz.zip -L --insecure https://graphviz.gitlab.io/_pages/Download/windows/graphviz-2.38.zip
+- 7z e -o.local\bin graphviz.zip release\bin
 
 clone_folder: "c:\\stack"
 environment:
@@ -16,4 +20,4 @@ environment:
 
 test_script:
 - stack setup > nul
-- mingw32-make build STACK_FLAGS="--no-terminal"
+- mingw32-make build examples STACK_FLAGS="--no-terminal"

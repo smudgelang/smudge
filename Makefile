@@ -3,15 +3,17 @@ HSFILES=$(wildcard *.hs) $(wildcard app/*.hs) $(wildcard src/*/*.hs) $(wildcard 
 ifeq ($(OS),Windows_NT)
 SMUDGE_EXE=smudge.exe
 PLATFORM=windows
+S=\\
 else
 SMUDGE_EXE=smudge
 PLATFORM=linux
+S=/
 endif
 SMUDGE_BUILD_DIR=$(shell stack path --local-install-root)
 SMUDGE_RELEASE_DIR=release
 SMUDGE_RELEASE_SUBDIR=smudge
-SMUDGE_RELEASE_STAGE_DIR=$(SMUDGE_RELEASE_DIR)/$(SMUDGE_RELEASE_SUBDIR)
-SMUDGE_TARGET=$(SMUDGE_BUILD_DIR)/bin/$(SMUDGE_EXE)
+SMUDGE_RELEASE_STAGE_DIR=$(SMUDGE_RELEASE_DIR)$S$(SMUDGE_RELEASE_SUBDIR)
+SMUDGE_TARGET=$(SMUDGE_BUILD_DIR)$Sbin$S$(SMUDGE_EXE)
 
 .PHONY: all tags build examples doc newticket release todo clean distclean
 
@@ -26,8 +28,8 @@ examples: build
 	$(MAKE) -C examples all
 
 doc:
-	$(MAKE) -C docs/tutorial tutorial.pdf
-	$(MAKE) -C docs/definition all
+	$(MAKE) -C docs$Stutorial tutorial.pdf
+	$(MAKE) -C docs$Sdefinition all
 
 $(SMUDGE_TARGET): smudge.cabal stack.yaml $(HSFILES)
 	stack $(STACK_FLAGS) build $(CABAL_FLAGS)
@@ -47,10 +49,10 @@ release: build doc
 	mkdir $(SMUDGE_RELEASE_DIR)
 	mkdir $(SMUDGE_RELEASE_STAGE_DIR)
 	cp $(SMUDGE_TARGET) $(SMUDGE_RELEASE_STAGE_DIR)
-	$(MAKE) -C docs/tutorial tutorial.pdf
-	$(MAKE) -C docs/tutorial docclean
+	$(MAKE) -C docs$Stutorial tutorial.pdf
+	$(MAKE) -C docs$Stutorial docclean
 	cp -r examples $(SMUDGE_RELEASE_STAGE_DIR)
-	cp -r docs/tutorial $(SMUDGE_RELEASE_STAGE_DIR)
+	cp -r docs$Stutorial $(SMUDGE_RELEASE_STAGE_DIR)
 	cp CHANGES $(SMUDGE_RELEASE_STAGE_DIR)
 	cp LICENSE $(SMUDGE_RELEASE_STAGE_DIR)
 	cp README.md $(SMUDGE_RELEASE_STAGE_DIR)
@@ -63,8 +65,8 @@ clean:
 	stack clean
 	rm -rf TAGS tags
 	$(MAKE) -C examples clean
-	$(MAKE) -C docs/tutorial clean
-	$(MAKE) -C docs/definition clean
+	$(MAKE) -C docs$Stutorial clean
+	$(MAKE) -C docs$Sdefinition clean
 
 distclean: clean
 	rm -rf .stack-work

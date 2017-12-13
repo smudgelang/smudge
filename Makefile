@@ -1,7 +1,6 @@
 HSFILES=$(wildcard *.hs) $(wildcard app/*.hs) $(wildcard src/*/*.hs) $(wildcard src/*/*/*.hs) $(wildcard src/*/*/*/*.hs)
 
-OSTYPE=$(shell uname -o)
-ifeq ($(OSTYPE), Cygwin)
+ifeq ($(OS),Windows_NT)
 SMUDGE_EXE=smudge.exe
 PLATFORM=windows
 else
@@ -31,7 +30,7 @@ doc:
 	$(MAKE) -C docs/definition all
 
 $(SMUDGE_TARGET): smudge.cabal stack.yaml $(HSFILES)
-	stack build
+	stack $(STACK_FLAGS) build $(CABAL_FLAGS)
 
 TAGS: $(HSFILES)
 	@if command -v hasktags >/dev/null 2>&1; then \

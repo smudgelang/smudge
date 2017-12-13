@@ -33,8 +33,8 @@ before_install:
 
 install:
 # Build dependencies
-- stack --no-terminal --install-ghc test --only-dependencies
+- make build STACK_FLAGS="--no-terminal --install-ghc" CABAL_FLAGS="--only-dependencies"
 
 script:
 # Build the package, its tests, and its docs and run the tests
-- stack --no-terminal test --haddock --no-haddock-deps
+- make build STACK_FLAGS="--no-terminal" CABAL_FLAGS="--haddock --no-haddock-deps"

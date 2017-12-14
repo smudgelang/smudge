@@ -13,6 +13,8 @@ before_test:
 - curl -sS -ographviz.zip -L --insecure https://graphviz.gitlab.io/_pages/Download/windows/graphviz-2.38.zip
 - 7z e -o.local\bin graphviz.zip release\bin
 
+- pip install rst2pdf
+
 clone_folder: "c:\\stack"
 environment:
   global:
@@ -21,3 +23,4 @@ environment:
 test_script:
 - stack setup > nul
 - mingw32-make build examples STACK_FLAGS="--no-terminal"
+- mingw32-make -C docs/tutorial tutorial.pdf

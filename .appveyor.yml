@@ -5,7 +5,7 @@ build: off
 before_test:
 # http://help.appveyor.com/discussions/problems/6312-curl-command-not-found
 - mkdir .local\bin
-- set PATH=%CD%\.local\bin;C:\MinGW\bin;C:\Program Files\Git\mingw64\bin;%PATH%
+- set PATH=%CD%\.local\bin;%CD%\.local\tex\bin\win32;C:\MinGW\bin;C:\Program Files\Git\mingw64\bin;%PATH%
 
 - curl -sS -ostack.zip -L --insecure http://www.stackage.org/stack/windows-i386
 - 7z e -o.local\bin stack.zip stack.exe
@@ -13,14 +13,26 @@ before_test:
 - curl -sS -ographviz.zip -L --insecure https://graphviz.gitlab.io/_pages/Download/windows/graphviz-2.38.zip
 - 7z e -o.local\bin graphviz.zip release\bin
 
+- curl -sS -oinstall-tl.zip -L --insecure http://mirror.ctan.org/systems/texlive/tlnet/install-tl.zip
+- 7z x -o.local\ install-tl.zip
+- move .local\install-tl* .local\install-tl
+- echo selected_scheme scheme-minimal> .local\install-tl\profile
+- echo TEXDIR %CD%\.local\tex>> .local\install-tl\profile
+- echo TEXMFLOCAL %CD%\.local\tex\texmf-local>> .local\install-tl\profile
+- echo TEXMFSYSCONFIG %CD%\.local\tex\texmf-config>> .local\install-tl\profile
+- echo TEXMFSYSVAR %CD%\.local\tex\texmf-var>> .local\install-tl\profile
+- echo option_doc ^0>> .local\install-tl\profile
+- echo option_src ^0>> .local\install-tl\profile
+- .local\install-tl\install-tl-windows.bat -portable -no-gui -profile=profile <nul
+- tlmgr install amscls amsmath latex-bin listofitems mdwtools readarray semantic tools verbatimbox
+
 - pip install rst2pdf
 
-clone_folder: "c:\\stack"
+clone_folder: "c:\\smudge"
 environment:
   global:
     STACK_ROOT: "c:\\sr"
 
 test_script:
 - stack setup > nul
-- mingw32-make build examples STACK_FLAGS="--no-terminal"
-- mingw32-make -C docs/tutorial tutorial.pdf
+- mingw32-make all STACK_FLAGS="--no-terminal"

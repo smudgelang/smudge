@@ -1,16 +1,30 @@
+ifeq ($(OS),Windows_NT)
+S=\\
+MKDIR=-mkdir
+MV=cmd /c move
+DIR=dir
+else
+S=/
+MKDIR=mkdir -p
+MV=mv
+DIR=ls -lR
+endif
+
 .PHONY: all clean
 
-DIST_PATH=$(shell stack path --local-install-root)/def
+BUILD_DIR=$(shell stack path --local-install-root)
+DIST_PATH=$(BUILD_DIR)$Sdef
 
-all: $(DIST_PATH)/smudge-definition.pdf
+all: $(DIST_PATH)$Ssmudge-definition.pdf
 
-$(DIST_PATH)/smudge-definition.pdf: smudge-definition.latex $(DIST_PATH)/syntax.latex
-	mkdir -p $(DIST_PATH)
+$(DIST_PATH)$Ssmudge-definition.pdf: smudge-definition.latex $(DIST_PATH)$Ssyntax.latex
+	$(MKDIR) $(DIST_PATH)
 	pdflatex -output-directory $(DIST_PATH) $<
 
-$(DIST_PATH)/syntax.latex: syntax.abnf
-	mkdir -p $(DIST_PATH)
-	./abnftosyntax.sh $< > $@
+$(DIST_PATH)$Ssyntax.latex: syntax.abnf
+	$(MKDIR) $(DIST_PATH)
+	sh abnftosyntax.sh $< > tmp
+	$(MV) tmp $@
 
 clean:
 	rm -rf $(DIST_PATH)

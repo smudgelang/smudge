@@ -34,6 +34,7 @@ before_install:
 - sudo apt-get -qq update
 - sudo apt-get install -y graphviz
 
+- sudo apt-get install --no-install-recommends texlive-fonts-recommended texlive-latex-extra texlive-fonts-extra texlive-latex-recommended dvipng
 - sudo pip install rst2pdf
 
 install:
@@ -42,5 +43,4 @@ install:
 
 script:
 # Build the package, its tests, and its docs and run the tests
-- make build examples STACK_FLAGS="--no-terminal" CABAL_FLAGS="--haddock --no-haddock-deps"
-- make -C docs/tutorial tutorial.pdf
+- make all STACK_FLAGS="--no-terminal" CABAL_FLAGS="--haddock --no-haddock-deps"

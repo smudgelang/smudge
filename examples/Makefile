@@ -23,3 +23,4 @@ test: $(COUNTEREXAMPLES) $(SMUDGEEXE)
 
 clean:
 	rm -f *.svg *.h *.c
+	rm -f counterexamples/*.svg counterexamples/*.h counterexamples/*.c

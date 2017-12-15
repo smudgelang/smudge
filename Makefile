@@ -4,18 +4,22 @@ ifeq ($(OS),Windows_NT)
 SMUDGE_EXE=smudge.exe
 PLATFORM=windows
 /=\\
+PKGEXT=zip
 else
 SMUDGE_EXE=smudge
 PLATFORM=linux
 /=/
+PKGEXT=tgz
 endif
 SMUDGE_BUILD_DIR=$(subst \,/,$(shell stack path --local-install-root))
-SMUDGE_RELEASE_DIR=release
 SMUDGE_RELEASE_SUBDIR=smudge
-SMUDGE_RELEASE_STAGE_DIR=$(SMUDGE_RELEASE_DIR)/$(SMUDGE_RELEASE_SUBDIR)
+SMUDGE_RELEASE_STAGE_DIR=$(SMUDGE_BUILD_DIR)/$(SMUDGE_RELEASE_SUBDIR)
 SMUDGE_TARGET=$(SMUDGE_BUILD_DIR)/bin/$(SMUDGE_EXE)
+SMUDGE_VERSION=$(shell $(SMUDGE_TARGET) --version | cut -f 3 -d ' ' | head -n 1)
 
-.PHONY: all tags build examples doc newticket release todo clean distclean
+.PHONY: all tags build examples doc \
+        release stage package zip tgz \
+        newticket todo clean distclean
 
 all: build examples doc TAGS
 
@@ -34,29 +38,53 @@ doc:
 $(SMUDGE_TARGET): smudge.cabal stack.yaml $(HSFILES)
 	stack $(STACK_FLAGS) build $(CABAL_FLAGS)
 
+docs/tutorial/tutorial.pdf:
+	$(MAKE) -C docs$/tutorial tutorial.pdf
+
 TAGS: $(HSFILES)
 	@if command -v hasktags >/dev/null 2>&1; then \
 		hasktags `find . -iname \*\.hs | grep -v Setup.hs`; \
 	fi
 
-newticket:
-	cd tickets && ./mkticket.sh "$(title)"
-
-release: build doc
+release:
 	@read -r -p "Is this release correctly versioned and tagged? [Yn] " REPLY; \
 	if [ "$$REPLY" = "n" ]; then echo "Well, do that, then!"; exit 1; fi
-	rm -rf $(SMUDGE_RELEASE_DIR) # Make sure it's a clean new release build.
-	mkdir $(SMUDGE_RELEASE_DIR)
-	mkdir $(SMUDGE_RELEASE_STAGE_DIR)
+	$(MAKE) package
+
+stage: build docs/tutorial/tutorial.pdf
+	# Make sure it's a clean new release build.
+	rm -rf $(SMUDGE_RELEASE_STAGE_DIR)
+	mkdir -p $(SMUDGE_RELEASE_STAGE_DIR)
 	cp $(SMUDGE_TARGET) $(SMUDGE_RELEASE_STAGE_DIR)
-	$(MAKE) -C docs$/tutorial tutorial.pdf
-	$(MAKE) -C docs$/tutorial docclean
+	$(MAKE) -C examples clean
 	cp -r examples $(SMUDGE_RELEASE_STAGE_DIR)
-	cp -r docs$/tutorial $(SMUDGE_RELEASE_STAGE_DIR)
+	$(MAKE) -C docs$/tutorial docclean
+	cp -r docs/tutorial $(SMUDGE_RELEASE_STAGE_DIR)
 	cp CHANGES $(SMUDGE_RELEASE_STAGE_DIR)
 	cp LICENSE $(SMUDGE_RELEASE_STAGE_DIR)
 	cp README.md $(SMUDGE_RELEASE_STAGE_DIR)
-	./tar-up-release.sh $(SMUDGE_RELEASE_DIR) $(SMUDGE_RELEASE_SUBDIR) $(SMUDGE_TARGET) $(PLATFORM)
+
+package: build
+	$(MAKE) smudge-$(SMUDGE_VERSION)-$(PLATFORM).$(PKGEXT)
+
+zip: smudge-$(SMUDGE_VERSION)-$(PLATFORM).zip
+smudge-$(SMUDGE_VERSION)-$(PLATFORM).zip: stage
+	cd $(SMUDGE_BUILD_DIR) && \
+	if type zip >/dev/null 2>&1; then \
+	    zip -r $@ $(SMUDGE_RELEASE_SUBDIR); \
+	elif type 7z >/dev/null 2>&1; then \
+	    7z a -r $@ $(SMUDGE_RELEASE_SUBDIR); \
+	fi
+	mv $(SMUDGE_BUILD_DIR)/$@ .
+
+tgz: smudge-$(SMUDGE_VERSION)-$(PLATFORM).tgz
+smudge-$(SMUDGE_VERSION)-linux.tgz: stage
+	cd $(SMUDGE_BUILD_DIR) && \
+	tar -czf $@ $(SMUDGE_RELEASE_SUBDIR)
+	mv $(SMUDGE_BUILD_DIR)/$@ .
+
+newticket:
+	cd tickets && ./mkticket.sh "$(title)"
 
 todo:
 	@find roadmap/$V | while read -r fn; do find -L tickets/ -xdev -samefile $$fn; done

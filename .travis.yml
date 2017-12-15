@@ -43,4 +43,4 @@ install:
 
 script:
 # Build the package, its tests, and its docs and run the tests
-- make all STACK_FLAGS="--no-terminal" CABAL_FLAGS="--haddock --no-haddock-deps"
+- make package examples doc STACK_FLAGS="--no-terminal" CABAL_FLAGS="--haddock --no-haddock-deps"

@@ -35,4 +35,4 @@ environment:
 
 test_script:
 - stack setup > nul
-- mingw32-make all STACK_FLAGS="--no-terminal"
+- mingw32-make package examples doc STACK_FLAGS="--no-terminal"

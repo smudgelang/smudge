@@ -36,3 +36,16 @@ environment:
 test_script:
 - stack setup > nul
 - mingw32-make package examples doc STACK_FLAGS="--no-terminal"
+
+artifacts:
+- path: smudge-*-windows.zip
+  name: Smudge
+
+deploy:
+  description:
+  provider: GitHub
+  auth_token:
+    secure: W4wBlCar1R96iYG0ScSEUm9jL96P/MRKyAimqjRg0QRsIBcGq17C1XNdEIIAUybR
+  on:
+    branch: master
+    appveyor_repo_tag: true

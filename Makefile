@@ -73,7 +73,7 @@ smudge-$(SMUDGE_VERSION)-$(PLATFORM).zip: stage
 	if type zip >/dev/null 2>&1; then \
 	    zip -r $@ $(SMUDGE_RELEASE_SUBDIR); \
 	elif type 7z >/dev/null 2>&1; then \
-	    7z a -r $@ $(SMUDGE_RELEASE_SUBDIR); \
+	    7z a $@ $(SMUDGE_RELEASE_SUBDIR); \
 	fi
 	mv $(SMUDGE_BUILD_DIR)/$@ .
 

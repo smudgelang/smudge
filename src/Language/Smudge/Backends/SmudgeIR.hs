@@ -38,6 +38,7 @@ import Language.Smudge.Semantics.Model (
   Tagged(..),
   extractWith,
   disqualifyTag,
+  events_for,
   )
 import Language.Smudge.Passes.Passes (afold)
 import Language.Smudge.Semantics.Operation (handlers, finalStates)
@@ -49,8 +50,8 @@ import qualified Language.Smudge.Semantics.Solver as Solver (Ty(..))
 
 import Control.Arrow ((***), second)
 import Data.Graph.Inductive.PatriciaTree (Gr)
-import Data.Graph.Inductive.Graph (labNodes, labEdges, lab, out, suc, insEdges, nodes, delNodes)
-import Data.List (nub, sort)
+import Data.Graph.Inductive.Graph (labNodes, lab, out, suc, insEdges, nodes, delNodes)
+import Data.List (nub)
 import Data.Map (Map, empty, insert, (!), toList)
 
 seqtup :: Applicative f => (f a, f b) -> f (a, b)
@@ -256,9 +257,6 @@ mangleEv (Event evName) = extractWith seq qualify $ qualify evName
 mangleEv EventEnter = qualify "enter"
 mangleEv EventExit = qualify "exit"
 mangleEv EventAny = qualify "any"
-
-events_for :: Gr EnterExitState Happening -> [Event TaggedName]
-events_for g = nub $ sort [e | (_, _, Happening {event=e@(Event _)}) <- labEdges g]
 
 lower :: Config -> ([(StateMachine TaggedName, Gr EnterExitState Happening)], SymbolTable) -> SmudgeIR QualifiedName
 lower cfg (gs, syms) = concatMap (lowerMachine cfg syms) gs

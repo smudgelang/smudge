@@ -18,6 +18,7 @@ module Language.Smudge.Semantics.Model (
     mangleWith,
     disqualify,
     disqualifyTag,
+    events_for,
     TaggedName,
     Tagged(..),
     qName,
@@ -46,10 +47,10 @@ import Language.Smudge.Parsers.Id (
   )
 import Language.Smudge.Semantics.Alias (Alias, rename)
 
-import Data.Graph.Inductive.Graph (mkGraph, Node)
+import Data.Graph.Inductive.Graph (mkGraph, labEdges, Node)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Map (Map, fromList, (!))
-import Data.List (intercalate)
+import Data.List (intercalate, nub, sort)
 import Data.List.NonEmpty (NonEmpty((:|)), toList, (<|))
 import Data.Semigroup (Semigroup, (<>))
 import Control.Arrow (first)
@@ -160,6 +161,9 @@ instance Qualifiable a => Qualifiable (Tagged a) where
 
 disqualifyTag :: TaggedName -> Name
 disqualifyTag = disqualify . qualify
+
+events_for :: Gr EnterExitState Happening -> [Event TaggedName]
+events_for g = nub $ sort [e | (_, _, Happening {event=e@(Event _)}) <- labEdges g]
 
 passInitialState :: [(StateMachine Identifier, [WholeState Identifier])] -> [(StateMachine Identifier, [WholeState Identifier])]
 passInitialState sms = map (\(sm, wss) -> (sm, foldr init [] wss)) sms

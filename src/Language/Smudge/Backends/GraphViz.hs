@@ -58,7 +58,6 @@ import Data.GraphViz.Attributes (
   )
 import Data.GraphViz.Attributes.Complete (Attribute(Concentrate))
 import qualified Data.Graph.Inductive.Graph as G
-import qualified Data.Map as M
 import Data.Function (on)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.List (intercalate, intersperse, groupBy, sortBy)

@@ -25,6 +25,7 @@ import Language.Smudge.Semantics.Model (
   QualifiedName,
   qualify,
   TaggedName,
+  events_for,
   )
 import Language.Smudge.Grammar (
   StateMachine,
@@ -55,6 +56,7 @@ import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Either (lefts, rights, isLeft)
 import Data.Map (fromList)
 import Data.Monoid (mempty)
+import qualified Data.Set as Set (fromList)
 
 rename :: String -> Either String (QualifiedName, QualifiedName)
 rename s = case map (second reads) $ reads s of
@@ -120,11 +122,12 @@ report_failure :: Int -> IO a
 report_failure n = putStrLn ("Exiting with " ++ show n ++ " error" ++ (if n == 1 then "" else "s")) >> exitFailure
 
 make_output :: String -> [Options] -> ([(StateMachine TaggedName, Gr EnterExitState Happening)], Alias QualifiedName, SymbolTable) -> IO ()
-make_output fileName os gswst = do
+make_output fileName os gswst@(gs, _, _) = do
     let noDebug = elem (CommonOption (Debug False)) os
     let logEvent = elem (CommonOption (LogEvent True)) os
+    let allEvents = concatMap (events_for . snd) gs
     let dbgCfg = if noDebug then defaultConfig { debug=False } else defaultConfig
-    let config = if logEvent then dbgCfg { logEvent=True } else dbgCfg
+    let config = if logEvent then dbgCfg { logEvent=Set.fromList allEvents } else dbgCfg
     let gvos = [a | GraphVizOption a <- os]
     gres <- runExceptT $ generate gvos config gswst fileName
     let csos = [a | CStaticOption a <- os]

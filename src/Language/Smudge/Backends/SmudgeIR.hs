@@ -53,6 +53,7 @@ import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Graph (labNodes, lab, out, suc, insEdges, nodes, delNodes)
 import Data.List (nub)
 import Data.Map (Map, empty, insert, (!), toList)
+import Data.Set (member)
 
 seqtup :: Applicative f => (f a, f b) -> f (a, b)
 seqtup (a, b) = (,) <$> a <*> b
@@ -408,8 +409,12 @@ lowerMachine cfg ssyms (StateMachine smName, g') = [
         handleMessageFun :: Def QualifiedName
         handleMessageFun = FunDef handle_f [wrap_name] (syms ! TagFunction handle_f) [] es
             where es = [ExprS $ FunCall initialize_f []] ++
-                       (if logEvent cfg then call_print_f [Literal format_s, FunCall stateName_f [Value $ Var stateVar], FunCall eventName_f [Value $ Var wrap_name]] else []) ++
+                       (if all (`member` logEvent cfg) events then logAnEvent
+                        else if null logCases then []
+                        else [Cases (Value $ SumVar wrap_name) logCases []]) ++
                        [Cases (Value $ SumVar wrap_name) cases defaults]
+                  logCases = [(evt_id e, logAnEvent) | Event e <- events, debug cfg, Event e `member` logEvent cfg]
+                  logAnEvent = call_print_f [Literal format_s, FunCall stateName_f [Value $ Var stateVar], FunCall eventName_f [Value $ Var wrap_name]]
                   format_s = disqualifyTag smName ++ "[%s]: Handling \"%s\"\n"
                   cases = [(evt_id e, [ExprS $ FunCall (qualify (qe, "handle")) [Value $ Field (SumVar wrap_name) qe]]) | Event e <- events, let qe = qualify e]
                   defaults = call_panic_f [Literal panic_s, FunCall stateName_f [Value $ Var stateVar], Literal ""]

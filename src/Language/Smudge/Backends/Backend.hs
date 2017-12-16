@@ -8,7 +8,7 @@ module Language.Smudge.Backends.Backend (
     defaultConfig
 ) where
 
-import Language.Smudge.Grammar (StateMachine, State, SideEffect)
+import Language.Smudge.Grammar (StateMachine, State, SideEffect, Event)
 import Language.Smudge.Semantics.Model (QualifiedName, TaggedName, Happening, EnterExitState)
 import Language.Smudge.Semantics.Solver (SymbolTable)
 import Language.Smudge.Semantics.Alias (Alias)
@@ -16,15 +16,16 @@ import Language.Smudge.Passes.Passes (Fault)
 
 import Control.Monad.Trans.Except (ExceptT)
 import Data.Graph.Inductive.PatriciaTree (Gr)
+import Data.Set (Set, empty)
 import System.Console.GetOpt.Extra (OptDescr)
 import System.FilePath (FilePath)
 
 data Config = Config {
     debug :: Bool,
-    logEvent :: Bool
+    logEvent :: Set (Event TaggedName)
 }
 
-defaultConfig = Config { debug=True, logEvent=False }
+defaultConfig = Config { debug=True, logEvent=empty }
 
 class Backend a where
     options :: (String, [OptDescr a])

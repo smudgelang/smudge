@@ -102,14 +102,12 @@ makeSwitch :: Expression -> [(ConstantExpression, [Statement])] -> [Statement] -
 makeSwitch var cs ds =
     SStatement $ SWITCH LEFTPAREN var RIGHTPAREN $ CStatement $ CompoundStatement LEFTCURLY
     Nothing
-    (Just $ fromList $ concat [(LStatement $ CASE l COLON $ frst_stmt ss) : rest_stmt ss | (l, ss) <- cs]
-                              ++ (LStatement $ DEFAULT COLON $ frst_stmt ds) : rest_stmt ds)
+    (Just $ fromList $ concat [(LStatement $ CASE l COLON $ head ss') : tail ss' | (l, ss) <- cs, let ss' = withBreak ss]
+                              ++ (LStatement $ DEFAULT COLON $ head ds') : tail ds')
     RIGHTCURLY
     where
-        frst_stmt (e:_) = e
-        frst_stmt []    = JStatement $ BREAK SEMICOLON
-        rest_stmt (_:es) = es ++ [JStatement $ BREAK SEMICOLON]
-        rest_stmt []     = []
+        withBreak = (++ [JStatement $ BREAK SEMICOLON])
+        ds' = withBreak ds
 
 makeEnum :: Identifier -> [Identifier] -> TypeSpecifier
 makeEnum x [] = ENUM (Left $ x)

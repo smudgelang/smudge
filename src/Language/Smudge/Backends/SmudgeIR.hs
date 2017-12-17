@@ -39,6 +39,7 @@ import Language.Smudge.Semantics.Model (
   extractWith,
   disqualifyTag,
   events_for,
+  states_for,
   )
 import Language.Smudge.Passes.Passes (afold)
 import Language.Smudge.Semantics.Operation (handlers, finalStates)
@@ -287,7 +288,7 @@ lowerSymTab gs ssyms = [
 
 lowerMachine :: Config -> SymbolTable -> (StateMachine TaggedName, Gr EnterExitState Happening) -> SmudgeIR QualifiedName
 lowerMachine cfg ssyms (StateMachine smName, g') = [
-        DataDef $ TyDef stateEnum $ SumDec stateEnum [(st_id s, Nothing) | s <- states],
+        DataDef $ TyDef stateEnum $ SumDec stateEnum [(st_id s, Nothing) | State s <- states],
         DataDef $ VarDef Internal $ ValDec stateVar (Ty stateEnum) (Init $ Value $ Var $ st_id initial)
     ] ++
         (if debug cfg then [stateNameFun, eventNameFun] else [])
@@ -333,7 +334,7 @@ lowerMachine cfg ssyms (StateMachine smName, g') = [
         eventEnum = (\(Ty p :-> r) -> p) $ snd (syms ! TagFunction handle_f)
         evt_id e = qualify (qualify "EVID", e)
         st_id s = qualify (qualify "STID", s)
-        states = [s | (_, EnterExitState {st = (State s)}) <- labNodes g]
+        states = states_for g
         events = events_for g
         s_handlers e = [(s, h) | (s, Just h@(State _, _)) <- toList (handlers e g)]
         unhandled e = [s | (s, Just (StateAny, _)) <- toList (handlers e g)] ++ [s | (s, Nothing) <- toList (handlers e g)]
@@ -343,7 +344,7 @@ lowerMachine cfg ssyms (StateMachine smName, g') = [
 
         stateNameFun :: Def QualifiedName
         stateNameFun = FunDef stateName_f [state_var] (Internal, Ty stateEnum :-> Ty char) ds es
-            where ds = [VarDef Internal $ ListDec names_var (Ty char) $ Init [Literal (disqualifyTag s) | s <- states],
+            where ds = [VarDef Internal $ ListDec names_var (Ty char) $ Init [Literal (disqualifyTag s) | State s <- states],
                         VarDef Internal $ SizeDec count_var $ Init names_var]
                   es = [Return $ SafeIndex (Var names_var) (Var state_var) (Var count_var) "INVALID_STATE"]
                   names_var = qualify "state_name"

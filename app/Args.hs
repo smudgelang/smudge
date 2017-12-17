@@ -31,6 +31,7 @@ data EnvmntOption = Strict Bool
     deriving (Show, Eq)
 
 data CommonOption = LogEvent Bool (Maybe String) |
+                    LogState Bool (Maybe String) |
                     Debug Bool
     deriving (Show, Eq)
 
@@ -52,6 +53,7 @@ envopts = [Option []    ["[no-]strict"] (BoolArg Strict) "[DON'T] Require all ty
 
 cmnopts :: [OptDescr CommonOption]
 cmnopts = [Option []    ["[no-]logevent"] (BoolOptArg LogEvent "EVENT") "[DON'T] Enable event tracing.",
+           Option []    ["[no-]logstate"] (BoolOptArg LogState "STATE") "[DON'T] Enable state tracing.",
            Option []    ["[no-]debug"] (BoolArg Debug) "[DON'T] Generate debugging information."]
 
 deprecated_c_no_debug :: [OptDescr CommonOption]

@@ -31,11 +31,13 @@ import Language.Smudge.Semantics.Model (
   Tagged(..),
   TaggedName,
   events_for,
+  states_for,
   )
 import Language.Smudge.Grammar (
   StateMachine,
   WholeState,
   Event(..),
+  State(..),
   )
 import Language.Smudge.Semantics.Solver (
   SymbolTable,
@@ -157,8 +159,10 @@ make_output fileName os gswst@(gs, _, _) = do
     let noDebug = elem (Debug False) cos
     let allEvents = Set.fromList $ concatMap (events_for . snd) gs
     logEvents <- buildIdSet (Event . TagEvent) [(b, x) | LogEvent b x <- cos] allEvents "logEvent"
+    let allStates = Set.fromList $ concatMap (states_for . snd) gs
+    logStates <- buildIdSet (State . TagState) [(b, x) | LogState b x <- cos] allStates "logState"
     let dbgCfg = if noDebug then defaultConfig { debug=False } else defaultConfig
-    let config = dbgCfg { logEvent=logEvents }
+    let config = dbgCfg { logEvent=logEvents, logState=logStates }
     let gvos = [a | GraphVizOption a <- os]
     gres <- runExceptT $ generate gvos config gswst fileName
     let csos = [a | CStaticOption a <- os]

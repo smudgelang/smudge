@@ -430,11 +430,15 @@ lowerMachine cfg ssyms (StateMachine smName, g') = [
                   panic_s = disqualifyTag smName ++ "[%s]: Invalid event ID\n"
 
         stateEventFun :: State TaggedName -> Happening -> State TaggedName -> Bool -> Def QualifiedName
-        stateEventFun st h st' do_exit = FunDef f_name eventNames (Internal, ty) [] $ map ExprS es
+        stateEventFun st h st' do_exit = FunDef f_name eventNames (Internal, ty) [] $ logAState ++ map ExprS es
             where f_name = qualify (sName smName st, mangleEv $ event h)
                   ty = case event h of
                               (Event t) -> Ty t :-> Void
                               otherwise -> Void :-> Void
+
+                  logAState = if not $ event h == EventEnter && st `member` logState cfg then []
+                              else call_print_f [Literal format_s, FunCall stateName_f [Value $ Var stateVar], Literal ""]
+                  format_s = disqualifyTag smName ++ "[%s]: Entering state\n"
 
                   event_var = head eventNames
                   dest_state = qualify $ sName smName st'

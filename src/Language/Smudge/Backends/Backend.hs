@@ -22,10 +22,15 @@ import System.FilePath (FilePath)
 
 data Config = Config {
     debug :: Bool,
-    logEvent :: Set (Event TaggedName)
+    logEvent :: Set (Event TaggedName),
+    logState :: Set (State TaggedName)
 }
 
-defaultConfig = Config { debug=True, logEvent=empty }
+defaultConfig = Config {
+    debug=True,
+    logEvent=empty,
+    logState=empty
+    }
 
 class Backend a where
     options :: (String, [OptDescr a])

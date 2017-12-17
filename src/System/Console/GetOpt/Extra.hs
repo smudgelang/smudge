@@ -20,6 +20,7 @@ data ArgDescr a = BoolArg (Bool -> a)
                 | NoArg a
                 | ReqArg (String -> a) String
                 | OptArg (Maybe String -> a) String
+                | BoolOptArg (Bool -> Maybe String -> a) String
 
 data OptDescr a = forall b . Subcommand String (b -> a) [OptDescr b]
                 | Option [Char] [String] (ArgDescr a) String
@@ -36,6 +37,7 @@ convertArgDescr b (BoolArg p)  = GetOpt.NoArg (p b)
 convertArgDescr _ (NoArg a)    = GetOpt.NoArg a
 convertArgDescr _ (ReqArg c n) = GetOpt.ReqArg c n
 convertArgDescr _ (OptArg c n) = GetOpt.OptArg c n
+convertArgDescr b (BoolOptArg c n) = GetOpt.OptArg (c b) n
 
 -- The option conversion is as follows:
 --   if there are no negative long opts, the char opts are positive

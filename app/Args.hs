@@ -30,7 +30,7 @@ data EnvmntOption = Strict Bool
                   | Rename String
     deriving (Show, Eq)
 
-data CommonOption = LogEvent Bool |
+data CommonOption = LogEvent Bool (Maybe String) |
                     Debug Bool
     deriving (Show, Eq)
 
@@ -51,7 +51,7 @@ envopts = [Option []    ["[no-]strict"] (BoolArg Strict) "[DON'T] Require all ty
            Option []    ["rename"] (ReqArg Rename "\"OLD NEW\"") "Replace identifier."]
 
 cmnopts :: [OptDescr CommonOption]
-cmnopts = [Option []    ["[no-]logevent"] (BoolArg LogEvent) "[DON'T] Enable event tracing.",
+cmnopts = [Option []    ["[no-]logevent"] (BoolOptArg LogEvent "EVENT") "[DON'T] Enable event tracing.",
            Option []    ["[no-]debug"] (BoolArg Debug) "[DON'T] Generate debugging information."]
 
 deprecated_c_no_debug :: [OptDescr CommonOption]

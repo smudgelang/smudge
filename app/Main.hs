@@ -13,7 +13,11 @@ import Args (
   getAllOpt,
   getFileOpt,
   )
-import Language.Smudge.Backends.Backend (generate, Config(..), defaultConfig)
+import Language.Smudge.Backends.Backend (
+  generate,
+  Config(..),
+  defaultConfig,
+  )
 import Language.Smudge.Semantics.Model (
   EnterExitState,
   Happening,
@@ -24,12 +28,14 @@ import Language.Smudge.Semantics.Model (
   passWholeStateToGraph,
   QualifiedName,
   qualify,
+  Tagged(..),
   TaggedName,
   events_for,
   )
 import Language.Smudge.Grammar (
   StateMachine,
   WholeState,
+  Event(..),
   )
 import Language.Smudge.Semantics.Solver (
   SymbolTable,
@@ -53,15 +59,23 @@ import System.Environment (getArgs)
 import System.FilePath (joinPath, takeFileName, dropFileName, normalise)
 import System.Exit (exitFailure)
 import Data.Graph.Inductive.PatriciaTree (Gr)
-import Data.Either (lefts, rights, isLeft)
+import Data.Either (lefts, rights, partitionEithers, isLeft)
+import Data.List (partition)
 import Data.Map (fromList)
+import Data.Maybe (fromJust)
 import Data.Monoid (mempty)
+import Data.Set (Set, member, insert, delete)
 import qualified Data.Set as Set (fromList)
 
 rename :: String -> Either String (QualifiedName, QualifiedName)
 rename s = case map (second reads) $ reads s of
             [(a, [(b, "")])] -> Right (a, b)
             otherwise      -> Left s
+
+readEither :: Read a => String -> Either String a
+readEither s = case reads s of
+            [(x, "")] -> Right x
+            otherwise -> Left s
 
 processFile :: String -> [Options] -> IO ()
 processFile fileName os = do
@@ -121,13 +135,30 @@ checkAndConvert sms os = do
 report_failure :: Int -> IO a
 report_failure n = putStrLn ("Exiting with " ++ show n ++ " error" ++ (if n == 1 then "" else "s")) >> exitFailure
 
+buildIdSet :: (Read a, Show a, Ord b) => (a -> b) -> [(Bool, Maybe String)] -> Set b -> String -> IO (Set b)
+buildIdSet mk os universe flagName =
+    let builder  True  Nothing = const universe
+        builder  True (Just x) = insert x
+        builder False  Nothing = const mempty
+        builder False (Just x) = delete x
+        parsed = [(,) b <$> traverse readEither x | (b, x) <- os]
+        (errors, opts) = partitionEithers parsed
+        (present, missing) = partition (all (`member` universe) . fmap mk . snd) opts
+        builders = map (uncurry builder . second (fmap mk)) present
+    in do
+        mapM (putStrLn . (("Parse error in " ++ flagName ++ " flag: ") ++)) errors
+        mapM (putStrLn . (("Missing name error in " ++ flagName ++ " flag: ") ++) . show . fromJust . snd) missing
+        when (not $ null errors && null missing) $ report_failure $ length errors + length missing
+        return $ foldl (flip ($)) mempty builders
+
 make_output :: String -> [Options] -> ([(StateMachine TaggedName, Gr EnterExitState Happening)], Alias QualifiedName, SymbolTable) -> IO ()
 make_output fileName os gswst@(gs, _, _) = do
-    let noDebug = elem (CommonOption (Debug False)) os
-    let logEvent = elem (CommonOption (LogEvent True)) os
-    let allEvents = concatMap (events_for . snd) gs
+    let cos = [a | CommonOption a <- os]
+    let noDebug = elem (Debug False) cos
+    let allEvents = Set.fromList $ concatMap (events_for . snd) gs
+    logEvents <- buildIdSet (Event . TagEvent) [(b, x) | LogEvent b x <- cos] allEvents "logEvent"
     let dbgCfg = if noDebug then defaultConfig { debug=False } else defaultConfig
-    let config = if logEvent then dbgCfg { logEvent=Set.fromList allEvents } else dbgCfg
+    let config = dbgCfg { logEvent=logEvents }
     let gvos = [a | GraphVizOption a <- os]
     gres <- runExceptT $ generate gvos config gswst fileName
     let csos = [a | CStaticOption a <- os]

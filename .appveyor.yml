@@ -5,7 +5,7 @@ build: off
 before_test:
 # http://help.appveyor.com/discussions/problems/6312-curl-command-not-found
 - mkdir .local\bin
-- set PATH=%CD%\.local\bin;%CD%\.local\tex\bin\win32;C:\MinGW\bin;C:\Program Files\Git\mingw64\bin;%PATH%
+- set PATH=%CD%\.local\bin;C:\MinGW\bin;C:\Program Files\Git\mingw64\bin;%PATH%
 
 - curl -sS -ostack.zip -L --insecure http://www.stackage.org/stack/windows-i386
 - 7z e -o.local\bin stack.zip stack.exe
@@ -24,9 +24,14 @@ before_test:
 - echo option_doc ^0>> .local\install-tl\profile
 - echo option_src ^0>> .local\install-tl\profile
 - .local\install-tl\install-tl-windows.bat -portable -no-gui -profile=profile <nul
+- set PATH=%CD%\.local\tex\bin\win32;%PATH%
 - tlmgr install amscls amsmath latex-bin listofitems mdwtools readarray semantic tools verbatimbox
 
 - pip install rst2pdf
+
+- curl -sS -oinnosetup.exe -L --insecure http://www.jrsoftware.org/download.php/is.exe
+- .\innosetup.exe /VERYSILENT /DIR=".local\innosetup"
+- set PATH=%CD%\.local\innosetup;%PATH%
 
 clone_folder: "c:\\smudge"
 environment:
@@ -39,7 +44,9 @@ test_script:
 
 artifacts:
 - path: smudge-*-windows.zip
-  name: Smudge
+  name: Smudge Archive
+- path: smudge-*-windows.exe
+  name: Smudge Installer
 
 deploy:
   description:

@@ -1,0 +1,33 @@
+[Setup]
+; NOTE: The value of AppId uniquely identifies this application.
+; Do not use the same AppId value in installers for other applications.
+; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
+AppId={{66E25E36-1DEA-4F7E-AE20-45A46E0DCE9F}
+AppName={#MyAppName}
+AppVersion={#MyAppVersion}
+VersionInfoVersion={#MyAppVersion}
+;AppVerName={#MyAppName} {#MyAppVersion}
+AppPublisher={#MyAppPublisher}
+AppPublisherURL={#MyAppURL}
+AppSupportURL={#MyAppURL}
+AppUpdatesURL={#MyAppURL}
+DefaultDirName={pf}/{#MyAppName}
+DisableProgramGroupPage=auto
+DefaultGroupName={#MyAppName}
+OutputDir={#MyOutputDir}
+LicenseFile={#MySetupDir}/LICENSE
+OutputBaseFilename=smudge-{#MyAppVersion}-windows
+Compression=lzma
+SolidCompression=yes
+AllowNoIcons=yes
+
+[Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
+
+[Files]
+Source: {#MySetupDir}/*; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; NOTE: Don't use "Flags: ignoreversion" on any shared system files
+
+[Icons]
+Name: "{group}\{#MyAppName}"; Filename: "{app}/smudge.exe"
+Name: "{group}\Tutorial"; Filename: "{app}/tutorial/tutorial.pdf"

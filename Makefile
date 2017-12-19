@@ -4,7 +4,7 @@ ifeq ($(OS),Windows_NT)
 SMUDGE_EXE=smudge.exe
 PLATFORM=windows
 /=\\
-PKGEXT=zip
+PKGEXT=zip exe
 else
 SMUDGE_EXE=smudge
 PLATFORM=linux
@@ -14,14 +14,16 @@ endif
 define cabal_query
 $(shell grep "^$(1):" smudge.cabal | cut -d ':' -f 1 --complement | sed -e 's/^\s*//' -e 's/\s*$$//')
 endef
-SMUDGE_BUILD_DIR=$(subst \,/,$(shell stack path --local-install-root))
+SMUDGE_BUILD_DIR_RAW=$(shell stack path --local-install-root)
+SMUDGE_BUILD_DIR=$(subst \,/,$(SMUDGE_BUILD_DIR_RAW))
 SMUDGE_RELEASE_SUBDIR=smudge
 SMUDGE_RELEASE_STAGE_DIR=$(SMUDGE_BUILD_DIR)/$(SMUDGE_RELEASE_SUBDIR)
 SMUDGE_TARGET=$(SMUDGE_BUILD_DIR)/bin/$(SMUDGE_EXE)
 SMUDGE_VERSION=$(call cabal_query,version)
+POUND=\\\#
 
 .PHONY: all tags build examples doc \
-        release stage package zip tgz \
+        release stage package zip tgz exe \
         newticket todo clean distclean
 
 all: build examples doc TAGS
@@ -77,6 +79,20 @@ smudge-$(SMUDGE_VERSION)-$(PLATFORM).zip: stage
 	elif type 7z >/dev/null 2>&1; then \
 	    7z a $@ $(SMUDGE_RELEASE_SUBDIR); \
 	fi
+	mv $(SMUDGE_BUILD_DIR)/$@ .
+
+$(SMUDGE_BUILD_DIR)/setup.iss: setup.iss.in smudge.cabal
+	@echo $(POUND)define MyAppName      \"Smudge\" > $@
+	@echo $(POUND)define MyAppVersion   \"$(SMUDGE_VERSION)\" >>$@
+	@echo $(POUND)define MyAppPublisher \"$(call cabal_query,copyright)\" >>$@
+	@echo $(POUND)define MyAppURL       \"$(call cabal_query,  location)\" >>$@
+	@echo $(POUND)define MyOutputDir    \"$(SMUDGE_BUILD_DIR)\" >>$@
+	@echo $(POUND)define MySetupDir     \"$(SMUDGE_RELEASE_STAGE_DIR)\" >>$@
+	cat $< >>$@
+
+exe: smudge-$(SMUDGE_VERSION)-$(PLATFORM).exe
+smudge-$(SMUDGE_VERSION)-windows.exe: $(SMUDGE_BUILD_DIR)/setup.iss stage
+	ISCC /Q $(SMUDGE_BUILD_DIR_RAW)\setup.iss
 	mv $(SMUDGE_BUILD_DIR)/$@ .
 
 tgz: smudge-$(SMUDGE_VERSION)-$(PLATFORM).tgz

@@ -5,6 +5,8 @@ SMUDGE_EXE=smudge.exe
 PLATFORM=windows
 /=\\
 PKGEXT=zip exe
+RC_FILE=$(SMUDGE_BUILD_DIR)/Properties.o
+CABAL_FLAGS+=--ghc-options $(RC_FILE)
 else
 SMUDGE_EXE=smudge
 PLATFORM=linux
@@ -21,6 +23,7 @@ SMUDGE_RELEASE_STAGE_DIR=$(SMUDGE_BUILD_DIR)/$(SMUDGE_RELEASE_SUBDIR)
 SMUDGE_TARGET=$(SMUDGE_BUILD_DIR)/bin/$(SMUDGE_EXE)
 SMUDGE_VERSION=$(call cabal_query,version)
 POUND=\\\#
+COMMA=,
 
 .PHONY: all tags build examples doc \
         release stage package zip tgz exe \
@@ -40,8 +43,28 @@ doc:
 	$(MAKE) -C docs$/tutorial tutorial.pdf
 	$(MAKE) -C docs$/definition all
 
-$(SMUDGE_TARGET): smudge.cabal stack.yaml $(HSFILES)
+$(SMUDGE_TARGET): smudge.cabal stack.yaml $(HSFILES) $(RC_FILE)
 	stack $(STACK_FLAGS) build $(CABAL_FLAGS)
+
+$(RC_FILE):
+	@echo VS_VERSION_INFO VERSIONINFO                                       >  $(@:%.o=%.rc)
+	@echo   FILEVERSION        $(subst .,$(COMMA),$(SMUDGE_VERSION))        >> $(@:%.o=%.rc)
+	@echo   PRODUCTVERSION     $(subst .,$(COMMA),$(SMUDGE_VERSION))        >> $(@:%.o=%.rc)
+	@echo BEGIN                                                             >> $(@:%.o=%.rc)
+	@echo   BLOCK \"StringFileInfo\"                                        >> $(@:%.o=%.rc)
+	@echo   BEGIN                                                           >> $(@:%.o=%.rc)
+	@echo     BLOCK \"040904B0\"                                            >> $(@:%.o=%.rc)
+	@echo     BEGIN                                                         >> $(@:%.o=%.rc)
+	@echo       VALUE \"FileVersion\", \"$(SMUDGE_VERSION)\"                >> $(@:%.o=%.rc)
+	@echo       VALUE \"ProductVersion\", \"$(SMUDGE_VERSION)\"             >> $(@:%.o=%.rc)
+	@echo       VALUE \"FileDescription\", \"Smudge\"                       >> $(@:%.o=%.rc)
+	@echo       VALUE \"ProductName\", \"Smudge\"                           >> $(@:%.o=%.rc)
+	@echo       VALUE \"LegalCopyright\", \"$(call cabal_query,copyright)\" >> $(@:%.o=%.rc)
+	@echo       VALUE \"License\", \"$(call cabal_query,license)\"          >> $(@:%.o=%.rc)
+	@echo     END                                                           >> $(@:%.o=%.rc)
+	@echo   END                                                             >> $(@:%.o=%.rc)
+	@echo END                                                               >> $(@:%.o=%.rc)
+	windres -i $(@:%.o=%.rc) $@
 
 docs/tutorial/tutorial.pdf:
 	$(MAKE) -C docs$/tutorial tutorial.pdf

@@ -11,11 +11,14 @@ PLATFORM=linux
 /=/
 PKGEXT=tgz
 endif
+define cabal_query
+$(shell grep "^$(1):" smudge.cabal | cut -d ':' -f 1 --complement | sed -e 's/^\s*//' -e 's/\s*$$//')
+endef
 SMUDGE_BUILD_DIR=$(subst \,/,$(shell stack path --local-install-root))
 SMUDGE_RELEASE_SUBDIR=smudge
 SMUDGE_RELEASE_STAGE_DIR=$(SMUDGE_BUILD_DIR)/$(SMUDGE_RELEASE_SUBDIR)
 SMUDGE_TARGET=$(SMUDGE_BUILD_DIR)/bin/$(SMUDGE_EXE)
-SMUDGE_VERSION=$(shell $(SMUDGE_TARGET) --version | cut -f 3 -d ' ' | head -n 1)
+SMUDGE_VERSION=$(call cabal_query,version)
 
 .PHONY: all tags build examples doc \
         release stage package zip tgz \
@@ -64,8 +67,7 @@ stage: build docs/tutorial/tutorial.pdf
 	cp LICENSE $(SMUDGE_RELEASE_STAGE_DIR)
 	cp README.md $(SMUDGE_RELEASE_STAGE_DIR)
 
-package: build
-	$(MAKE) smudge-$(SMUDGE_VERSION)-$(PLATFORM).$(PKGEXT)
+package: $(foreach EXT,$(PKGEXT),smudge-$(SMUDGE_VERSION)-$(PLATFORM).$(EXT))
 
 zip: smudge-$(SMUDGE_VERSION)-$(PLATFORM).zip
 smudge-$(SMUDGE_VERSION)-$(PLATFORM).zip: stage

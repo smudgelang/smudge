@@ -1,0 +1,14 @@
+Title: PlantUML backend
+
+A Smudge user has requested the feature to output PlantUML, in order
+to support directly posting Smudge output to Confluence.
+
+For example, as of today first.smudge would produce something like:
+
+[*] --> FIRST_STATE
+FIRST_STATE: Enter:\nenterFirst
+FIRST_STATE: Exit:\nexitFirst
+FIRST_STATE --> SECOND_STATE : event
+FIRST_STATE -[dashed]-> FIRST_STATE : altEvent\nsideEffect
+FIRST_STATE --> FIRST_STATE : reenter
+SECOND_STATE --> FIRST_STATE : EventAny\nsideEffect

@@ -47,7 +47,7 @@ $(SMUDGE_TARGET): smudge.cabal stack.yaml $(HSFILES) $(RC_FILE)
 	stack $(STACK_FLAGS) build $(CABAL_FLAGS)
 
 $(RC_FILE):
-	@echo VS_VERSION_INFO VERSIONINFO                                       >  $(@:%.o=%.rc)
+	@echo 1 VERSIONINFO                                                     >  $(@:%.o=%.rc)
 	@echo   FILEVERSION        $(subst .,$(COMMA),$(SMUDGE_VERSION))        >> $(@:%.o=%.rc)
 	@echo   PRODUCTVERSION     $(subst .,$(COMMA),$(SMUDGE_VERSION))        >> $(@:%.o=%.rc)
 	@echo BEGIN                                                             >> $(@:%.o=%.rc)
@@ -62,6 +62,10 @@ $(RC_FILE):
 	@echo       VALUE \"LegalCopyright\", \"$(call cabal_query,copyright)\" >> $(@:%.o=%.rc)
 	@echo       VALUE \"License\", \"$(call cabal_query,license)\"          >> $(@:%.o=%.rc)
 	@echo     END                                                           >> $(@:%.o=%.rc)
+	@echo   END                                                             >> $(@:%.o=%.rc)
+	@echo   BLOCK \"VarFileInfo\"                                           >> $(@:%.o=%.rc)
+	@echo   BEGIN                                                           >> $(@:%.o=%.rc)
+	@echo     VALUE \"Translation\", 0x0409, 0x04B0                         >> $(@:%.o=%.rc)
 	@echo   END                                                             >> $(@:%.o=%.rc)
 	@echo END                                                               >> $(@:%.o=%.rc)
 	windres -i $(@:%.o=%.rc) $@

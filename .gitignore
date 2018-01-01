@@ -14,3 +14,4 @@ tags
 *.rej
 graphviz-2999.17.0.1
 *.pdf
+debian/smudge-*

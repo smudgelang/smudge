@@ -11,7 +11,10 @@ else
 SMUDGE_EXE=smudge
 PLATFORM=linux
 /=/
-PKGEXT=tgz
+PKGEXT=tgz deb
+# the -linux is bad for debian but good for our build system. Maybe
+# fix it at some point.
+DEBDIR=debian/smudge-$(SMUDGE_VERSION)-linux
 endif
 define cabal_query
 $(shell grep "^$(1):" smudge.cabal | cut -d ':' -f 1 --complement | sed -e 's/^\s*//' -e 's/\s*$$//')
@@ -132,6 +135,23 @@ smudge-$(SMUDGE_VERSION)-linux.tgz: stage
 	tar -czf $@ $(SMUDGE_RELEASE_SUBDIR)
 	mv $(SMUDGE_BUILD_DIR)/$@ .
 
+smudge-$(SMUDGE_VERSION)-linux.deb: stage
+	mkdir -p $(DEBDIR)/DEBIAN
+	mkdir -p $(DEBDIR)/usr/bin
+	mkdir -p $(DEBDIR)/usr/share/doc/smudge/
+	cp $(SMUDGE_BUILD_DIR)/smudge/smudge $(DEBDIR)/usr/bin
+	chrpath -d $(DEBDIR)/usr/bin/smudge
+	cp -r $(SMUDGE_BUILD_DIR)/$(SMUDGE_RELEASE_SUBDIR)/* $(DEBDIR)/usr/share/doc/smudge/
+	rm $(DEBDIR)/usr/share/doc/smudge/smudge # No need for extra binary
+	chmod -R a+rX $(DEBDIR)/usr/share/doc/smudge/*
+	# Note: the copyright file duplicates info from LICENSE.
+	cp debian/copyright $(DEBDIR)/usr/share/doc/smudge/
+	chmod 755 $(DEBDIR)/usr/bin/smudge
+	sed -e "s/__VERSION__/$(SMUDGE_VERSION)/g" -e "s/__ARCH__/`dpkg --print-architecture`/g" debian/control > $(DEBDIR)/DEBIAN/control
+	# fakeroot chown -R root:root $(DEBDIR)/usr # Todo: make this happen.
+	dpkg --build $(DEBDIR)
+	mv $(DEBDIR).deb . # Whew, puns
+
 newticket:
 	cd tickets && ./mkticket.sh "$(title)"
 
@@ -141,9 +161,11 @@ todo:
 clean:
 	stack clean
 	rm -rf TAGS tags
+	rm -f *.tgz *.deb
 	$(MAKE) -C examples clean
 	$(MAKE) -C docs$/tutorial clean
 	$(MAKE) -C docs$/definition clean
 
 distclean: clean
 	rm -rf .stack-work
+	rm -rf debian/smudge-*

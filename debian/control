@@ -1,0 +1,19 @@
+Maintainer: Nathan Michaels <nathan@nmichaels.org>
+Version: __VERSION__
+Section: devel
+Priority: optional
+Build-Depends: debhelper (>= 10),
+               haskell-stack (>=1.1.2)
+Standards-Version: 4.1.1
+Vcs-Browser: https://github.com/Bose/Smudge
+Vcs-Git: https://github.com/Bose/Smudge.git
+Homepage: https://github.com/Bose/Smudge
+Package: smudge
+Architecture: __ARCH__
+Depends: graphviz
+Description: State machine generation language
+ Smudge is a domain specific language for implementing state
+ machines. The compiler generates standard C code as well as graphical
+ state diagrams. Its output is optimized for use on very limited
+ embedded systems, but designed to be used anywhere state machines are
+ appropriate.

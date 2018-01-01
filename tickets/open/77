@@ -1,0 +1,6 @@
+Title: Get rid of -linux from .deb file name.
+
+Debian package files are named <name>-<version>-<arch>.deb. Ours is
+generated as smudge-<version>-linux.deb. This is not optimal.
+
+

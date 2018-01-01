@@ -12,8 +12,6 @@ SMUDGE_EXE=smudge
 PLATFORM=linux
 /=/
 PKGEXT=tgz deb
-# the -linux is bad for debian but good for our build system. Maybe
-# fix it at some point.
 DEBDIR=debian/smudge-$(SMUDGE_VERSION)-linux
 endif
 define cabal_query

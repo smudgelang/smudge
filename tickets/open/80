@@ -1,0 +1,5 @@
+Title: lintian - warnings
+
+The debian file is generating some warnings for lintian. It doesn't
+use pie and there are extra files scattered around. Run lintian on
+smudge-<whatever>.deb and fix the warnings.

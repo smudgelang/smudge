@@ -1,0 +1,6 @@
+Title: lintian - man page
+
+Debian wants its packages to have man pages. We should make a man page
+for Smudge and include it in the .deb package (and other
+linux-targeted packages too, for good measure.)
+

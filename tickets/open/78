@@ -1,0 +1,6 @@
+Title: lintian - fix file ownership
+
+The .deb file has bad ownership for most of its files. They should be
+owned by root:root, not whoever built the package.
+
+

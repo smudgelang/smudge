@@ -27,7 +27,7 @@ POUND=\\\#
 COMMA=,
 
 .PHONY: all tags build examples doc \
-        release stage package zip tgz exe \
+        release stage package zip tgz exe deb \
         newticket todo clean distclean
 
 all: build examples doc TAGS
@@ -133,6 +133,7 @@ smudge-$(SMUDGE_VERSION)-linux.tgz: stage
 	tar -czf $@ $(SMUDGE_RELEASE_SUBDIR)
 	mv $(SMUDGE_BUILD_DIR)/$@ .
 
+deb: smudge-$(SMUDGE_VERSION)-$(PLATFORM).deb
 smudge-$(SMUDGE_VERSION)-linux.deb: stage
 	mkdir -p $(DEBDIR)/DEBIAN
 	mkdir -p $(DEBDIR)/usr/bin
@@ -165,4 +166,4 @@ clean:
 
 distclean: clean
 	rm -rf .stack-work
-	rm -rf debian/smudge-*
+	rm -rf $(DEBDIR)

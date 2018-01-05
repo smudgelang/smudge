@@ -130,7 +130,7 @@ smudge-$(SMUDGE_VERSION)-windows.exe: $(SMUDGE_BUILD_DIR)/setup.iss stage
 tgz: smudge-$(SMUDGE_VERSION)-$(PLATFORM).tgz
 smudge-$(SMUDGE_VERSION)-linux.tgz: stage
 	cd $(SMUDGE_BUILD_DIR) && \
-	tar -czf $@ $(SMUDGE_RELEASE_SUBDIR)
+	fakeroot tar -czf $@ $(SMUDGE_RELEASE_SUBDIR)
 	mv $(SMUDGE_BUILD_DIR)/$@ .
 
 deb: smudge-$(SMUDGE_VERSION)-$(PLATFORM).deb

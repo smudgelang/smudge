@@ -146,8 +146,7 @@ smudge-$(SMUDGE_VERSION)-linux.deb: stage
 	cp debian/copyright $(DEBDIR)/usr/share/doc/smudge/
 	chmod 755 $(DEBDIR)/usr/bin/smudge
 	sed -e "s/__VERSION__/$(SMUDGE_VERSION)/g" -e "s/__ARCH__/`dpkg --print-architecture`/g" debian/control > $(DEBDIR)/DEBIAN/control
-	# fakeroot chown -R root:root $(DEBDIR)/usr # Todo: make this happen.
-	dpkg --build $(DEBDIR)
+	fakeroot dpkg --build $(DEBDIR)
 	mv $(DEBDIR).deb . # Whew, puns
 
 newticket:

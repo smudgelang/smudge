@@ -1,4 +1,4 @@
-smudge-file = emptytoeol *(pragma emptytoeol) smudgle
+smudge-file = *(emptytoeol pragma) smudgle
 pragma = "#" command [("=" / 1*WSP) argument] eol
 command = 1*(alphanum / sep)
 argument = 1*non-newline

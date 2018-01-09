@@ -55,7 +55,7 @@ import Text.Parsec (
 import Control.Monad (void)
 
 smudge_file :: Parser ([[String]], [(StateMachine Identifier, [WholeState Identifier])])
-smudge_file = emptytoeol >> (,) <$> many (pragma <* emptytoeol) <*> smudgle
+smudge_file = (,) <$> many (try (emptytoeol >> pragma)) <*> smudgle
 
 pragma :: Parser [String]
 pragma = (:) <$> (("--" ++) <$> (char '#' *> command)) <*> option [] ((string "=" <|> many1 whitespace) *> ((:[]) <$> argument)) <* endOfLine

@@ -17,6 +17,7 @@ import Language.Smudge.Backends.Backend (options)
 import Language.Smudge.Backends.GraphViz (GraphVizOption(..))
 import Language.Smudge.Backends.CStatic (CStaticOption(..))
 
+import Data.List (intercalate)
 import System.Exit (exitSuccess, exitFailure)
 
 data SystemOption = Version
@@ -93,8 +94,7 @@ getAllOpt args =
 
 getFileOpt :: [[String]] -> IO [Options]
 getFileOpt argss =
-    let flatten (a, b, c) = (concat a, concat b, concat c)
-    in  case flatten $ unzip3 $ map (getOpt Permute fileopts) argss of
+    case getOpt Permute fileopts $ map (intercalate "=") argss of
             (os, [], []) -> return os
             (_, fs, es) -> do putStr (concat es)
                               mapM (putStrLn . ("unrecognized argument `" ++) . (++ "'")) fs

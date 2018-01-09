@@ -1,3 +1,59 @@
+v0.6: First open source release, now with better debugging and control.
+
+      Project:
+
+      In an exciting development for the Smudge project, as of October,
+      Smudge is now under a BSD 3-clause license!
+
+      Releases are now available for Windows using an installer, and on
+      Ubuntu/Debian using a deb package, in addition to zip/tar archives.
+
+      Features:
+
+      Smudge files may now begin with some number of pragmas, before the
+      name of the first state machine, thereby enabling any required
+      command-line flags (except 'help' and 'version') for that file alone.
+      For example, to enable strictness checking for a file, simple start
+      the file with:
+        #strict
+
+      Two helpful debugging flags were added: --logevent and --logstate.
+      The former calls a log function upon receipt of specified events, and
+      the latter upon entry into the specified states.  For example, in
+      order to enable logging on all events for the "buggy" state machine
+      except "noisy" (which is disabled to avoid cluttering the logs):
+        smudge --log-event --no-logevent=buggy.noisy buggy.smudge
+
+      NOTE: in order to use the above logging flags, the function
+      SMUDGE_debug_print must be defined, which should be the same as
+      SMUDGE_panic_print (with the exception of not panicking).
+
+      Errata:
+
+      State machines with leading numbers now yield compilable mangled
+      names.  Mangled names that would produce undefined behavior are
+      caught and instead yield an error which can be overcome with the
+      newly added --nsprefix flag.
+
+      If GraphViz is not installed, Smudge will now exit with an error.
+
+      Errors now refer to the precise location of an error where possible,
+      instead of the approximate location.
+
+      Tickets:
+
+      78: lintian - fix file ownership
+      53: File-level compilation switches
+      38: Event logging for debugging
+      44: GraphViz - concatenate parallel edges.
+      72: C Identifiers can't begin with numbers or underscores
+      59: Friendly message to install GraphViz
+      73: Boolean command line switches should be invertable.
+      69: Add commit hash to version
+      64: PackageInfo warning
+      37: Comment header warning of generated code.
+      47: Error granularity finer than SM
+
 v0.5: A major release, that makes backwards incompatible changes to
       the generated code for the C backend.
 

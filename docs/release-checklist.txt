@@ -3,7 +3,7 @@ A pseudo-script checklist for Smudge release version x.y.z:
   * For the sake of sanity, make a new sandbox:
         git clone [upstream] smudge-release
   * Bump the version to x.y.z:
-        sed -i 's/^\(Version: *\)[0-9.]\+$/\1x.y.z/' smudge.cabal
+        sed -i 's/^\(version: *\)[0-9.]\+$/\1x.y.z/' smudge.cabal
   * Update the release notes in CHANGES, including closed tickets
     and other interesting changes, paying special attention to
     new features and deprecated or removed features.

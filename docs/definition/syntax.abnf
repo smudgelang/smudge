@@ -1,7 +1,7 @@
 smudge-file = *(emptytoeol pragma) smudgle
-pragma = "#" command [("=" / 1*WSP) argument] eol
+pragma = "#" command [1*WSP argument] *WSP eol
 command = 1*(alphanum / sep)
-argument = 1*non-newline
+argument = 1*non-whitespace *[1*WSP 1*non-whitespace]
 smudgle = empty 1*state-machine
 state-machine = state-machine-name empty state-machine-spec empty
 state-machine-spec = "{" empty state-list empty "}"
@@ -39,6 +39,7 @@ emptytoeol = [*WSP (comment / eol) emptytoeol]
 spacesep = (WSP / eol / comment) empty
 nondigit = ALPHA / "_"
 alphanum = ALPHA / DIGIT
+non-whitespace = alphanum / sep / symbol
 non-newline = alphanum / WSP / sep / symbol
 quoted = DQUOTE 1*(alphanum / WSP / sep / symbol) DQUOTE
 

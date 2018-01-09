@@ -30,6 +30,7 @@ import Text.Parsec.String (
   )
 
 import Text.Parsec (
+  count,
   sepEndBy,
   sepEndBy1,
   many,
@@ -58,13 +59,13 @@ smudge_file :: Parser ([[String]], [(StateMachine Identifier, [WholeState Identi
 smudge_file = (,) <$> many (try (emptytoeol >> pragma)) <*> smudgle
 
 pragma :: Parser [String]
-pragma = (:) <$> (("--" ++) <$> (char '#' *> command)) <*> option [] ((string "=" <|> many1 whitespace) *> ((:[]) <$> argument)) <* endOfLine
+pragma = (:) <$> (("--" ++) <$> (char '#' *> command)) <*> option [] (try (many1 whitespace *> count 1 argument)) <* many whitespace <* endOfLine
 
 command :: Parser String
 command = many1 (alphaNum <|> oneOf "-_")
 
 argument :: Parser String
-argument = many1 non_newline
+argument = (++) <$> many1 non_whitespace <*> (concat <$> many (try ((++) <$> many1 whitespace <*> many1 non_whitespace)))
 
 smudgle :: Parser [(StateMachine Identifier, [WholeState Identifier])]
 smudgle = empty >> many1 state_machine
@@ -161,10 +162,13 @@ spacesep :: Parser ()
 spacesep = (space >> empty) <|> (comment >> empty)
 
 whitespace :: Parser Char
-whitespace = exclude_newline space <?> "any non-new-line whitespace"
+whitespace = exclude endOfLine space <?> "any non-new-line whitespace"
+
+non_whitespace :: Parser Char
+non_whitespace = exclude space anyChar <?> "any non-whitespace character"
 
 non_newline :: Parser Char
-non_newline = exclude_newline anyChar <?> "any non-new-line character"
+non_newline = exclude endOfLine anyChar <?> "any non-new-line character"
 
-exclude_newline :: Parser Char -> Parser Char
-exclude_newline p = notFollowedBy endOfLine *> p
+exclude :: Parser Char -> Parser Char -> Parser Char
+exclude ex p = notFollowedBy ex *> p

@@ -153,7 +153,7 @@ instance Backend GraphVizOption where
     options = ("dot",
                [Option [] ["fmt"] (ReqArg (Format . read) "FORMAT")
                  ("GraphViz output format.  Options: " ++
-                  (intercalate "," $ map show outputFormats)),
+                  (intercalate ", " $ map show outputFormats)),
                 Option [] ["o"] (ReqArg OutFile "FILE")
                  "The name of the target file if not derived from source file.",
                 Option [] ["no-se"] (BoolArg RenderSideEffects)

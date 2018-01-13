@@ -12,6 +12,8 @@ module System.Console.GetOpt.Extra (
     getOpt
 ) where
 
+import Text.Wrap (wrapText, defaultWrapSettings)
+import Data.Text (Text, pack, unpack)
 import Data.List (partition, isPrefixOf, stripPrefix)
 import System.Console.GetOpt (ArgOrder(..))
 import qualified System.Console.GetOpt as GetOpt (usageInfo, getOpt, OptDescr(..), ArgDescr(..))
@@ -57,10 +59,16 @@ convertOptDescrs = concatMap convertOptDescr
           negate = "no-"
 
 formatOptDescrs :: [OptDescr a] -> [GetOpt.OptDescr a]
-formatOptDescrs = concatMap formatOptDescr
+formatOptDescrs = map wrapOptDescr . concatMap formatOptDescr
     where formatOptDescr :: OptDescr a -> [GetOpt.OptDescr a]
           formatOptDescr (Subcommand p c os) = subcommand p c (concatMap formatOptDescr os)
           formatOptDescr (Option ss ls a d) = [GetOpt.Option ss ls (convertArgDescr False a) d]
+          wrapOptDescr :: GetOpt.OptDescr a -> GetOpt.OptDescr a
+          wrapOptDescr (GetOpt.Option cs ss a opt) =
+            GetOpt.Option cs ss a (wrapOptText opt)
+          wrapOptText :: String -> String
+          -- 43 = number of remaining columns after long options; fragile code
+          wrapOptText = unpack . wrapText defaultWrapSettings 43 . pack
 
 usageInfo :: String -> [OptDescr a] -> String
 usageInfo hdr = GetOpt.usageInfo hdr . formatOptDescrs

@@ -53,13 +53,13 @@ envopts = [Option []    ["[no-]strict"] (BoolArg Strict) "[DON'T] Require all ty
            Option []    ["rename"] (ReqArg Rename "\"OLD NEW\"") "Replace identifier."]
 
 cmnopts :: [OptDescr CommonOption]
-cmnopts = [Option []    ["[no-]logevent"] (BoolOptArg LogEvent "EVENT") "[DON'T] Enable event tracing.",
-           Option []    ["[no-]logstate"] (BoolOptArg LogState "STATE") "[DON'T] Enable state tracing.",
+cmnopts = [Option []    ["[no-]logevent"] (BoolOptArg LogEvent "EVENT") "[DON'T] Enable event tracing where EVENT is a fully qualified <state-machine>.<event> name.",
+           Option []    ["[no-]logstate"] (BoolOptArg LogState "STATE") "[DON'T] Enable state tracing where STATE is a fully qualified <state-machine>.<state> name.",
            Option []    ["[no-]debug"] (BoolArg Debug) "[DON'T] Generate debugging information."]
 
 deprecated_c_no_debug :: [OptDescr CommonOption]
 deprecated_c_no_debug =
-          [Option []    ["no-debug"] (BoolArg Debug) "[DEPRECATED] Don't generate debugging information."]
+          [Option []    ["no-debug"] (BoolArg Debug) "(DEPRECATED) Don't generate debugging information."]
 
 data Options = SystemOption SystemOption | EnvmntOption EnvmntOption | CommonOption CommonOption | GraphVizOption GraphVizOption | CStaticOption CStaticOption
     deriving (Show, Eq)

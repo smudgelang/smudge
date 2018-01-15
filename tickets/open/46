@@ -43,6 +43,11 @@ the behavior inside.  As such, the submachine does not require additional RAM
 to store its current state, as it can be stored as the supermachine's current
 state.
 
+The ~(...)~> arrow operator should be able to take an optional event
+paremeter in the form of ~(M'.b)~> to send the given event immediately
+upon entering the submachine. This allows something analogous to
+parameterization of submachines.
+
 There is a tradeoff with multi-use submachines.  Because of the deterministic
 nature, while multiple source events can enter the same submachine, their
 supermachine destination states must be stored somewhere.  There are two

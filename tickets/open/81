@@ -1,0 +1,5 @@
+Title: Instances
+
+All of Smudge's state machines are global singleton structures. We
+should come up with a way to instantiate multiple copies of a given
+state machine.

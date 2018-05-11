@@ -23,7 +23,7 @@ before_test:
 - echo TEXMFSYSVAR %CD%\.local\tex\texmf-var>> .local\install-tl\profile
 - echo option_doc ^0>> .local\install-tl\profile
 - echo option_src ^0>> .local\install-tl\profile
-- .local\install-tl\install-tl-windows.bat -portable -no-gui -profile=profile <nul
+- .local\install-tl\install-tl-windows.bat -portable -no-gui -profile=.local\install-tl\profile <nul
 - set PATH=%CD%\.local\tex\bin\win32;%PATH%
 - tlmgr install amscls amsmath latex-bin listofitems mdwtools readarray semantic tools verbatimbox
 

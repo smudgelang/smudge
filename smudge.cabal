@@ -27,6 +27,7 @@ library
                      Language.Smudge.Passes
                      Language.Smudge.Passes.DeclaredEventNames
                      Language.Smudge.Passes.DeclaredStateNames
+                     Language.Smudge.Passes.NoTransientAnyState
                      Language.Smudge.Passes.NoTransientStateCycles
                      Language.Smudge.Passes.OneInitialState
                      Language.Smudge.Passes.Passes

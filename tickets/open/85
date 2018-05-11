@@ -1,0 +1,12 @@
+Title: SMs without events
+
+Right now, a state machine like:
+
+    sm { *A [ _ -- ] }
+
+results in the output:
+
+    smudge: Listish values cannot be empty.
+
+This is unfortunate.  It is unlikely that there is a use-case for this syntax.
+Either this should be a better error, or a use case for this should be defined.

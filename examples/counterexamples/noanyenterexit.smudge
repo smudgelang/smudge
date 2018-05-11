@@ -1,0 +1,18 @@
+// Copyright 2018 Bose Corporation.
+// This software is released under the 3-Clause BSD License.
+// The license can be viewed at https://github.com/Bose/Smudge/blob/master/LICENSE
+
+NoAnyEnter
+{ *A [ x --],
+   _ (@enterAny) [ y -- ]
+}
+
+NoAnyExit
+{ *A [ x --],
+   _ [ y -- ] (@exitAny)
+}
+
+NoAnyEnterExit
+{ *A [ x --],
+   _ (@enterAny) [ y -- ] (@exitAny)
+}

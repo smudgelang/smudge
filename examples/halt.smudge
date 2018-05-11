@@ -10,7 +10,7 @@ halt {
     _ [
         halt --> halt,
         _ --> halt
-    ] (@forceExit)
+    ]
 }
 
 anynamedhalt
@@ -22,7 +22,7 @@ anynamedhalt
 
     _ [
         anynamedhalt -- // halts here
-    ] (@forceExit)
+    ]
 }
 
 namedanyhalt {
@@ -36,7 +36,7 @@ namedanyhalt {
 
     _ [
         _ --> namedanyhalt
-    ] (@forceExit)
+    ]
 }
 
 anyanyhalt
@@ -52,7 +52,7 @@ anyanyhalt
 
     _ [
         _ -- // halts here
-    ] (@forceExit)
+    ]
 }
 
 nohalt {
@@ -63,7 +63,7 @@ nohalt {
     _ [
         nohalt --,
         _ --
-    ] (@forceExit)
+    ]
 }
 
 anynamednohalt {
@@ -73,7 +73,7 @@ anynamednohalt {
 
     _ [
         anynamednohalt --> anynamednohalt // loops here
-    ] (@forceExit)
+    ]
 }
 
 namedanynohalt {
@@ -87,7 +87,7 @@ namedanynohalt {
 
     _ [
         _ --
-    ] (@forceExit)
+    ]
 }
 
 anyanynohalt {
@@ -101,5 +101,5 @@ anyanynohalt {
 
     _ [
         _ --> anyanynohalt // loops here
-    ] (@forceExit)
+    ]
 }

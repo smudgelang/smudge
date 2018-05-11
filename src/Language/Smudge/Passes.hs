@@ -12,6 +12,7 @@ import Language.Smudge.Semantics.Model (EnterExitState, Happening, TaggedName)
 import Language.Smudge.Semantics.Solver (SymbolTable)
 import Language.Smudge.Grammar (StateMachine, WholeState)
 import Language.Smudge.Passes.Passes (pass, Fault)
+import Language.Smudge.Passes.NoAnyEnterExit (NoAnyEnterExit)
 import Language.Smudge.Passes.NoTransientAnyState (NoTransientAnyState)
 import Language.Smudge.Passes.NoTransientStateCycles (NoTransientStateCycles)
 import Language.Smudge.Passes.UniqueStateNames (UniqueStateNames)
@@ -24,6 +25,7 @@ import Data.Graph.Inductive.Graph (Graph)
 
 make_passes :: Graph gr => (StateMachine TaggedName, gr EnterExitState Happening) -> [Fault]
 make_passes g = concat [pass g (undefined :: OneInitialState gr),
+                        pass g (undefined :: NoAnyEnterExit gr),
                         pass g (undefined :: NoTransientAnyState gr),
                         pass g (undefined :: NoTransientStateCycles gr)]
 

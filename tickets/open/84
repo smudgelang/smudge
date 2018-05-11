@@ -1,0 +1,15 @@
+Title: extern "C"
+
+The code currently emitted by Smudge can be compiled by a C++ compiler.
+
+However, if we want to be fully C++ friendly, e.g., allow for distributing
+precompiled Smudge object files, it would be prudent to drop in the standard
+wrappers:
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifdef __cplusplus
+}
+#endif

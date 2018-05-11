@@ -1,0 +1,19 @@
+Title: Machine-wide enter/exit events.
+
+Propsed syntax:
+
+SM (@enter) { ... } (@exit)
+
+The major pro is that machines could stuff initialization and cleanup logic in
+these blocks, akin to constructors and destructors in C++.
+
+The major con is that this might encourage some of the same problems seen in
+static initialization of singletons in C++, such as issues with order of
+initialization being dependent on link-time notions.
+
+The major neutral point is that this is already possible using this syntax:
+
+SM {
+ * initial (@enter) [...]
+   terminal (@exit) [ _ -- ]
+}

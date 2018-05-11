@@ -1,0 +1,13 @@
+Title: Allow known event cycles.
+
+Ticket #21 forbids machines such as this that do not terminate:
+
+sm { *st [ a -( b )-, b -( a )-] }
+
+Because Smudge can determine paths that loop, special syntax could distinguish
+between paths that allow loops and paths that don't.  This could either take
+the form of a keyword akin to "noreturn" or to a special arrow syntax, e.g.,
+
+sm { *st [ a -( b )->, b -( a )->] }
+
+where there is no destination state, mirroring a return type of bottom.

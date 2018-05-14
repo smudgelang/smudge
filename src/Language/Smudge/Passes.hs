@@ -16,6 +16,7 @@ import Language.Smudge.Passes.NoAnyEnterExit (NoAnyEnterExit)
 import Language.Smudge.Passes.NoTransientAnyState (NoTransientAnyState)
 import Language.Smudge.Passes.NoTransientStateCycles (NoTransientStateCycles)
 import Language.Smudge.Passes.UniqueStateNames (UniqueStateNames)
+import Language.Smudge.Passes.OneEventHandlerPerState (OneEventHandlerPerState)
 import Language.Smudge.Passes.OneInitialState (OneInitialState)
 import Language.Smudge.Passes.DeclaredStateNames (DeclaredStateNames)
 import Language.Smudge.Passes.DeclaredEventNames (DeclaredEventNames)
@@ -25,6 +26,7 @@ import Data.Graph.Inductive.Graph (Graph)
 
 make_passes :: Graph gr => (StateMachine TaggedName, gr EnterExitState Happening) -> [Fault]
 make_passes g = concat [pass g (undefined :: OneInitialState gr),
+                        pass g (undefined :: OneEventHandlerPerState gr),
                         pass g (undefined :: NoAnyEnterExit gr),
                         pass g (undefined :: NoTransientAnyState gr),
                         pass g (undefined :: NoTransientStateCycles gr)]

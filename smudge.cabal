@@ -30,6 +30,7 @@ library
                      Language.Smudge.Passes.NoAnyEnterExit
                      Language.Smudge.Passes.NoTransientAnyState
                      Language.Smudge.Passes.NoTransientStateCycles
+                     Language.Smudge.Passes.OneEventHandlerPerState
                      Language.Smudge.Passes.OneInitialState
                      Language.Smudge.Passes.Passes
                      Language.Smudge.Passes.UninstantiableTypes
@@ -51,6 +52,7 @@ library
                      fgl,
                      filepath,
                      graphviz,
+                     monoidal-containers,
                      mtl,
                      parsec,
                      pretty,

@@ -5,6 +5,7 @@
 module Language.Smudge.Passes (
     make_passes,
     name_passes,
+    link_passes,
     type_passes,
 ) where
 
@@ -33,8 +34,10 @@ make_passes g = concat [pass g (undefined :: OneInitialState gr),
 
 name_passes :: (StateMachine TaggedName, [WholeState TaggedName]) -> [Fault]
 name_passes sm = concat [pass sm (undefined :: DeclaredStateNames),
-                         pass sm (undefined :: UniqueStateNames),
-                         pass sm (undefined :: DeclaredEventNames)]
+                         pass sm (undefined :: UniqueStateNames)]
+
+link_passes :: (StateMachine TaggedName, [(StateMachine TaggedName, [WholeState TaggedName])]) -> [Fault]
+link_passes sms = concat [pass sms (undefined :: DeclaredEventNames)]
 
 type_passes :: (StateMachine TaggedName, SymbolTable) -> [Fault]
 type_passes st = concat [pass st (undefined :: UninstantiableTypes)]

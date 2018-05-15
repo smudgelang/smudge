@@ -49,7 +49,7 @@ import Language.Smudge.Parsers.Smudge (smudge_file)
 import Language.Smudge.Semantics.Alias (Alias, merge)
 import Language.Smudge.Semantics.Basis (basisAlias, bindBasis)
 import Language.Smudge.Passes.Passes (Severity(..), Fault(..), fatal)
-import Language.Smudge.Passes (make_passes, name_passes, type_passes)
+import Language.Smudge.Passes (make_passes, name_passes, link_passes, type_passes)
 import Data.Graph.Extra
 
 import Control.Monad (when)
@@ -117,12 +117,18 @@ checkAndConvert sms os = do
             mapM print fs
             when (any fatal fs) $ report_failure $ length fs
 
+            -- This is evidence that the definition of Passable is broken
+            let program = zip (map fst sms''') [sms''']
+            let fs = concat $ map link_passes program
+            mapM print fs
+            when (any fatal fs) $ report_failure $ length fs
+
             let basis = bindBasis aliases $ map fst sms''
             let st = if elem (EnvmntOption (Strict True)) os
                      then elaborateMono basis sms'''
                      else elaboratePoly basis sms'''
             -- This is a bit of a hack around the definition of Passable
-            let types = take 1 (zip (map fst sms''') (repeat st))
+            let types = zip (map fst sms''') [st]
             let fs = concat $ map type_passes types
             mapM print fs
             when (any fatal fs) $ report_failure $ length fs

@@ -1,4 +1,4 @@
--- Copyright 2017 Bose Corporation.
+-- Copyright 2018 Bose Corporation.
 -- This software is released under the 3-Clause BSD License.
 -- The license can be viewed at https://github.com/Bose/Smudge/blob/master/LICENSE
 
@@ -20,17 +20,21 @@ import Language.Smudge.Semantics.Model (
   )
 
 import Data.Graph.Inductive.Graph (
+  Graph,
   Node,
   labNodes,
   labEdges,
   nodes,
   out,
   )
-import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.List (nub, (\\))
-import Data.Map (Map, fromList, toList, (!))
+import Data.Map (
+  Map,
+  (!),
+  )
 import qualified Data.Map as Map(map)
 import Control.Monad (guard)
+import GHC.Exts (fromList, toList)
 
 -- The `precedence` function enforces the precedence order for events:
 --
@@ -49,10 +53,10 @@ precedence _            _          [namedany] _        = Just namedany
 precedence _            _          _          [anyany] = Just anyany
 precedence _            _          _          _        = Nothing
 
-handlers :: Event TaggedName -> Gr EnterExitState Happening -> Map (State TaggedName) (Maybe (State TaggedName, Event TaggedName))
+handlers :: Graph gr => Event TaggedName -> gr EnterExitState Happening -> Map (State TaggedName) (Maybe (State TaggedName, Event TaggedName))
 handlers e g = allHandlers g ! e
 
-allHandlers :: Gr EnterExitState Happening -> Map (Event TaggedName) (Map (State TaggedName) (Maybe (State TaggedName, Event TaggedName)))
+allHandlers :: Graph gr => gr EnterExitState Happening -> Map (Event TaggedName) (Map (State TaggedName) (Maybe (State TaggedName, Event TaggedName)))
 allHandlers g = fromList $
     do  e <- nub $ map (event . thrd) events
         let all_evt_handlers = all_handlers e
@@ -76,7 +80,7 @@ allHandlers g = fromList $
                 guard $ event h == e
                 return (st ees, e)
 
-finalStates :: Gr EnterExitState Happening -> [Node]
+finalStates :: Graph gr => gr EnterExitState Happening -> [Node]
 finalStates g = nodes g \\
     do  (n, EnterExitState {st=st@(State _)}) <- states
         (e, Just (st', ev')) <- toList $ Map.map (! st) ahs

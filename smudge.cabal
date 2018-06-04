@@ -28,6 +28,7 @@ library
                      Language.Smudge.Passes.DeclaredEventNames
                      Language.Smudge.Passes.DeclaredStateNames
                      Language.Smudge.Passes.NoAnyEnterExit
+                     Language.Smudge.Passes.NoDecidableNontermination
                      Language.Smudge.Passes.NoTransientAnyState
                      Language.Smudge.Passes.NoTransientStateCycles
                      Language.Smudge.Passes.OneEventHandlerPerState

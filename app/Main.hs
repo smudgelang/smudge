@@ -33,6 +33,9 @@ import Language.Smudge.Semantics.Model (
   events_for,
   states_for,
   )
+import Language.Smudge.Semantics.Operation (
+  basicBlocks,
+  )
 import Language.Smudge.Grammar (
   StateMachine,
   WholeState,
@@ -49,7 +52,13 @@ import Language.Smudge.Parsers.Smudge (smudge_file)
 import Language.Smudge.Semantics.Alias (Alias, merge)
 import Language.Smudge.Semantics.Basis (basisAlias, bindBasis)
 import Language.Smudge.Passes.Passes (Severity(..), Fault(..), fatal)
-import Language.Smudge.Passes (make_passes, name_passes, link_passes, type_passes)
+import Language.Smudge.Passes (
+  make_passes,
+  name_passes,
+  link_passes,
+  type_passes,
+  term_passes,
+  )
 import Data.Graph.Extra
 
 import Control.Monad (when)
@@ -135,6 +144,11 @@ checkAndConvert sms os = do
 
             let gs = passWholeStateToGraph sms'''
             let fs = concat $ map make_passes gs
+            mapM print fs
+            when (any fatal fs) $ report_failure $ length fs
+
+            let bs = map (second basicBlocks) gs
+            let fs = concat $ map term_passes bs
             mapM print fs
             when (any fatal fs) $ report_failure $ length fs
 

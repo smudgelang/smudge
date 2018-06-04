@@ -1,0 +1,80 @@
+// Copyright 2018 Bose Corporation.
+// This software is released under the 3-Clause BSD License.
+// The license can be viewed at https://github.com/Bose/Smudge/blob/master/LICENSE
+
+NoTrivialNontermination
+{
+  * A [
+        a -(a)-
+    ]
+}
+
+NoInterstateNontermination
+{
+  * A [
+        a -(b)-> B,
+    ],
+    B [
+        b -(c)-> C,
+    ],
+    C [
+        c -(a)-> A,
+    ]
+}
+
+NoExitNontermination
+{
+  * A [
+        a --> B,
+    ] (b),
+    B [
+        b --> C,
+    ] (c),
+    C [
+        c --> A,
+    ] (a)
+}
+
+NoEnterNontermination
+{
+  * A (a) [
+        a --> B,
+    ],
+    B (b) [
+        b --> C,
+    ],
+    C (c) [
+        c --> A,
+    ]
+}
+
+NoTransientNontermination
+{
+  * A -(b)-> B,
+    B [
+        b --> A,
+    ]
+}
+
+NoIndirectNontermination
+{
+  * A [
+        a -(b, b, b, b, a)-,
+        b --
+    ]
+}
+
+NoGenerativeNontermination
+{
+  * A [
+        a -(a, a, a, a, a)-,
+    ]
+}
+
+NoIndirectGenerativeNontermination
+{
+  * A [
+        a -(b, b, b, b, b)-,
+        b -(a)-
+    ]
+}

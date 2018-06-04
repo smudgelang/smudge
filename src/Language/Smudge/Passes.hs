@@ -18,6 +18,7 @@ import Language.Smudge.Grammar (StateMachine, WholeState)
 import Language.Smudge.Passes.Passes (pass, Fault)
 import Language.Smudge.Passes.NoAnyEnterExit (NoAnyEnterExit)
 import Language.Smudge.Passes.NoDecidableNontermination (NoDecidableNontermination)
+import Language.Smudge.Passes.NoUndecidableTermination (NoUndecidableTermination)
 import Language.Smudge.Passes.NoTransientAnyState (NoTransientAnyState)
 import Language.Smudge.Passes.NoTransientStateCycles (NoTransientStateCycles)
 import Language.Smudge.Passes.UniqueStateNames (UniqueStateNames)
@@ -47,4 +48,5 @@ type_passes :: (StateMachine TaggedName, SymbolTable) -> [Fault]
 type_passes st = concat [pass st (undefined :: UninstantiableTypes)]
 
 term_passes :: (StateMachine TaggedName, [((State TaggedName, Event TaggedName), BasicBlock)]) -> [Fault]
-term_passes bs = concat [pass bs (undefined :: NoDecidableNontermination)]
+term_passes bs = concat [pass bs (undefined :: NoDecidableNontermination),
+                          pass bs (undefined :: NoUndecidableTermination)]

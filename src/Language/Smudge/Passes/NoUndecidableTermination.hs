@@ -10,7 +10,7 @@ module Language.Smudge.Passes.NoUndecidableTermination (
 
 import Language.Smudge.Grammar (StateMachine(..), State(State), Event(Event), Function(FuncEvent))
 import Language.Smudge.Semantics.Model (TaggedName, disqualifyTag)
-import Language.Smudge.Semantics.Operation (BasicBlock)
+import Language.Smudge.Semantics.Operation (BasicBlock(..))
 import Language.Smudge.Parsers.Id (at)
 import Language.Smudge.Passes.Passes (Passable(..), Severity(..), Fault(..))
 import Language.Smudge.Passes.NoDecidableNontermination (NoDecidableNontermination)
@@ -25,9 +25,9 @@ instance Monoid NoUndecidableTermination where
 
 instance Passable NoUndecidableTermination where
     type Representation NoUndecidableTermination = [((State TaggedName, Event TaggedName), BasicBlock)]
-    accumulate   ((_, _), ([], _,   _)) a = a
-    accumulate   ((s, e), ( _, _,  [])) a = a
-    accumulate b@((s, e), (es, _, ses)) a =
+    accumulate   ((_, _), BasicBlock {full = ([], _,   _)}) a = a
+    accumulate   ((s, e), BasicBlock {full = ( _, _,  [])}) a = a
+    accumulate b@((s, e), BasicBlock {full = (es, _, ses)}) a =
         let selfEv (_, (FuncEvent (_, e'))) = e' `elem` (e:es)
             selfEv _ = False
         in if not $ all selfEv ses then a

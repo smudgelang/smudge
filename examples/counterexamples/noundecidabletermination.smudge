@@ -2,7 +2,7 @@
 // This software is released under the 3-Clause BSD License.
 // The license can be viewed at https://github.com/Bose/Smudge/blob/master/LICENSE
 
-NoUndecidableTermination
+NoUndecidableNontermination
 {
   * A [
         a -(b, b)-,
@@ -10,11 +10,20 @@ NoUndecidableTermination
     ]
 }
 
-TooHardToDecide
+NoUndecidableTermination
 {
   * A [
-        a -(b, b)-,
-        b -(c)-,
-        c --
+        x --> B,
+        y -(x, y)-
+    ],
+
+    B [
+        x --> C,
+        y -(x, z, x)-> A,
+        z -(y, x)-> A
+    ],
+
+    C [
+        _ --
     ]
 }

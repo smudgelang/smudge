@@ -6,7 +6,7 @@
 module Language.Smudge.Semantics.Operation (
     handlers,
     finalStates,
-    BasicBlock,
+    BasicBlock(..),
     basicBlocks,
 ) where
 
@@ -133,7 +133,10 @@ finalStates g = nodes g \\
 -- entry is not a self-event.
 --
 -- If none of these is true, termination is undecidable using this algorithm.
-type BasicBlock = ([Event TaggedName], State TaggedName, [SideEffect TaggedName])
+data BasicBlock = BasicBlock {
+        safe :: ([Event TaggedName], State TaggedName, [SideEffect TaggedName]),
+        full :: ([Event TaggedName], State TaggedName, [SideEffect TaggedName])
+    }
 
 data StepState = StepState {
         path :: Seq (Event TaggedName),
@@ -151,9 +154,16 @@ basicBlocks g = foldMapWithKey (\event -> foldMapWithKey (\state _ -> case (stat
           onlyState s = filter ((s ==) . st . snd) $ labNodes g
           clone a = (a, a)
 
+          -- Simulate from a handler until terminating or visiting every
+          -- handler, resulting in the block up until the last step, and the
+          -- block after the last step.  The first is for testing non-
+          -- termination, the second for testing and optimizing termination.
           build :: State TaggedName -> Event TaggedName -> BasicBlock
-          build s e = (toList $ path final, state final, toList $ queue final >< queue' final)
-                where final = fst $ until (Seq.null . queue . snd) (transients . step) $ transients (initial, initial)
+          build s e = BasicBlock {
+                    safe = (toList $ path safeFinal, state safeFinal, toList $ queue safeFinal >< queue' safeFinal),
+                    full = (toList $ path fullFinal, state fullFinal, toList $                    queue' fullFinal)
+                }
+                where (safeFinal, fullFinal) = until (Seq.null . queue . snd) (transients . step) $ transients (initial, initial)
                       initial = StepState {
                             queue = mempty |> (undefined, FuncEvent (undefined, e)),
                             path = mempty, state = s, queue' = mempty, visited = mempty
@@ -171,15 +181,15 @@ basicBlocks g = foldMapWithKey (\event -> foldMapWithKey (\state _ -> case (stat
 
           step :: (StepState, StepState) -> (StepState, StepState)
           step stepstate@(_, prev@(StepState path s q q' visited)) = case viewl q of
-                EmptyL -> stepstate
-                (_, FuncEvent (_, e)) :< rest -> case Map.lookup (s, e) visited of
-                    Just (s', q'') -> (prev, prev {path = path |> e, state = s', queue = rest, queue' = q' >< q''})
-                    Nothing -> case Map.lookup e ahs >>= (! s) of
-                        Just (s_h, e_h) -> clone $ StepState {path = path |> e, state = s', queue = rest >< q' >< q'', queue' = mempty, visited = visited'}
-                            where [(n_h, EnterExitState {ex})]              = onlyState s_h
-                                  [(_, n', Happening {sideEffects, flags})] = filter ((e_h ==) . event . edgeLabel) $ out g n_h
-                                  Just (EnterExitState {st=s', en}) = lab g n'
-                                  q'' = fromList $ sideEffects ++ (if NoTransition `elem` flags then [] else ex ++ en)
-                                  visited' = insert (s, e) (s', q'') visited
-                        Nothing -> clone $ prev {queue = mempty, queue' = q >< q'}
-                otherwise -> clone $ prev {queue = mempty, queue' = q >< q'}
+            EmptyL -> stepstate
+            (_, FuncEvent (_, e)) :< rest -> case Map.lookup (s, e) visited of
+                Just (s', q'') -> (prev, prev {path = path |> e, state = s', queue = rest, queue' = q' >< q''})
+                Nothing -> case Map.lookup e ahs >>= (! s) of
+                    Just (s_h, e_h) -> clone $ StepState {path = path |> e, state = s', queue = rest >< q' >< q'', queue' = mempty, visited = visited'}
+                        where [(n_h, EnterExitState {ex})]              = onlyState s_h
+                              [(_, n', Happening {sideEffects, flags})] = filter ((e_h ==) . event . edgeLabel) $ out g n_h
+                              Just (EnterExitState {st=s', en}) = lab g n'
+                              q'' = fromList $ sideEffects ++ (if NoTransition `elem` flags then [] else ex ++ en)
+                              visited' = insert (s, e) (s', q'') visited
+                    Nothing -> clone $ prev {queue = mempty, queue' = q >< q'}
+            otherwise -> clone $ prev {queue = mempty, queue' = q >< q'}

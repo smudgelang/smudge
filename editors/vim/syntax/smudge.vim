@@ -1,7 +1,7 @@
 " Vim syntax file
 " Language: smudge
 " Maintainer: Nate Bragg <Nate_Bragg@bose.com>
-" Latest Revision: April 25th, 2017
+" Latest Revision: June 11th, 2018
 
 if version < 600
   syn clear
@@ -12,14 +12,17 @@ endif
 let s:id = "\\v(\\\"[-_0-9A-Za-z \t!#$%&'()*+,./{|}~[\\\\\\]\\^`<>;=]+\\\"|[-_0-9A-Za-z]+)"
 
 syn match smudgeComment "//.*$"
-syn match smudgeCommentAfterState "//.*$" contained contains=smudgeComment nextgroup=smudgeArrow,smudgeEventList,smudgeEnterSideEffectList,smudgeCommentAfterState skipwhite skipempty
-execute 'syn match smudgeState "'.s:id.'" contained contains=NONE nextgroup=smudgeArrow,smudgeEventList,smudgeEnterSideEffectList,smudgeCommentAfterState skipwhite skipempty'
+syn match smudgeCommentAfterState "//.*$" contained contains=smudgeComment nextgroup=smudgeArrow,smudgeArrowList,smudgeEventList,smudgeEnterSideEffectList,smudgeCommentAfterState skipwhite skipempty
+execute 'syn match smudgeState "'.s:id.'" contained contains=NONE nextgroup=smudgeArrow,smudgeArrowList,smudgeEventList,smudgeEnterSideEffectList,smudgeCommentAfterState skipwhite skipempty'
 execute 'syn match smudgeStateName "'.s:id.'" contained'
-syn match smudgeDash "-\((\_[^)]\{-})\)\?-" contained contains=smudgeSideEffectList
+syn match smudgeDash "--" contained nextgroup=smudgeDashArrow
+syn region smudgeDashList matchgroup=smudgeDash start="-(" end=")-" fold contained contains=smudgeFunction,smudgeEventName,smudgeQualifiedEventName,smudgeComment nextgroup=smudgeDashArrow
+syn match smudgeDashArrow ">" contained nextgroup=smudgeStateName,smudgeCommentAfterArrow skipwhite skipempty
 syn match smudgeCommentAfterArrow "//.*$" contained contains=smudgeComment nextgroup=smudgeStateName,smudgeCommentAfterArrow skipwhite skipempty
-syn match smudgeArrow "-\((\_[^)]\{-})\)\?->" contained contains=smudgeSideEffectList nextgroup=smudgeStateName,smudgeCommentAfterArrow skipwhite skipempty
-syn match smudgeCommentAfterEvent "//.*$" contained contains=smudgeComment nextgroup=smudgeDash,smudgeArrow,smudgeCommentAfterEvent skipwhite skipempty
-execute 'syn match smudgeEvent "'.s:id.'" contained contains=NONE nextgroup=smudgeDash,smudgeArrow,smudgeCommentAfterEvent skipwhite skipempty'
+syn match smudgeArrow "-->" contained nextgroup=smudgeStateName,smudgeCommentAfterArrow skipwhite skipempty
+syn region smudgeArrowList matchgroup=smudgeArrow start="-(" end=")->" fold contained contains=smudgeFunction,smudgeEventName,smudgeQualifiedEventName,smudgeComment nextgroup=smudgeStateName,smudgeCommentAfterArrow skipwhite skipempty
+syn match smudgeCommentAfterEvent "//.*$" contained contains=smudgeComment nextgroup=smudgeDash,smudgeDashList,smudgeCommentAfterEvent skipwhite skipempty
+execute 'syn match smudgeEvent "'.s:id.'" contained contains=NONE nextgroup=smudgeDash,smudgeDashList,smudgeCommentAfterEvent skipwhite skipempty'
 execute 'syn match smudgeEventName "'.s:id.'" contained'
 execute 'syn match smudgeQualifiedEventName "'.s:id.'\." contained nextgroup=smudgeEventName'
 syn match smudgeFunction "@[_A-Za-z][_0-9A-Za-z]*" contained
@@ -50,6 +53,7 @@ if version >= 508 || !exists("did_hs_syntax_inits")
   HiLink smudgeComment Comment
   HiLink smudgeArrow Operator
   HiLink smudgeDash Operator
+  HiLink smudgeDashArrow Operator
   HiLink smudgeStateContainer Operator
   HiLink smudgeEventContainer Operator
   HiLink smudgeSideEffectContainer Operator

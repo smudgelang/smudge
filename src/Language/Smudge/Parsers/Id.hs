@@ -8,7 +8,7 @@ module Language.Smudge.Parsers.Id (
     showLineCol,
     Declared(..),
     Identifier,
-    host_identifier,
+    foreign_identifier,
     identifier,
     rawtest,
     mangle,
@@ -80,7 +80,7 @@ instance Show Identifier where
 instance Read Identifier where
     readsPrec d = readParen False
                     (\r -> rights [parse ident "" r])
-        where ident = do  id <- spaces *> (host_identifier <|> identifier)
+        where ident = do  id <- spaces *> (foreign_identifier <|> identifier)
                           rest <- getInput
                           return (id, rest)
 
@@ -92,8 +92,8 @@ mangle :: (Name -> Name) -> Identifier -> Name
 mangle f (Identifier _ (RawId name)) = f name
 mangle _ (Identifier _ (CookedId name)) = name
 
-host_identifier :: Parser Identifier
-host_identifier = char '@' *> c_identifier
+foreign_identifier :: Parser Identifier
+foreign_identifier = char '@' *> c_identifier
 
 c_identifier :: Parser Identifier
 c_identifier = Identifier <$> getPosition <*> (CookedId <$> ((:) <$> nondigit <*> many (nondigit <|> digit)))

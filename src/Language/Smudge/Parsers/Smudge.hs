@@ -22,7 +22,7 @@ import Language.Smudge.Grammar (
 import Language.Smudge.Parsers.Id (
   Identifier,
   identifier,
-  host_identifier,
+  foreign_identifier,
   )
 
 import Text.Parsec.String (
@@ -127,7 +127,7 @@ qualified_event = try ((,) <$> state_machine_name <* (char '.') <*> event_name)
                    <|> (,) <$> return StateMachineSame <*> event_name
 
 function_call :: Parser Identifier
-function_call = host_identifier
+function_call = foreign_identifier
 
 state_title :: Parser (State Identifier, [StateFlag])
 state_title = (,) <$> state_name <*> pure []

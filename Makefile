@@ -28,7 +28,7 @@ COMMA=,
 
 .PHONY: all tags build examples doc \
         release stage package zip tgz exe deb \
-        newticket todo clean distclean
+        newticket testticket todo clean distclean
 
 all: build examples doc TAGS
 

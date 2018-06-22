@@ -1,0 +1,37 @@
+Title: Tweak mangling of some internal names.
+
+It is possible to make machines whose state-event handlers alias other
+functions.  E.g.,
+
+<<*>>=
+basicInterface {
+  * Free [ Message -- ],
+    Send [ Message -- ],
+    Handle [ Message -- ],
+    State [ name -- ],
+    Event [ name -- ],
+    _ [
+        initialize --,
+        state --,
+    ]
+}
+@
+
+There is no way any of this is desirable since it can't make any sense, and it
+can be easily mitigated by modifying the mangling of these symbols.
+
+Furthermore, nasty stuff like this is possible:
+
+<<*>>=
+stateNamedEvent {
+  * event [ handle -- ],
+    _ [ event -- ]
+}
+
+explicitEnterExit {
+  * st (@f) [
+        enter -(@g)-,
+        exit -(@h)-> st
+    ] (@j)
+}
+@

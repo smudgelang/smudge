@@ -153,6 +153,12 @@ smudge-$(SMUDGE_VERSION)-linux.deb: stage
 newticket:
 	cd tickets && ./mkticket.sh "$(title)"
 
+testticket:
+	@cd tickets && \
+	find -name $(TICKET) | xargs notangle > $(TICKET).smudge && \
+	stack exec smudge -- $(TICKET).smudge && \
+	rm $(TICKET).smudge
+
 todo:
 	@find roadmap/$V | while read -r fn; do find -L tickets/ -xdev -samefile $$fn; done
 

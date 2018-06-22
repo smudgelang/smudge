@@ -2,7 +2,9 @@ Title: SMs without events
 
 Right now, a state machine like:
 
+<<*>>=
     sm { *A [ _ -- ] }
+@
 
 results in the output:
 

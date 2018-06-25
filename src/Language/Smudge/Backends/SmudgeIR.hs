@@ -374,7 +374,7 @@ lowerMachine cfg ssyms (StateMachine smName, g') = [
                   es = case handler of
                            [(s, e')] -> [ExprS $ FunCall (qualify (sName smName s, mangleEv e')) (if e == e' then [Value $ Var event_var] else [])]
                            [] -> call_panic_f [Literal panic_s, FunCall stateName_f [Value $ Var stateVar], FunCall eventName_f [Value $ Var wrap_name]]
-                  panic_s = disqualifyTag smName ++ "[%s]: Unhandled event \"%s\"\n"
+                  panic_s = disqualifyTag smName ++ "{%s[%s]}: Unhandled event\n"
 
         initializeFun :: QualifiedName -> Def QualifiedName
         initializeFun s = FunDef initialize_f [] (Internal, Void :-> Void) ds es
@@ -416,10 +416,10 @@ lowerMachine cfg ssyms (StateMachine smName, g') = [
                        [Cases (Value $ SumVar wrap_name) cases defaults]
                   logCases = [(evt_id e, logAnEvent) | Event e <- events, debug cfg, Event e `member` logEvent cfg]
                   logAnEvent = call_print_f [Literal format_s, FunCall stateName_f [Value $ Var stateVar], FunCall eventName_f [Value $ Var wrap_name]]
-                  format_s = disqualifyTag smName ++ "[%s]: Handling \"%s\"\n"
+                  format_s = disqualifyTag smName ++ "{%s[%s]}: Handling\n"
                   cases = [(evt_id e, [ExprS $ FunCall (qualify (qe, "handle")) [Value $ Field (SumVar wrap_name) qe]]) | Event e <- events, let qe = qualify e]
                   defaults = call_panic_f [Literal panic_s, FunCall stateName_f [Value $ Var stateVar], Literal ""]
-                  panic_s = disqualifyTag smName ++ "[%s]: Invalid event ID\n"
+                  panic_s = disqualifyTag smName ++ "{%s}: Invalid event ID\n"
 
         freeMessageFun :: Def QualifiedName
         freeMessageFun = FunDef f_name [wrap_name] (syms ! TagFunction f_name) [] es
@@ -427,7 +427,7 @@ lowerMachine cfg ssyms (StateMachine smName, g') = [
                   es = [Cases (Value $ SumVar wrap_name) cases defaults]
                   cases = [(evt_id e, [ExprS $ FunCall (qualify "free") [Value $ Field (SumVar wrap_name) $ qualify e]]) | Event e <- events]
                   defaults = call_panic_f [Literal panic_s, FunCall stateName_f [Value $ Var stateVar], Literal ""]
-                  panic_s = disqualifyTag smName ++ "[%s]: Invalid event ID\n"
+                  panic_s = disqualifyTag smName ++ "{%s}: Invalid event ID\n"
 
         stateEventFun :: State TaggedName -> Happening -> State TaggedName -> Bool -> Def QualifiedName
         stateEventFun st h st' do_exit = FunDef f_name eventNames (Internal, ty) [] $ logAState ++ map ExprS es
@@ -438,7 +438,7 @@ lowerMachine cfg ssyms (StateMachine smName, g') = [
 
                   logAState = if not $ event h == EventEnter && st `member` logState cfg then []
                               else call_print_f [Literal format_s, FunCall stateName_f [Value $ Var stateVar], Literal ""]
-                  format_s = disqualifyTag smName ++ "[%s]: Entering state\n"
+                  format_s = disqualifyTag smName ++ "{%s}: Entering state\n"
 
                   event_var = head eventNames
                   dest_state = qualify $ sName smName st'

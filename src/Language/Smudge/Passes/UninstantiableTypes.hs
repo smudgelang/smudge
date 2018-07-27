@@ -15,10 +15,12 @@ import Language.Smudge.Semantics.Solver (Ty, instantiable, SymbolTable)
 import Language.Smudge.Passes.Passes (Passable(..), Severity(..), Fault(..))
 
 data UninstantiableTypes = UninstantiableTypes [(TaggedName, Ty)]
+instance Semigroup UninstantiableTypes where
+    (UninstantiableTypes tys) <> (UninstantiableTypes tys') =
+        UninstantiableTypes (tys <> tys')
 instance Monoid UninstantiableTypes where
     mempty = UninstantiableTypes mempty
-    mappend (UninstantiableTypes tys) (UninstantiableTypes tys') =
-        UninstantiableTypes (mappend tys tys')
+    mappend = (<>)
 
 instance Passable UninstantiableTypes where
     type Representation UninstantiableTypes = SymbolTable

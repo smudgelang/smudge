@@ -20,10 +20,14 @@ import Data.Monoid (Monoid(..))
 import Data.List (intercalate)
 
 data (Graph gr) => OneInitialState gr = OneInitialState (Adj Happening) (Adj Happening)
+
+instance (Graph gr) => Semigroup (OneInitialState gr) where
+    (OneInitialState is os) <> (OneInitialState is' os') =
+        OneInitialState (is <> is') (os <> os')
+
 instance (Graph gr) => Monoid (OneInitialState gr) where
     mempty = OneInitialState mempty mempty
-    mappend (OneInitialState is os) (OneInitialState is' os') =
-        OneInitialState (mappend is is') (mappend os os')
+    mappend = (<>)
 
 instance (Graph gr) => Passable (OneInitialState gr) where
     type Representation (OneInitialState gr) = gr EnterExitState Happening

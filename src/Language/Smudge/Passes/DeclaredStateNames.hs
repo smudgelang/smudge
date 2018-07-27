@@ -17,10 +17,12 @@ import Language.Smudge.Passes.Passes (Passable(..), Severity(..), Fault(..))
 import Data.Set (Set, singleton, fromList, toList, (\\))
 
 data DeclaredStateNames = DeclaredStateNames (Set (State TaggedName)) (Set (State TaggedName))
+instance Semigroup DeclaredStateNames where
+    (DeclaredStateNames sf st) <> (DeclaredStateNames sf' st') =
+        DeclaredStateNames (sf <> sf') (st <> st')
 instance Monoid DeclaredStateNames where
     mempty = DeclaredStateNames mempty mempty
-    mappend (DeclaredStateNames sf st) (DeclaredStateNames sf' st') =
-        DeclaredStateNames (mappend sf sf') (mappend st st')
+    mappend = (<>)
 
 instance Passable DeclaredStateNames where
     type Representation DeclaredStateNames = [WholeState TaggedName]

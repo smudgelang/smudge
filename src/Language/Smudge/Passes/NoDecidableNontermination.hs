@@ -19,10 +19,12 @@ import Data.Maybe (mapMaybe, isJust)
 import Data.Monoid (Monoid(..))
 
 data NoDecidableNontermination = NoDecidableNontermination [(State TaggedName, Event TaggedName)]
+instance Semigroup NoDecidableNontermination where
+    (NoDecidableNontermination as) <> (NoDecidableNontermination bs) =
+        NoDecidableNontermination $ as <> bs
 instance Monoid NoDecidableNontermination where
     mempty = NoDecidableNontermination []
-    mappend (NoDecidableNontermination as) (NoDecidableNontermination bs) =
-        NoDecidableNontermination $ mappend as bs
+    mappend = (<>)
 
 data Pat a = PatSym a
            | PatCat (Pat a) (Pat a)

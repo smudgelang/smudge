@@ -18,10 +18,12 @@ import Language.Smudge.Passes.NoDecidableNontermination (NoDecidableNonterminati
 import Data.Monoid (Monoid(..))
 
 data NoUndecidableTermination = NoUndecidableTermination [(NoDecidableNontermination, (State TaggedName, Event TaggedName))]
+instance Semigroup NoUndecidableTermination where
+    (NoUndecidableTermination as) <> (NoUndecidableTermination bs) =
+        NoUndecidableTermination $ as <> bs
 instance Monoid NoUndecidableTermination where
     mempty = NoUndecidableTermination []
-    mappend (NoUndecidableTermination as) (NoUndecidableTermination bs) =
-        NoUndecidableTermination $ mappend as bs
+    mappend = (<>)
 
 instance Passable NoUndecidableTermination where
     type Representation NoUndecidableTermination = [((State TaggedName, Event TaggedName), BasicBlock)]

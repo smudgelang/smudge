@@ -19,9 +19,11 @@ import Data.Monoid (Monoid(..))
 import Data.List (intercalate)
 
 data (Graph gr) => NoTransientAnyState gr = NoTransientAnyState [Node] [(Node, Node)]
+instance (Graph gr) => Semigroup (NoTransientAnyState gr) where
+    (NoTransientAnyState a1 b1) <> (NoTransientAnyState a2 b2) = NoTransientAnyState (a1 <> a2) (b1 <> b2)
 instance (Graph gr) => Monoid (NoTransientAnyState gr) where
     mempty = NoTransientAnyState mempty mempty
-    mappend (NoTransientAnyState a1 b1) (NoTransientAnyState a2 b2) = NoTransientAnyState (mappend a1 a2) (mappend b1 b2)
+    mappend = (<>)
 
 instance (Graph gr) => Passable (NoTransientAnyState gr) where
     type Representation (NoTransientAnyState gr) = gr EnterExitState Happening

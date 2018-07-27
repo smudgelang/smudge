@@ -18,10 +18,15 @@ import Data.List (sort, intercalate, group, (\\))
 import Data.Monoid (Monoid(..))
 
 data UniqueStateNames = UniqueStateNames [State TaggedName]
+
+instance Semigroup UniqueStateNames where
+    (UniqueStateNames sl) <> (UniqueStateNames sl') =
+        UniqueStateNames (sl <> sl')
+
+
 instance Monoid UniqueStateNames where
     mempty = UniqueStateNames mempty
-    mappend (UniqueStateNames sl) (UniqueStateNames sl') =
-        UniqueStateNames (mappend sl sl')
+    mappend = (<>)
 
 instance Passable UniqueStateNames where
     type Representation UniqueStateNames = [WholeState TaggedName]

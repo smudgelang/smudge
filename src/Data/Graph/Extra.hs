@@ -30,6 +30,9 @@ import Data.Graph.Inductive.Graph (
 import Data.Map ((!), fromList)
 import Data.Monoid (Monoid(..))
 
+instance {-# OVERLAPS #-} DynGraph gr => Semigroup (gr a b) where
+    (<>) = grMerge
+
 instance {-# OVERLAPS #-} DynGraph gr => Monoid (gr a b) where
     mempty = empty
     mappend = grMerge

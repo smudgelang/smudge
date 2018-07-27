@@ -83,7 +83,7 @@ instantiable (t :-> t') = instantiable t && instantiable t'
 instantiable         _  = False
 
 newtype SymbolTable = SymbolTable SymTab
-    deriving (Show, Eq, Ord, Monoid)
+    deriving (Show, Eq, Ord, Semigroup, Monoid)
 
 instance AbstractFoldable SymbolTable where
     type FoldContext SymbolTable = (TaggedName, (Binding, Ty))

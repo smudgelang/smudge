@@ -24,9 +24,11 @@ import Data.List (sort, group)
 import GHC.Exts (fromList, toList)
 
 data (Graph gr) => OneEventHandlerPerState gr = OneEventHandlerPerState (MonoidalMap Node [Event TaggedName])
+instance (Graph gr) => Semigroup (OneEventHandlerPerState gr) where
+    (OneEventHandlerPerState a) <> (OneEventHandlerPerState b) = OneEventHandlerPerState (a <> b)
 instance (Graph gr) => Monoid (OneEventHandlerPerState gr) where
     mempty = OneEventHandlerPerState mempty
-    mappend (OneEventHandlerPerState a) (OneEventHandlerPerState b) = OneEventHandlerPerState (mappend a b)
+    mappend = (<>)
 
 instance (Graph gr) => Passable (OneEventHandlerPerState gr) where
     type Representation (OneEventHandlerPerState gr) = gr EnterExitState Happening

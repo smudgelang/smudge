@@ -25,10 +25,12 @@ import Data.Set (Set, fromList, toList, map, (\\))
 import Prelude hiding (map)
 
 data DeclaredEventNames = DeclaredEventNames (Set (QEvent TaggedName)) (Set (QEvent TaggedName))
+instance Semigroup DeclaredEventNames where
+    (DeclaredEventNames eh se) <> (DeclaredEventNames eh' se') =
+        DeclaredEventNames (eh <> eh') (se <> se')
 instance Monoid DeclaredEventNames where
     mempty = DeclaredEventNames mempty mempty
-    mappend (DeclaredEventNames eh se) (DeclaredEventNames eh' se') =
-        DeclaredEventNames (mappend eh eh') (mappend se se')
+    mappend = (<>)
 
 qesOfSes :: [SideEffect TaggedName] -> [QEvent TaggedName]
 qesOfSes ses = [qe | (_, FuncTyped qe@(_, Event _)) <- ses] ++

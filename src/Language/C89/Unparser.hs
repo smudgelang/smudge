@@ -8,6 +8,8 @@ module Language.C89.Unparser (
     renderPretty
 ) where
 
+import Prelude hiding ((<>))
+
 import Language.C89.Grammar (
     (#:),
     EndBrace(..),

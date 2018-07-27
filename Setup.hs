@@ -3,7 +3,7 @@
 -- The license can be viewed at https://github.com/Bose/Smudge/blob/master/LICENSE
 
 import Distribution.PackageDescription (PackageDescription(..))
-import Distribution.Package (packageVersion, packageName, PackageIdentifier(..), PackageName(..))
+import Distribution.Package (packageVersion, packageName, PackageIdentifier(..), unPackageName)
 import Distribution.Simple (defaultMainWithHooks, simpleUserHooks, UserHooks(..), Args)
 import Distribution.Simple.BuildPaths (autogenModulesDir)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo)
@@ -12,7 +12,7 @@ import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, rewriteFile)
 import System.FilePath ((</>), (<.>))
 import System.Exit (ExitCode(ExitSuccess))
 import System.Process (readProcessWithExitCode)
-import Data.Version (showVersion)
+import Distribution.Version (showVersion)
 import Data.List (dropWhileEnd)
 import Data.Char (isSpace)
 
@@ -25,7 +25,7 @@ packageInfoUserHooks =
     }
 
 app_name :: PackageIdentifier -> String
-app_name packageInfo = ((\ (PackageName s) -> s) $ packageName packageInfo)
+app_name packageInfo = unPackageName $ packageName packageInfo
 
 try_commands :: String -> [(String, [String])] -> IO String
 try_commands def [] = return def

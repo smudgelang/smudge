@@ -5,14 +5,14 @@
 import Distribution.PackageDescription (PackageDescription(..))
 import Distribution.Package (packageVersion, packageName, PackageIdentifier(..), unPackageName)
 import Distribution.Simple (defaultMainWithHooks, simpleUserHooks, UserHooks(..), Args)
-import Distribution.Simple.BuildPaths (autogenModulesDir)
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo)
+import Distribution.Simple.BuildPaths (autogenComponentModulesDir)
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo, withExeLBI)
 import Distribution.Simple.Setup (BuildFlags(..), fromFlag)
-import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, rewriteFile)
+import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, rewriteFileEx)
 import System.FilePath ((</>), (<.>))
 import System.Exit (ExitCode(ExitSuccess))
 import System.Process (readProcessWithExitCode)
-import Distribution.Version (showVersion)
+import Distribution.Pretty (prettyShow)
 import Data.List (dropWhileEnd)
 import Data.Char (isSpace)
 
@@ -39,15 +39,16 @@ build_commit = do
     return $ dropWhileEnd isSpace out
 
 genPackageInfoHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> BuildFlags -> IO ()
-genPackageInfoHook pkg lbi uhs bfs= do
-    createDirectoryIfMissingVerbose (fromFlag $ buildVerbosity bfs) True (autogenModulesDir lbi)
-    let packageInfoModulePath = autogenModulesDir lbi </> cfg_name <.> "hs"
-    rewriteFile packageInfoModulePath . generate =<< build_commit
-    buildHook simpleUserHooks pkg lbi uhs bfs
+genPackageInfoHook pkg lbi uhs bfs = do
+    withExeLBI pkg lbi $ \_ clbi -> do
+        createDirectoryIfMissingVerbose (fromFlag $ buildVerbosity bfs) True (autogenComponentModulesDir lbi clbi)
+        let packageInfoModulePath = autogenComponentModulesDir lbi clbi </> cfg_name <.> "hs"
+        rewriteFileEx (fromFlag $ buildVerbosity bfs) packageInfoModulePath . generate =<< build_commit
+        buildHook simpleUserHooks pkg lbi uhs bfs
     where cfg_name = "PackageInfo"
           generate cmt = "module " ++ cfg_name ++ " where\n" ++
                          "\n" ++
-                         "version     = " ++ (show $ showVersion $ packageVersion $ package pkg) ++ "\n" ++
+                         "version     = " ++ (prettyShow $ packageVersion $ package pkg) ++ "\n" ++
                          "buildCommit = " ++ (show $ cmt) ++ "\n" ++
                          "appName     = " ++ (show $ app_name $ package pkg) ++ "\n" ++
                          "copyright   = " ++ (show $ copyright pkg) ++ "\n" ++

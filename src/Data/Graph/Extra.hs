@@ -35,7 +35,7 @@ instance {-# OVERLAPS #-} DynGraph gr => Semigroup (gr a b) where
 
 instance {-# OVERLAPS #-} DynGraph gr => Monoid (gr a b) where
     mempty = empty
-    mappend = grMerge
+    mappend = (<>)
 
 grMerge :: DynGraph gr => gr a b -> gr a b -> gr a b
 grMerge f g = insEdges (labEdges g') $ insNodes (labNodes g') f

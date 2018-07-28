@@ -36,7 +36,7 @@ basisAlias namespace = fromList $ map q [
     where q n = (qualify n, qualify(namespace, n))
 
 bindBasis :: Alias QualifiedName -> [StateMachine QualifiedName] -> SymbolTable
-bindBasis aliases sms = mappend exports externs
+bindBasis aliases sms = exports <> externs
     where rename' = rename aliases . qualify
           void = TagBuiltin $ qualify "void"
           str = TagBuiltin $ qualify "char"

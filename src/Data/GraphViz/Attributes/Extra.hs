@@ -26,15 +26,15 @@ import Text.Wrap (wrapText, defaultWrapSettings)
 
 instance Semigroup H.Table where
     (H.HTable f1 a1 r1) <> (H.HTable f2 a2 r2) =
-        H.HTable (nub <$> mappend f1 f2) (nub $ mappend a1 a2) (mappend r1 r2)
+        H.HTable (nub <$> f1 <> f2) (nub $ a1 <> a2) (r1 <> r2)
 
 instance Monoid H.Table where
     mempty = H.HTable Nothing [] []
     mappend = (<>)
 
 instance Semigroup H.Label where
-    (H.Text a) <> (H.Text b) = H.Text $ mappend a b
-    a <> b = H.Table $ mappend (toTable a) (toTable b)
+    (H.Text a) <> (H.Text b) = H.Text $ a <> b
+    a <> b = H.Table $ (toTable a) <> (toTable b)
         where toTable (H.Table t) = t
               toTable l = H.HTable Nothing [] [H.Cells [H.LabelCell [] l]]
 
@@ -43,11 +43,11 @@ instance Monoid H.Label where
     mappend = (<>)
 
 instance Semigroup Label where
-    (StrLabel a) <> (StrLabel b) = StrLabel (mappend a b)
-    (RecordLabel a) <> (RecordLabel b) = RecordLabel (mappend a b)
-    (StrLabel a) <> (RecordLabel b) = RecordLabel (mappend [FieldLabel a] b)
-    (RecordLabel a) <> (StrLabel b) = RecordLabel (mappend a [FieldLabel b])
-    a <> b = HtmlLabel $ mappend (toHtml a) (toHtml b)
+    (StrLabel a) <> (StrLabel b) = StrLabel (a <> b)
+    (RecordLabel a) <> (RecordLabel b) = RecordLabel (a <> b)
+    (StrLabel a) <> (RecordLabel b) = RecordLabel ([FieldLabel a] <> b)
+    (RecordLabel a) <> (StrLabel b) = RecordLabel (a <> [FieldLabel b])
+    a <> b = HtmlLabel $ (toHtml a) <> (toHtml b)
         where toHtml (HtmlLabel l) = l
               toHtml (StrLabel l) = H.Text $ escapeNewlines l
               toHtml (RecordLabel fs) = H.Table $ toTable FromTop fs

@@ -49,7 +49,7 @@ instance Passable NoDecidableNontermination where
             pat = PatCat (PatStar $ foldr1 PatCat syms) $ PatCat sym $ PatStar sym
             (m, rest) = first (match pat . mapMaybe evtOf) $ span (isJust . evtOf) ses
         in case (s == s', rest, m) of
-        (True, [], Just (_, [])) -> mappend (NoDecidableNontermination [(s, e)]) a
+        (True, [], Just (_, [])) -> NoDecidableNontermination [(s, e)] <> a
         otherwise -> a
     test (StateMachine sm_name, _) (NoDecidableNontermination nts) =
         [Fault ERROR (at e) $ (disqualifyTag sm_name) ++ ": Irrefutable cycles are forbidden: state " ++ show (disqualifyTag s) ++

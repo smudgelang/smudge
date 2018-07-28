@@ -25,7 +25,7 @@ instance Monoid UninstantiableTypes where
 instance Passable UninstantiableTypes where
     type Representation UninstantiableTypes = SymbolTable
     accumulate (_, (_, tau)) a | instantiable tau = a
-    accumulate (n, (_, tau)) a                    = mappend (UninstantiableTypes [(n, tau)]) a
+    accumulate (n, (_, tau)) a                    = UninstantiableTypes [(n, tau)] <> a
     test _ (UninstantiableTypes tys) =
         case tys of
         [] -> []

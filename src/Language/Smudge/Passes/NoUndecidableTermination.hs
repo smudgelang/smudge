@@ -33,7 +33,7 @@ instance Passable NoUndecidableTermination where
         let selfEv (_, (FuncEvent (_, e'))) = e' `elem` (e:es)
             selfEv _ = False
         in if not $ all selfEv ses then a
-           else mappend (NoUndecidableTermination [(accumulate b (mempty :: NoDecidableNontermination), (s, e))]) a
+           else NoUndecidableTermination [(accumulate b (mempty :: NoDecidableNontermination), (s, e))] <> a
     test bs@(StateMachine sm_name, _) (NoUndecidableTermination nts) =
         case map snd $ filter (null . test bs . fst) nts of
         []  -> []

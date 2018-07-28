@@ -32,7 +32,7 @@ instance (Graph gr) => Monoid (OneEventHandlerPerState gr) where
 
 instance (Graph gr) => Passable (OneEventHandlerPerState gr) where
     type Representation (OneEventHandlerPerState gr) = gr EnterExitState Happening
-    accumulate (i, n , _, o) a = mappend (mappend (build i) (build $ fmap (fmap $ const n) o)) a
+    accumulate (i, n , _, o) a = build i <> build (fmap (fmap $ const n) o) <> a
         where build = OneEventHandlerPerState . fromList . map (fmap (pure . event) . swap)
     test (StateMachine sm_name, g) (OneEventHandlerPerState es) =
         case filter (not . null . snd) $ map (st . fromJust . lab g *** filter ((> 1) . length) . group . sort) $ toList es of

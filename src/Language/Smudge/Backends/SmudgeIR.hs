@@ -69,7 +69,7 @@ instance Functor Def where
     fmap f (DataDef d) = DataDef $ fmap f d
 
 instance Foldable Def where
-    foldMap f (FunDef name ps (b, ty) ds ss) = f name `mappend` foldMap f ps `mappend` foldMap f ty `mappend` foldMap (foldMap f) ds `mappend` foldMap (foldMap f) ss
+    foldMap f (FunDef name ps (b, ty) ds ss) = f name <> foldMap f ps <> foldMap f ty <> foldMap (foldMap f) ds <> foldMap (foldMap f) ss
     foldMap f (DataDef d) = foldMap f d
 
 instance Traversable Def where
@@ -91,7 +91,7 @@ instance Functor Ty where
 instance Foldable Ty where
     foldMap f Void = mempty
     foldMap f (Ty n) = foldMap f n
-    foldMap f (tau :-> tau') = foldMap f tau `mappend` foldMap f tau'
+    foldMap f (tau :-> tau') = foldMap f tau <> foldMap f tau'
 
 instance Traversable Ty where
     traverse f Void = pure Void
@@ -106,7 +106,7 @@ instance Functor DataDef where
     fmap f (VarDef b d) = VarDef b (fmap f d)
 
 instance Foldable DataDef where
-    foldMap f (TyDef x d) = foldMap f x `mappend` foldMap f d
+    foldMap f (TyDef x d) = foldMap f x <> foldMap f d
     foldMap f (VarDef b d) = foldMap f d
 
 instance Traversable DataDef where
@@ -122,7 +122,7 @@ instance Functor TyDec where
 
 instance Foldable TyDec where
     foldMap f (EvtDec ty) = foldMap f ty
-    foldMap f (SumDec x cs) = foldMap f x `mappend` foldMap (uncurry mappend . (f *** foldMap (foldMap f))) cs
+    foldMap f (SumDec x cs) = foldMap f x <> foldMap (uncurry (<>) . (f *** foldMap (foldMap f))) cs
 
 instance Traversable TyDec where
     traverse f (EvtDec ty) = EvtDec <$> traverse f ty
@@ -162,10 +162,10 @@ instance Functor f => Functor (VarDec f) where
     fmap f (SizeDec x i) = SizeDec (f x) (fmap f i)
 
 instance Foldable f => Foldable (VarDec f) where
-    foldMap f (ValDec x ty i) = f x `mappend` foldMap f ty `mappend` foldMap (foldMap f) i
-    foldMap f (SumVDec x ty i) = f x `mappend` foldMap f ty `mappend` foldMap (uncurry mappend . (f *** foldMap f)) i
-    foldMap f (ListDec x ty i) = f x `mappend` foldMap f ty `mappend` foldMap (foldMap (foldMap f)) i
-    foldMap f (SizeDec x i) = f x `mappend` foldMap f i
+    foldMap f (ValDec x ty i) = f x <> foldMap f ty <> foldMap (foldMap f) i
+    foldMap f (SumVDec x ty i) = f x <> foldMap f ty <> foldMap (uncurry (<>) . (f *** foldMap f)) i
+    foldMap f (ListDec x ty i) = f x <> foldMap f ty <> foldMap (foldMap (foldMap f)) i
+    foldMap f (SizeDec x i) = f x <> foldMap f i
 
 instance Traversable f => Traversable (VarDec f) where
     traverse f (ValDec x ty i) = ValDec <$> f x <*> traverse f ty <*> traverse (traverse f) i
@@ -185,8 +185,8 @@ instance Functor Stmt where
     fmap f (ExprS e) = ExprS $ fmap f e
 
 instance Foldable Stmt where
-    foldMap f (Cases e cs ds) = foldMap f e `mappend` foldMap (uncurry mappend . (f *** foldMap (foldMap f))) cs `mappend` foldMap (foldMap f) ds
-    foldMap f (If e ss) = foldMap f e `mappend` foldMap (foldMap f) ss
+    foldMap f (Cases e cs ds) = foldMap f e <> foldMap (uncurry (<>) . (f *** foldMap (foldMap f))) cs <> foldMap (foldMap f) ds
+    foldMap f (If e ss) = foldMap f e <> foldMap (foldMap f) ss
     foldMap f (Return e) = foldMap f e
     foldMap f (ExprS e) = foldMap f e
 
@@ -214,13 +214,13 @@ instance Functor Expr where
     fmap f (SafeIndex a i b d) = SafeIndex (fmap f a) (fmap f i) (fmap f b) d
 
 instance Foldable Expr where
-    foldMap f (FunCall x es) = f x `mappend` foldMap (foldMap f) es
+    foldMap f (FunCall x es) = f x <> foldMap (foldMap f) es
     foldMap f (Literal v) = mempty
     foldMap f  Null = mempty
     foldMap f (Value v) = foldMap f v
-    foldMap f (Assign v e) = foldMap f v `mappend` foldMap f e
-    foldMap f (Neq x1 x2) = f x1 `mappend` f x2
-    foldMap f (SafeIndex a i b d) = foldMap f a `mappend` foldMap f i `mappend` foldMap f b
+    foldMap f (Assign v e) = foldMap f v <> foldMap f e
+    foldMap f (Neq x1 x2) = f x1 <> f x2
+    foldMap f (SafeIndex a i b d) = foldMap f a <> foldMap f i <> foldMap f b
 
 instance Traversable Expr where
     traverse f (FunCall x es) = FunCall <$> f x <*> traverse (traverse f) es
@@ -243,7 +243,7 @@ instance Functor Var where
 instance Foldable Var where
     foldMap f (Var x) = f x
     foldMap f (SumVar x) = f x
-    foldMap f (Field v x) = foldMap f v `mappend` f x
+    foldMap f (Field v x) = foldMap f v <> f x
 
 instance Traversable Var where
     traverse f (Var x) = Var <$> f x

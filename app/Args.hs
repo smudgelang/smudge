@@ -78,7 +78,7 @@ printUsage :: IO ()
 printUsage = putStr (usageInfo header all_opts)
 
 printVersion :: IO ()
-printVersion = putStrLn (appName ++ " version: " ++ version)
+printVersion = putStrLn (appName ++ " version: " ++ show version)
             >> putStrLn ("build commit: " ++ buildCommit)
 
 getAllOpt :: [String] -> IO ([Options], [String])

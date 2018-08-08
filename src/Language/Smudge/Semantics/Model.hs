@@ -121,6 +121,7 @@ data Tagged a =
         | TagEvent a
         | TagFunction a
         | TagBuiltin a
+        | TagUnused a
     deriving (Show, Eq, Ord)
 
 instance Functor Tagged where
@@ -129,6 +130,7 @@ instance Functor Tagged where
     fmap f (TagEvent x) = TagEvent $ f x
     fmap f (TagFunction x) = TagFunction $ f x
     fmap f (TagBuiltin x) = TagBuiltin $ f x
+    fmap f (TagUnused x) = TagUnused $ f x
 
 instance Foldable Tagged where
     foldMap f (TagMachine x) = f x
@@ -136,6 +138,7 @@ instance Foldable Tagged where
     foldMap f (TagEvent x) = f x
     foldMap f (TagFunction x) = f x
     foldMap f (TagBuiltin x) = f x
+    foldMap f (TagUnused x) = f x
 
 instance Traversable Tagged where
     traverse f (TagMachine x) = TagMachine <$> f x
@@ -143,6 +146,7 @@ instance Traversable Tagged where
     traverse f (TagEvent x) = TagEvent <$> f x
     traverse f (TagFunction x) = TagFunction <$> f x
     traverse f (TagBuiltin x) = TagBuiltin <$> f x
+    traverse f (TagUnused x) = TagUnused <$> f x
 
 type TaggedName = Tagged QualifiedName
 
@@ -152,6 +156,7 @@ instance Declared a => Declared (Tagged a) where
     at (TagEvent n) = at n
     at (TagFunction n) = at n
     at (TagBuiltin n) = at n
+    at (TagUnused n) = at n
 
 instance Qualifiable a => Qualifiable (Tagged a) where
     qualify (TagMachine n) = qualify n
@@ -159,6 +164,7 @@ instance Qualifiable a => Qualifiable (Tagged a) where
     qualify (TagEvent n) = qualify n
     qualify (TagFunction n) = qualify n
     qualify (TagBuiltin n) = qualify n
+    qualify (TagUnused n) = qualify n
 
 disqualifyTag :: TaggedName -> Name
 disqualifyTag = disqualify . qualify

@@ -179,7 +179,6 @@ convertIR dodec dodef (aliases, ir) =
                   ptr_size_e = (#:) (SIZEOF $ Right $ Trio LEFTPAREN (TypeName (fromList [Right CONST, Left CHAR])
                                                                                (Just $ This $ fromList [POINTER Nothing])) RIGHTPAREN) (:#)
                   count_e = (#:) (a_size_e `DIV` ptr_size_e) (:#)
-        convertVarDef v@(UnusedDec _ _)   = (convertVarDec v, Nothing)
 
         convertVarDec :: VarDec a (FullyQualAndEvent Identifier) -> (SpecifierQualifierList, Declarator)
         convertVarDec (ValDec x ty _)  = convertDeclarator (fullQual x) (fmap fullQual ty)
@@ -187,7 +186,6 @@ convertIR dodec dodef (aliases, ir) =
         convertVarDec (ListDec x ty _) = second (convertFromAbsDeclarator (fullQual x) . Just . addList . theseAndThat Nothing id . sequence) $ convertAbsDeclarator (fmap fullQual ty)
             where addList = fmapThis (const $ fromList [POINTER $ Just $ fromList [CONST]]) . fmap (\a -> CDirectAbstractDeclarator a LEFTSQUARE Nothing RIGHTSQUARE)
         convertVarDec (SizeDec x _)    = (fromList [Right CONST, Left UNSIGNED, Left INT], (Declarator Nothing $ IDirectDeclarator $ fullQual x))
-        convertVarDec (UnusedDec x ty)  = convertDeclarator (fullQual x) (fmap fullQual ty)
 
         id_field = rename aliases "id"
         event_field = rename aliases "event"

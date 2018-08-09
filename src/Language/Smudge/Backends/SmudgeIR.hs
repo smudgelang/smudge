@@ -154,28 +154,24 @@ data VarDec f x = ValDec x (Ty x) (f (Expr x))
                 | SumVDec x (Ty x) (f (x, Expr x))
                 | ListDec x (Ty x) (f [Expr x])
                 | SizeDec x (f x)
-                | UnusedDec x (Ty x)
 
 instance Functor f => Functor (VarDec f) where
     fmap f (ValDec x ty i) = ValDec (f x) (fmap f ty) (fmap (fmap f) i)
     fmap f (SumVDec x ty i) = SumVDec (f x) (fmap f ty) (fmap (f *** fmap f) i)
     fmap f (ListDec x ty i) = ListDec (f x) (fmap f ty) (fmap (map (fmap f)) i)
     fmap f (SizeDec x i) = SizeDec (f x) (fmap f i)
-    fmap f (UnusedDec x ty) = UnusedDec (f x) (fmap f ty)
 
 instance Foldable f => Foldable (VarDec f) where
     foldMap f (ValDec x ty i) = f x `mappend` foldMap f ty `mappend` foldMap (foldMap f) i
     foldMap f (SumVDec x ty i) = f x `mappend` foldMap f ty `mappend` foldMap (uncurry mappend . (f *** foldMap f)) i
     foldMap f (ListDec x ty i) = f x `mappend` foldMap f ty `mappend` foldMap (foldMap (foldMap f)) i
     foldMap f (SizeDec x i) = f x `mappend` foldMap f i
-    foldMap f (UnusedDec x ty) = f x `mappend` foldMap f ty
 
 instance Traversable f => Traversable (VarDec f) where
     traverse f (ValDec x ty i) = ValDec <$> f x <*> traverse f ty <*> traverse (traverse f) i
     traverse f (SumVDec x ty i) = SumVDec <$> f x <*> traverse f ty <*> traverse (seqtup . (f *** traverse f)) i
     traverse f (ListDec x ty i) = ListDec <$> f x <*> traverse f ty <*> traverse (traverse (traverse f)) i
     traverse f (SizeDec x i) = SizeDec <$> f x <*> traverse f i
-    traverse f (UnusedDec x ty) = UnusedDec <$> f x <*> traverse f ty
 
 data Stmt x = Cases (Expr x) [(x, [Stmt x])] [Stmt x]
             | If (Expr x) [Stmt x]
@@ -328,7 +324,6 @@ lowerMachine cfg ssyms (StateMachine smName, g') = [
                        | (n, EnterExitState {en, st = State _}) <- labNodes $ delNodes [n | n <- nodes g', (_, _, Happening EventEnter _ _) <- out g' n] g']) g'
         eventNames = map qualify $ ["e"] ++ map (('e':) . show) [2..127]
         char = TagBuiltin $ qualify "char"
-        void = TagUnused $ qualify "void" 
         stateName_f = qualify (smName, "State_name")
         eventName_f = qualify (smName, "Event_name")
         send_f = qualify (smName, "Send_Message")

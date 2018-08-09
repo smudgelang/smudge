@@ -8,8 +8,6 @@ module Language.C89.Unparser (
     renderPretty
 ) where
 
-import Data.Either
-
 import Language.C89.Grammar (
     (#:),
     EndBrace(..),
@@ -549,4 +547,3 @@ instance Prettyable ExternalDeclaration where
 
 instance Prettyable FunctionDefinition where
     pretty (Function mds d mdl cs) = pretty mds <+> pretty d <+> pretty mdl $+$ pretty cs
-

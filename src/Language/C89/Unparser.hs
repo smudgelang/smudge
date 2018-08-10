@@ -101,7 +101,6 @@ import Language.C89.Grammar (
     SelectionStatement(..),
     IterationStatement(..),
     JumpStatement(..),
-    VoidedStatement(..),
 
     TranslationUnit,
     ExternalDeclaration(..),
@@ -490,7 +489,6 @@ instance Prettyable Statement where
     pretty (SStatement s) = pretty s
     pretty (IStatement s) = pretty s
     pretty (JStatement s) = pretty s
-    pretty (VStatement s) = pretty s
 
 instance Prettyable LabeledStatement where
     pretty (Label i c s) = pretty i <> pretty c $+$ pretty s
@@ -533,9 +531,6 @@ instance Prettyable JumpStatement where
     pretty (CONTINUE s) = text "continue" <> pretty s
     pretty (BREAK s) = text "break" <> pretty s
     pretty (RETURN me s) = text "return" <+> pretty me <> pretty s
-
-instance Prettyable VoidedStatement where
-    pretty (VoidedStatement ce s) = pretty ce <> pretty s
 
 -- A.1.2.4 External definitions
 

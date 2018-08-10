@@ -101,7 +101,6 @@ module Language.C89.Grammar (
     DeclarationList,
     StatementList,
     ExpressionStatement(..),
-    VoidedStatement(..),
     SelectionStatement(..),
     IterationStatement(..),
     JumpStatement(..),
@@ -459,7 +458,6 @@ data Statement = LStatement LabeledStatement
                | SStatement SelectionStatement
                | IStatement IterationStatement
                | JStatement JumpStatement
-               | VStatement VoidedStatement
 
 data LabeledStatement = Label Identifier COLON Statement
                       | CASE  ConstantExpression COLON Statement
@@ -485,8 +483,6 @@ data JumpStatement = GOTO Identifier SEMICOLON
                    | CONTINUE SEMICOLON
                    | BREAK SEMICOLON
                    | RETURN (Maybe Expression) SEMICOLON
-
-data VoidedStatement = VoidedStatement CastExpression SEMICOLON
 
 -- A.1.2.4 External definitions
 

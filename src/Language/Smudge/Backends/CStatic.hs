@@ -270,7 +270,8 @@ convertIR dodec dodef (aliases, ir) =
         convertStmt (Cases e cs ds) = makeSwitch (fromList [convertExpr e]) (map (convertToConstExpr *** map convertStmt) cs) (map convertStmt ds)
         convertStmt (If e ss)       = SStatement $ IF LEFTPAREN (fromList [convertExpr e]) RIGHTPAREN (CStatement $ convertBlock [] ss) Nothing
         convertStmt (Return e)      = JStatement $ RETURN (Just $ fromList [convertExpr e]) SEMICOLON
-        convertStmt (Unused e)      = VStatement $ VoidedStatement (TCastExpression LEFTPAREN (TypeName (SimpleList (Left VOID) Nothing) Nothing) RIGHTPAREN (UCastExpression (convertVoidedExpr e))) SEMICOLON
+        --convertStmt (Unused e)      = VStatement $ VoidedStatement (TCastExpression LEFTPAREN (TypeName (SimpleList (Left VOID) Nothing) Nothing) RIGHTPAREN (UCastExpression (convertVoidedExpr e))) SEMICOLON
+        convertStmt (Unused e)      = EStatement $ ExpressionStatement (Just $ fromList [convertVoidedExpr e]) SEMICOLON
         convertStmt (ExprS e)       = EStatement $ ExpressionStatement (Just $ fromList [convertExpr e]) SEMICOLON
 
         convertToConstExpr q = (#:) (fullQual q) (:#)
@@ -286,8 +287,8 @@ convertIR dodec dodef (aliases, ir) =
             where bounds_check_e = (#:) (((#:) (convertVar i) (:#)) `LESS_THAN` ((#:) (convertVar b) (:#))) (:#)
                   array_index_e = (#:) (EPostfixExpression (convertVar a) LEFTSQUARE (fromList [(#:) (convertVar i) (:#)]) RIGHTSQUARE) (:#)
 
-        convertVoidedExpr :: Expr (FullyQualAndEvent Identifier) -> UnaryExpression
-        convertVoidedExpr (Value v)     = (#:) (convertVar v) (:#)
+        convertVoidedExpr :: Expr (FullyQualAndEvent Identifier) -> AssignmentExpression
+        convertVoidedExpr (Value v)     = (#:) (TCastExpression LEFTPAREN (TypeName (SimpleList (Left VOID) Nothing) Nothing) RIGHTPAREN (UCastExpression $ (#:) (convertVar v) (:#))) (:#)
 
         convertVar :: Var (FullyQualAndEvent Identifier) -> PostfixExpression
         convertVar (Var x)     = (#:) (fullQual x) (:#)

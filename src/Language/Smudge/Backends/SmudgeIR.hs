@@ -177,33 +177,30 @@ data Stmt x = Cases (Expr x) [(x, [Stmt x])] [Stmt x]
             | If (Expr x) [Stmt x]
             | Return (Expr x)
             | ExprS (Expr x)
-            | UnusedVar (Expr x)
 
 instance Functor Stmt where
     fmap f (Cases e cs ds) = Cases (fmap f e) (map (f *** map (fmap f)) cs) (map (fmap f) ds)
     fmap f (If e ss) = If (fmap f e) (map (fmap f) ss)
     fmap f (Return e) = Return $ fmap f e
     fmap f (ExprS e) = ExprS $ fmap f e
-    fmap f (UnusedVar e) = UnusedVar $ fmap f e
 
 instance Foldable Stmt where
     foldMap f (Cases e cs ds) = foldMap f e `mappend` foldMap (uncurry mappend . (f *** foldMap (foldMap f))) cs `mappend` foldMap (foldMap f) ds
     foldMap f (If e ss) = foldMap f e `mappend` foldMap (foldMap f) ss
     foldMap f (Return e) = foldMap f e
     foldMap f (ExprS e) = foldMap f e
-    foldMap f (UnusedVar e) = foldMap f e
 
 instance Traversable Stmt where
     traverse f (Cases e cs ds) = Cases <$> traverse f e <*> traverse (seqtup . (f *** traverse (traverse f))) cs <*> traverse (traverse f) ds
     traverse f (If e ss) = If <$> traverse f e <*> traverse (traverse f) ss
     traverse f (Return e) = Return <$> traverse f e
     traverse f (ExprS e) = ExprS <$> traverse f e
-    traverse f (UnusedVar e) = UnusedVar <$> traverse f e
 
 data Expr x = FunCall x [Expr x]
             | Literal String
             | Null
             | Value (Var x)
+            | UnusedValue (Var x)
             | Assign (Var x) (Expr x)
             | Neq x x
             | SafeIndex (Var x) (Var x) (Var x) String
@@ -213,6 +210,7 @@ instance Functor Expr where
     fmap f (Literal v) = Literal v
     fmap f  Null = Null
     fmap f (Value v) = Value $ fmap f v
+    fmap f (UnusedValue v) = UnusedValue $ fmap f v
     fmap f (Assign v e) = Assign (fmap f v) (fmap f e)
     fmap f (Neq x1 x2) = Neq (f x1) (f x2)
     fmap f (SafeIndex a i b d) = SafeIndex (fmap f a) (fmap f i) (fmap f b) d
@@ -222,6 +220,7 @@ instance Foldable Expr where
     foldMap f (Literal v) = mempty
     foldMap f  Null = mempty
     foldMap f (Value v) = foldMap f v
+    foldMap f (UnusedValue v) = foldMap f v
     foldMap f (Assign v e) = foldMap f v `mappend` foldMap f e
     foldMap f (Neq x1 x2) = f x1 `mappend` f x2
     foldMap f (SafeIndex a i b d) = foldMap f a `mappend` foldMap f i `mappend` foldMap f b
@@ -231,6 +230,7 @@ instance Traversable Expr where
     traverse f (Literal v) = pure $ Literal v
     traverse f  Null = pure Null
     traverse f (Value v) = Value <$> traverse f v
+    traverse f (UnusedValue v) = UnusedValue <$> traverse f v
     traverse f (Assign v e) = Assign <$> traverse f v <*> traverse f e
     traverse f (Neq x1 x2) = Neq <$> f x1 <*> f x2
     traverse f (SafeIndex a i b d) = SafeIndex <$> traverse f a <*> traverse f i <*> traverse f b <*> pure d
@@ -375,7 +375,7 @@ lowerMachine cfg ssyms (StateMachine smName, g') = [
                   name_var = qualify "event_name"
                   event_var = head eventNames
                   ds = if (not $ null handler) || not (debug cfg) then [] else [VarDef Unresolved $ SumVDec wrap_name (Ty eventEnum) $ Init (evt_id evName, Value $ Var event_var)]
-                  es =  (if (null ds) then [UnusedVar (Value $ Var event_var)] else []) ++ (case handler of
+                  es =  (if (null ds) then [ExprS (UnusedValue $ Var event_var)] else []) ++ (case handler of
                            [(s, e')] -> [ExprS $ FunCall (qualify (sName smName s, mangleEv e')) (if e == e' then [Value $ Var event_var] else [])]
                            [] -> call_panic_f [Literal panic_s, FunCall stateName_f [Value $ Var stateVar], FunCall eventName_f [Value $ Var wrap_name]])
                   panic_s = disqualifyTag smName ++ "{%s[%s]}: Unhandled event\n"
@@ -403,7 +403,7 @@ lowerMachine cfg ssyms (StateMachine smName, g') = [
         handleEventFun :: Event TaggedName -> [(State TaggedName, (State TaggedName, Event TaggedName))] -> [State TaggedName] -> Def QualifiedName
         handleEventFun e@(Event evName) ss unss = FunDef f_name eventNames (Internal, snd $ syms ! TagFunction (qualify evName)) [] es
             where f_name = qualify (qualify evName, "handle")
-                  es = [UnusedVar (Value $ Var event_var), Cases (Value $ Var stateVar) cases defaults]
+                  es = [ExprS (UnusedValue $ Var event_var), Cases (Value $ Var stateVar) cases defaults]
                   event_var = head eventNames
                   call_unhandled = ExprS $ FunCall (unhandled_f e) [Value $ Var event_var]
                   call_ev_in s e' = ExprS $ FunCall (qualify (s, mangleEv e')) (if e == e' then [Value $ Var event_var] else [])
@@ -434,7 +434,7 @@ lowerMachine cfg ssyms (StateMachine smName, g') = [
                   panic_s = disqualifyTag smName ++ "{%s}: Invalid event ID\n"
 
         stateEventFun :: State TaggedName -> Happening -> State TaggedName -> Bool -> Def QualifiedName
-        stateEventFun st h st' do_exit = FunDef f_name eventNames (Internal, ty) [] $ logAState ++ map UnusedVar vs ++ map ExprS es
+        stateEventFun st h st' do_exit = FunDef f_name eventNames (Internal, ty) [] $ logAState ++ map ExprS vs ++ map ExprS es
             where f_name = qualify (sName smName st, mangleEv $ event h)
                   ty = case event h of
                               (Event t) -> Ty t :-> Void
@@ -459,7 +459,7 @@ lowerMachine cfg ssyms (StateMachine smName, g') = [
                   apply_se (f, FuncTyped _) = undefined -- See ticket #15, harder than it seems at first.
                   apply_se (f, _) = FunCall (qualify f) (psOf (snd $ syms ! f))
                   vs = case event h of
-                              (Event t) -> [Value $ Var event_var]
+                              (Event t) -> [UnusedValue $ Var event_var]
                               otherwise -> []
                   es = case h of
                          (Happening _ ses [])                        -> [apply_se se | se <- ses] ++ (if do_exit then [call_exit] else []) ++ [assign_state, call_enter]

@@ -255,7 +255,6 @@ data UnaryExpression = PUnaryExpression PostfixExpression
                      | UUnaryExpression UnaryCrement UnaryExpression
                      | CUnaryExpression UnaryOperator CastExpression
                      | SIZEOF (Either UnaryExpression (Trio LEFTPAREN TypeName RIGHTPAREN))
-                     | EUnaryExpression LEFTPAREN AssignmentExpression RIGHTPAREN
 
 instance {-# OVERLAPPING #-} Expr UnaryExpression PostfixExpression where
     def = PUnaryExpression

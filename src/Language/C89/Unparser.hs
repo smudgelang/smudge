@@ -271,7 +271,6 @@ instance Prettyable UnaryExpression where
     pretty (PUnaryExpression pe) = pretty pe
     pretty (UUnaryExpression uc ue) = pretty uc <> pretty ue
     pretty (CUnaryExpression uo ce) = pretty uo <> pretty ce
-    pretty (EUnaryExpression l ae r) = pretty l <> pretty ae <> pretty r
     pretty (SIZEOF (Left ue)) = text "sizeof" <+> pretty ue
     pretty (SIZEOF (Right (Trio l tn r))) = text "sizeof" <> pretty l <> pretty tn <> pretty r
 

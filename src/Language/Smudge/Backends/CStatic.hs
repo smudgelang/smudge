@@ -270,7 +270,6 @@ convertIR dodec dodef (aliases, ir) =
         convertStmt (Cases e cs ds) = makeSwitch (fromList [convertExpr e]) (map (convertToConstExpr *** map convertStmt) cs) (map convertStmt ds)
         convertStmt (If e ss)       = SStatement $ IF LEFTPAREN (fromList [convertExpr e]) RIGHTPAREN (CStatement $ convertBlock [] ss) Nothing
         convertStmt (Return e)      = JStatement $ RETURN (Just $ fromList [convertExpr e]) SEMICOLON
-        convertStmt (Unused e)      = EStatement $ ExpressionStatement (Just $ fromList [convertVoidedExpr e]) SEMICOLON
         convertStmt (ExprS e)       = EStatement $ ExpressionStatement (Just $ fromList [convertExpr e]) SEMICOLON
 
         convertToConstExpr q = (#:) (fullQual q) (:#)
@@ -280,15 +279,15 @@ convertIR dodec dodef (aliases, ir) =
         convertExpr (Literal v)         = (#:) (show v) (:#)
         convertExpr (Null)              = (#:) "0" (:#)
         convertExpr (Value v)           = (#:) (convertVar v) (:#)
+        convertExpr (UnusedValue v)     = (#:) (convertVoidedVar v) (:#)
         convertExpr (Assign v e)        = (#:) (convertVar v) (:#) `ASSIGN` convertExpr e
         convertExpr (Neq x1 x2)         = (#:) (((#:) (fullQual x1) (:#)) `NOTEQUAL` ((#:) (fullQual x2) (:#))) (:#)
         convertExpr (SafeIndex a i b d) = (#:) (bounds_check_e `QUESTION` (Trio (fromList [array_index_e]) COLON ((#:) (show d) (:#)))) (:#)
             where bounds_check_e = (#:) (((#:) (convertVar i) (:#)) `LESS_THAN` ((#:) (convertVar b) (:#))) (:#)
                   array_index_e = (#:) (EPostfixExpression (convertVar a) LEFTSQUARE (fromList [(#:) (convertVar i) (:#)]) RIGHTSQUARE) (:#)
 
-        convertVoidedExpr :: Expr (FullyQualAndEvent Identifier) -> AssignmentExpression
-        convertVoidedExpr (Value v)     = (#:) (TCastExpression LEFTPAREN (TypeName (SimpleList (Left VOID) Nothing) Nothing) RIGHTPAREN (UCastExpression $ (#:) (convertVar v) (:#))) (:#) 
-        convertVoidedExpr (x)           = (#:) (TCastExpression LEFTPAREN (TypeName (SimpleList (Left VOID) Nothing) Nothing) RIGHTPAREN (UCastExpression $ EUnaryExpression LEFTPAREN (convertExpr x) RIGHTPAREN)) (:#)
+        convertVoidedVar :: Var (FullyQualAndEvent Identifier) -> CastExpression
+        convertVoidedVar (Var x)     = (TCastExpression LEFTPAREN (TypeName (SimpleList (Left VOID) Nothing) Nothing) RIGHTPAREN (UCastExpression $ (#:) (fullQual x) (:#)))
 
         convertVar :: Var (FullyQualAndEvent Identifier) -> PostfixExpression
         convertVar (Var x)     = (#:) (fullQual x) (:#)

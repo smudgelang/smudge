@@ -1,4 +1,4 @@
--- Copyright 2017 Bose Corporation.
+-- Copyright 2018 Bose Corporation.
 -- This software is released under the 3-Clause BSD License.
 -- The license can be viewed at https://github.com/Bose/Smudge/blob/master/LICENSE
 
@@ -18,6 +18,7 @@ import Language.Smudge.Passes.Passes (Passable(..), Severity(..), Fault(..))
 import Data.Graph.Inductive.Graph (Graph, Adj, lab)
 import Data.Monoid (Monoid(..))
 import Data.List (intercalate)
+import Data.Semigroup (Semigroup(..))
 
 data (Graph gr) => OneInitialState gr = OneInitialState (Adj Happening) (Adj Happening)
 

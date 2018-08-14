@@ -1,4 +1,4 @@
--- Copyright 2017 Bose Corporation.
+-- Copyright 2018 Bose Corporation.
 -- This software is released under the 3-Clause BSD License.
 -- The license can be viewed at https://github.com/Bose/Smudge/blob/master/LICENSE
 
@@ -14,6 +14,7 @@ import Language.Smudge.Parsers.Id (at)
 import Language.Smudge.Semantics.Model (TaggedName, disqualifyTag)
 import Language.Smudge.Passes.Passes (Passable(..), Severity(..), Fault(..))
 
+import Data.Semigroup (Semigroup(..))
 import Data.Set (Set, singleton, fromList, toList, (\\))
 
 data DeclaredStateNames = DeclaredStateNames (Set (State TaggedName)) (Set (State TaggedName))

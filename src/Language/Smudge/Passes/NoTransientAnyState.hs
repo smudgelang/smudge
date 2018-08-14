@@ -17,6 +17,7 @@ import Language.Smudge.Passes.Passes (Passable(..), Severity(..), Fault(..))
 import Data.Graph.Inductive.Graph (Graph, lab, Node)
 import Data.Monoid (Monoid(..))
 import Data.List (intercalate)
+import Data.Semigroup (Semigroup(..))
 
 data (Graph gr) => NoTransientAnyState gr = NoTransientAnyState [Node] [(Node, Node)]
 instance (Graph gr) => Semigroup (NoTransientAnyState gr) where

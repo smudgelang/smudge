@@ -16,6 +16,7 @@ import Language.Smudge.Passes.Passes (Passable(..), Severity(..), Fault(..))
 
 import Data.Graph.Inductive.Graph (Graph)
 import Data.Monoid (Monoid(..))
+import Data.Semigroup (Semigroup(..))
 import Data.List (intercalate)
 
 data (Graph gr) => NoAnyEnterExit gr = NoAnyEnterExit [SideEffect TaggedName]

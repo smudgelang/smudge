@@ -21,6 +21,7 @@ import Language.Smudge.Semantics.Model (TaggedName, disqualifyTag)
 import Language.Smudge.Parsers.Id (at)
 import Language.Smudge.Passes.Passes (Passable(..), Severity(..), Fault(..))
 
+import Data.Semigroup (Semigroup(..))
 import Data.Set (Set, fromList, toList, map, (\\))
 import Prelude hiding (map)
 

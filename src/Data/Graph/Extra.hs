@@ -1,4 +1,4 @@
--- Copyright 2017 Bose Corporation.
+-- Copyright 2018 Bose Corporation.
 -- This software is released under the 3-Clause BSD License.
 -- The license can be viewed at https://github.com/Bose/Smudge/blob/master/LICENSE
 
@@ -29,6 +29,7 @@ import Data.Graph.Inductive.Graph (
     )
 import Data.Map ((!), fromList)
 import Data.Monoid (Monoid(..))
+import Data.Semigroup (Semigroup(..))
 
 instance {-# OVERLAPS #-} DynGraph gr => Semigroup (gr a b) where
     (<>) = grMerge

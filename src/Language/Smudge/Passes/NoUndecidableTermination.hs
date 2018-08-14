@@ -16,6 +16,7 @@ import Language.Smudge.Passes.Passes (Passable(..), Severity(..), Fault(..))
 import Language.Smudge.Passes.NoDecidableNontermination (NoDecidableNontermination)
 
 import Data.Monoid (Monoid(..))
+import Data.Semigroup (Semigroup(..))
 
 data NoUndecidableTermination = NoUndecidableTermination [(NoDecidableNontermination, (State TaggedName, Event TaggedName))]
 instance Semigroup NoUndecidableTermination where

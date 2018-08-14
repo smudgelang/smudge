@@ -21,6 +21,7 @@ import Data.Monoid (Monoid(..))
 import Data.Map.Monoidal (MonoidalMap)
 import Data.Tuple (swap)
 import Data.List (sort, group)
+import Data.Semigroup (Semigroup(..))
 import GHC.Exts (fromList, toList)
 
 data (Graph gr) => OneEventHandlerPerState gr = OneEventHandlerPerState (MonoidalMap Node [Event TaggedName])

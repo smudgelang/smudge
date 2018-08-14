@@ -1,4 +1,4 @@
--- Copyright 2017 Bose Corporation.
+-- Copyright 2018 Bose Corporation.
 -- This software is released under the 3-Clause BSD License.
 -- The license can be viewed at https://github.com/Bose/Smudge/blob/master/LICENSE
 
@@ -19,6 +19,7 @@ import Data.GraphViz.Attributes.Complete (
     )
 import qualified Data.GraphViz.Attributes.HTML as H
 import Data.List (intersperse, groupBy, sortBy, nub)
+import Data.Semigroup (Semigroup(..))
 import qualified Data.Text.Lazy as T (Text, empty, lines, toStrict, fromStrict)
 import Data.Word (Word16)
 import GHC.Exts (the)

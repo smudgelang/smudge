@@ -1,4 +1,4 @@
--- Copyright 2017 Bose Corporation.
+-- Copyright 2018 Bose Corporation.
 -- This software is released under the 3-Clause BSD License.
 -- The license can be viewed at https://github.com/Bose/Smudge/blob/master/LICENSE
 
@@ -53,7 +53,7 @@ import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Map (Map, fromList, (!))
 import Data.List (intercalate, nub, sort)
 import Data.List.NonEmpty (NonEmpty((:|)), toList, (<|))
-import Data.Semigroup (Semigroup, (<>))
+import Data.Semigroup (Semigroup(..))
 import Control.Arrow (first)
 
 data EnterExitState = EnterExitState {

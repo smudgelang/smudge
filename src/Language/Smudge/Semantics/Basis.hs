@@ -1,4 +1,4 @@
--- Copyright 2017 Bose Corporation.
+-- Copyright 2018 Bose Corporation.
 -- This software is released under the 3-Clause BSD License.
 -- The license can be viewed at https://github.com/Bose/Smudge/blob/master/LICENSE
 
@@ -24,6 +24,7 @@ import Language.Smudge.Grammar (
   )
 
 import Data.Map (fromList)
+import Data.Semigroup (Semigroup(..))
 
 basisAlias :: String -> Alias QualifiedName
 basisAlias "" = mempty

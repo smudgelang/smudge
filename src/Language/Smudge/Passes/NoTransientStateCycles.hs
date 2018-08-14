@@ -1,4 +1,4 @@
--- Copyright 2017 Bose Corporation.
+-- Copyright 2018 Bose Corporation.
 -- This software is released under the 3-Clause BSD License.
 -- The license can be viewed at https://github.com/Bose/Smudge/blob/master/LICENSE
 
@@ -19,6 +19,7 @@ import Data.Graph.Inductive.Graph (Graph, Context, (&), lab)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Monoid (Monoid(..))
 import Data.List (intercalate)
+import Data.Semigroup (Semigroup(..))
 
 data (Graph gr) => NoTransientStateCycles gr = NoTransientStateCycles (Gr EnterExitState Happening)
 instance (Graph gr) => Semigroup (NoTransientStateCycles gr) where

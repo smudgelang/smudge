@@ -12,7 +12,7 @@ import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, rewriteFileEx
 import System.FilePath ((</>), (<.>))
 import System.Exit (ExitCode(ExitSuccess))
 import System.Process (readProcessWithExitCode)
-import Distribution.Pretty (prettyShow)
+import Distribution.Version (showVersion)
 import Data.List (dropWhileEnd)
 import Data.Char (isSpace)
 
@@ -48,7 +48,7 @@ genPackageInfoHook pkg lbi uhs bfs = do
     where cfg_name = "PackageInfo"
           generate cmt = "module " ++ cfg_name ++ " where\n" ++
                          "\n" ++
-                         "version     = " ++ (prettyShow $ packageVersion $ package pkg) ++ "\n" ++
+                         "version     = " ++ (show $ showVersion $ packageVersion $ package pkg) ++ "\n" ++
                          "buildCommit = " ++ (show $ cmt) ++ "\n" ++
                          "appName     = " ++ (show $ app_name $ package pkg) ++ "\n" ++
                          "copyright   = " ++ (show $ copyright pkg) ++ "\n" ++

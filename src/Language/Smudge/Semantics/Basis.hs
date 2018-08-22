@@ -1,4 +1,4 @@
--- Copyright 2017 Bose Corporation.
+-- Copyright 2018 Bose Corporation.
 -- This software is released under the 3-Clause BSD License.
 -- The license can be viewed at https://github.com/Bose/Smudge/blob/master/LICENSE
 
@@ -24,6 +24,7 @@ import Language.Smudge.Grammar (
   )
 
 import Data.Map (fromList)
+import Data.Semigroup (Semigroup(..))
 
 basisAlias :: String -> Alias QualifiedName
 basisAlias "" = mempty
@@ -36,7 +37,7 @@ basisAlias namespace = fromList $ map q [
     where q n = (qualify n, qualify(namespace, n))
 
 bindBasis :: Alias QualifiedName -> [StateMachine QualifiedName] -> SymbolTable
-bindBasis aliases sms = mappend exports externs
+bindBasis aliases sms = exports <> externs
     where rename' = rename aliases . qualify
           void = TagBuiltin $ qualify "void"
           str = TagBuiltin $ qualify "char"

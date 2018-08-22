@@ -17,12 +17,15 @@ import Language.Smudge.Passes.Passes (Passable(..), Severity(..), Fault(..))
 import Control.Arrow (first)
 import Data.Maybe (mapMaybe, isJust)
 import Data.Monoid (Monoid(..))
+import Data.Semigroup (Semigroup(..))
 
 data NoDecidableNontermination = NoDecidableNontermination [(State TaggedName, Event TaggedName)]
+instance Semigroup NoDecidableNontermination where
+    (NoDecidableNontermination as) <> (NoDecidableNontermination bs) =
+        NoDecidableNontermination $ as <> bs
 instance Monoid NoDecidableNontermination where
     mempty = NoDecidableNontermination []
-    mappend (NoDecidableNontermination as) (NoDecidableNontermination bs) =
-        NoDecidableNontermination $ mappend as bs
+    mappend = (<>)
 
 data Pat a = PatSym a
            | PatCat (Pat a) (Pat a)
@@ -47,7 +50,7 @@ instance Passable NoDecidableNontermination where
             pat = PatCat (PatStar $ foldr1 PatCat syms) $ PatCat sym $ PatStar sym
             (m, rest) = first (match pat . mapMaybe evtOf) $ span (isJust . evtOf) ses
         in case (s == s', rest, m) of
-        (True, [], Just (_, [])) -> mappend (NoDecidableNontermination [(s, e)]) a
+        (True, [], Just (_, [])) -> NoDecidableNontermination [(s, e)] <> a
         otherwise -> a
     test (StateMachine sm_name, _) (NoDecidableNontermination nts) =
         [Fault ERROR (at e) $ (disqualifyTag sm_name) ++ ": Irrefutable cycles are forbidden: state " ++ show (disqualifyTag s) ++

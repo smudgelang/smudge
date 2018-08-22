@@ -1,4 +1,4 @@
--- Copyright 2017 Bose Corporation.
+-- Copyright 2018 Bose Corporation.
 -- This software is released under the 3-Clause BSD License.
 -- The license can be viewed at https://github.com/Bose/Smudge/blob/master/LICENSE
 
@@ -14,7 +14,7 @@ module Data.These (
     fmapThat,
 ) where
 
-import Data.Semigroup (Semigroup, (<>))
+import Data.Semigroup (Semigroup(..))
 
 data These a b = This a | That b | These a b
     deriving (Eq, Show)

@@ -16,12 +16,15 @@ import Language.Smudge.Passes.Passes (Passable(..), Severity(..), Fault(..))
 
 import Data.Graph.Inductive.Graph (Graph)
 import Data.Monoid (Monoid(..))
+import Data.Semigroup (Semigroup(..))
 import Data.List (intercalate)
 
 data (Graph gr) => NoAnyEnterExit gr = NoAnyEnterExit [SideEffect TaggedName]
+instance (Graph gr) => Semigroup (NoAnyEnterExit gr) where
+    (NoAnyEnterExit a) <> (NoAnyEnterExit b) = NoAnyEnterExit (a <> b)
 instance (Graph gr) => Monoid (NoAnyEnterExit gr) where
     mempty = NoAnyEnterExit mempty
-    mappend (NoAnyEnterExit a) (NoAnyEnterExit b) = NoAnyEnterExit (mappend a b)
+    mappend = (<>)
 
 instance (Graph gr) => Passable (NoAnyEnterExit gr) where
     type Representation (NoAnyEnterExit gr) = gr EnterExitState Happening

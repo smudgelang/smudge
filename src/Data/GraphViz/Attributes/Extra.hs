@@ -1,4 +1,4 @@
--- Copyright 2017 Bose Corporation.
+-- Copyright 2018 Bose Corporation.
 -- This software is released under the 3-Clause BSD License.
 -- The license can be viewed at https://github.com/Bose/Smudge/blob/master/LICENSE
 
@@ -19,33 +19,43 @@ import Data.GraphViz.Attributes.Complete (
     )
 import qualified Data.GraphViz.Attributes.HTML as H
 import Data.List (intersperse, groupBy, sortBy, nub)
+import Data.Semigroup (Semigroup(..))
 import qualified Data.Text.Lazy as T (Text, empty, lines, toStrict, fromStrict)
 import Data.Word (Word16)
 import GHC.Exts (the)
 import Text.Wrap (wrapText, defaultWrapSettings)
 
+instance Semigroup H.Table where
+    (H.HTable f1 a1 r1) <> (H.HTable f2 a2 r2) =
+        H.HTable (nub <$> f1 <> f2) (nub $ a1 <> a2) (r1 <> r2)
+
 instance Monoid H.Table where
     mempty = H.HTable Nothing [] []
-    mappend (H.HTable f1 a1 r1) (H.HTable f2 a2 r2) =
-        H.HTable (nub <$> mappend f1 f2) (nub $ mappend a1 a2) (mappend r1 r2)
+    mappend = (<>)
 
-instance Monoid H.Label where
-    mempty = H.Text []
-    mappend (H.Text a) (H.Text b) = H.Text $ mappend a b
-    mappend a b = H.Table $ mappend (toTable a) (toTable b)
+instance Semigroup H.Label where
+    (H.Text a) <> (H.Text b) = H.Text $ a <> b
+    a <> b = H.Table $ (toTable a) <> (toTable b)
         where toTable (H.Table t) = t
               toTable l = H.HTable Nothing [] [H.Cells [H.LabelCell [] l]]
 
-instance Monoid Label where
-    mempty = StrLabel T.empty
-    mappend (StrLabel a) (StrLabel b) = StrLabel (mappend a b)
-    mappend (RecordLabel a) (RecordLabel b) = RecordLabel (mappend a b)
-    mappend (StrLabel a) (RecordLabel b) = RecordLabel (mappend [FieldLabel a] b)
-    mappend (RecordLabel a) (StrLabel b) = RecordLabel (mappend a [FieldLabel b])
-    mappend a b = HtmlLabel $ mappend (toHtml a) (toHtml b)
+instance Monoid H.Label where
+    mempty = H.Text []
+    mappend = (<>)
+
+instance Semigroup Label where
+    (StrLabel a) <> (StrLabel b) = StrLabel (a <> b)
+    (RecordLabel a) <> (RecordLabel b) = RecordLabel (a <> b)
+    (StrLabel a) <> (RecordLabel b) = RecordLabel ([FieldLabel a] <> b)
+    (RecordLabel a) <> (StrLabel b) = RecordLabel (a <> [FieldLabel b])
+    a <> b = HtmlLabel $ (toHtml a) <> (toHtml b)
         where toHtml (HtmlLabel l) = l
               toHtml (StrLabel l) = H.Text $ escapeNewlines l
               toHtml (RecordLabel fs) = H.Table $ toTable FromTop fs
+
+instance Monoid Label where
+    mempty = StrLabel T.empty
+    mappend = (<>)
 
 escapeNewlines :: T.Text -> H.Text
 escapeNewlines = intersperse (H.Newline []) . map H.Str . T.lines

@@ -3,16 +3,16 @@
 -- The license can be viewed at https://github.com/Bose/Smudge/blob/master/LICENSE
 
 import Distribution.PackageDescription (PackageDescription(..))
-import Distribution.Package (packageVersion, packageName, PackageIdentifier(..), PackageName(..))
+import Distribution.Package (packageVersion, packageName, PackageIdentifier(..), unPackageName)
 import Distribution.Simple (defaultMainWithHooks, simpleUserHooks, UserHooks(..), Args)
-import Distribution.Simple.BuildPaths (autogenModulesDir)
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo)
+import Distribution.Simple.BuildPaths (autogenComponentModulesDir)
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo, withExeLBI)
 import Distribution.Simple.Setup (BuildFlags(..), fromFlag)
-import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, rewriteFile)
+import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, rewriteFileEx)
 import System.FilePath ((</>), (<.>))
 import System.Exit (ExitCode(ExitSuccess))
 import System.Process (readProcessWithExitCode)
-import Data.Version (showVersion)
+import Distribution.Version (showVersion)
 import Data.List (dropWhileEnd)
 import Data.Char (isSpace)
 
@@ -25,7 +25,7 @@ packageInfoUserHooks =
     }
 
 app_name :: PackageIdentifier -> String
-app_name packageInfo = ((\ (PackageName s) -> s) $ packageName packageInfo)
+app_name packageInfo = unPackageName $ packageName packageInfo
 
 try_commands :: String -> [(String, [String])] -> IO String
 try_commands def [] = return def
@@ -39,11 +39,12 @@ build_commit = do
     return $ dropWhileEnd isSpace out
 
 genPackageInfoHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> BuildFlags -> IO ()
-genPackageInfoHook pkg lbi uhs bfs= do
-    createDirectoryIfMissingVerbose (fromFlag $ buildVerbosity bfs) True (autogenModulesDir lbi)
-    let packageInfoModulePath = autogenModulesDir lbi </> cfg_name <.> "hs"
-    rewriteFile packageInfoModulePath . generate =<< build_commit
-    buildHook simpleUserHooks pkg lbi uhs bfs
+genPackageInfoHook pkg lbi uhs bfs = do
+    withExeLBI pkg lbi $ \_ clbi -> do
+        createDirectoryIfMissingVerbose (fromFlag $ buildVerbosity bfs) True (autogenComponentModulesDir lbi clbi)
+        let packageInfoModulePath = autogenComponentModulesDir lbi clbi </> cfg_name <.> "hs"
+        rewriteFileEx (fromFlag $ buildVerbosity bfs) packageInfoModulePath . generate =<< build_commit
+        buildHook simpleUserHooks pkg lbi uhs bfs
     where cfg_name = "PackageInfo"
           generate cmt = "module " ++ cfg_name ++ " where\n" ++
                          "\n" ++

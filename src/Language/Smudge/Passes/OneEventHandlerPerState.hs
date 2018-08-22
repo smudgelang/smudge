@@ -21,16 +21,19 @@ import Data.Monoid (Monoid(..))
 import Data.Map.Monoidal (MonoidalMap)
 import Data.Tuple (swap)
 import Data.List (sort, group)
+import Data.Semigroup (Semigroup(..))
 import GHC.Exts (fromList, toList)
 
 data (Graph gr) => OneEventHandlerPerState gr = OneEventHandlerPerState (MonoidalMap Node [Event TaggedName])
+instance (Graph gr) => Semigroup (OneEventHandlerPerState gr) where
+    (OneEventHandlerPerState a) <> (OneEventHandlerPerState b) = OneEventHandlerPerState (a <> b)
 instance (Graph gr) => Monoid (OneEventHandlerPerState gr) where
     mempty = OneEventHandlerPerState mempty
-    mappend (OneEventHandlerPerState a) (OneEventHandlerPerState b) = OneEventHandlerPerState (mappend a b)
+    mappend = (<>)
 
 instance (Graph gr) => Passable (OneEventHandlerPerState gr) where
     type Representation (OneEventHandlerPerState gr) = gr EnterExitState Happening
-    accumulate (i, n , _, o) a = mappend (mappend (build i) (build $ fmap (fmap $ const n) o)) a
+    accumulate (i, n , _, o) a = build i <> build (fmap (fmap $ const n) o) <> a
         where build = OneEventHandlerPerState . fromList . map (fmap (pure . event) . swap)
     test (StateMachine sm_name, g) (OneEventHandlerPerState es) =
         case filter (not . null . snd) $ map (st . fromJust . lab g *** filter ((> 1) . length) . group . sort) $ toList es of

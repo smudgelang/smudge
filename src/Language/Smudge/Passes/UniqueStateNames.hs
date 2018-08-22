@@ -1,4 +1,4 @@
--- Copyright 2017 Bose Corporation.
+-- Copyright 2018 Bose Corporation.
 -- This software is released under the 3-Clause BSD License.
 -- The license can be viewed at https://github.com/Bose/Smudge/blob/master/LICENSE
 
@@ -16,12 +16,18 @@ import Language.Smudge.Passes.Passes (Passable(..), Severity(..), Fault(..))
 
 import Data.List (sort, intercalate, group, (\\))
 import Data.Monoid (Monoid(..))
+import Data.Semigroup (Semigroup(..))
 
 data UniqueStateNames = UniqueStateNames [State TaggedName]
+
+instance Semigroup UniqueStateNames where
+    (UniqueStateNames sl) <> (UniqueStateNames sl') =
+        UniqueStateNames (sl <> sl')
+
+
 instance Monoid UniqueStateNames where
     mempty = UniqueStateNames mempty
-    mappend (UniqueStateNames sl) (UniqueStateNames sl') =
-        UniqueStateNames (mappend sl sl')
+    mappend = (<>)
 
 instance Passable UniqueStateNames where
     type Representation UniqueStateNames = [WholeState TaggedName]

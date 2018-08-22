@@ -1,4 +1,4 @@
--- Copyright 2017 Bose Corporation.
+-- Copyright 2018 Bose Corporation.
 -- This software is released under the 3-Clause BSD License.
 -- The license can be viewed at https://github.com/Bose/Smudge/blob/master/LICENSE
 
@@ -18,12 +18,17 @@ import Language.Smudge.Passes.Passes (Passable(..), Severity(..), Fault(..))
 import Data.Graph.Inductive.Graph (Graph, Adj, lab)
 import Data.Monoid (Monoid(..))
 import Data.List (intercalate)
+import Data.Semigroup (Semigroup(..))
 
 data (Graph gr) => OneInitialState gr = OneInitialState (Adj Happening) (Adj Happening)
+
+instance (Graph gr) => Semigroup (OneInitialState gr) where
+    (OneInitialState is os) <> (OneInitialState is' os') =
+        OneInitialState (is <> is') (os <> os')
+
 instance (Graph gr) => Monoid (OneInitialState gr) where
     mempty = OneInitialState mempty mempty
-    mappend (OneInitialState is os) (OneInitialState is' os') =
-        OneInitialState (mappend is is') (mappend os os')
+    mappend = (<>)
 
 instance (Graph gr) => Passable (OneInitialState gr) where
     type Representation (OneInitialState gr) = gr EnterExitState Happening

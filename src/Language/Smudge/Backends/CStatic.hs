@@ -279,11 +279,15 @@ convertIR dodec dodef (aliases, ir) =
         convertExpr (Literal v)         = (#:) (show v) (:#)
         convertExpr (Null)              = (#:) "0" (:#)
         convertExpr (Value v)           = (#:) (convertVar v) (:#)
+        convertExpr (UnusedValue v)     = (#:) (convertVoidedVar v) (:#)
         convertExpr (Assign v e)        = (#:) (convertVar v) (:#) `ASSIGN` convertExpr e
         convertExpr (Neq x1 x2)         = (#:) (((#:) (fullQual x1) (:#)) `NOTEQUAL` ((#:) (fullQual x2) (:#))) (:#)
         convertExpr (SafeIndex a i b d) = (#:) (bounds_check_e `QUESTION` (Trio (fromList [array_index_e]) COLON ((#:) (show d) (:#)))) (:#)
             where bounds_check_e = (#:) (((#:) (convertVar i) (:#)) `LESS_THAN` ((#:) (convertVar b) (:#))) (:#)
                   array_index_e = (#:) (EPostfixExpression (convertVar a) LEFTSQUARE (fromList [(#:) (convertVar i) (:#)]) RIGHTSQUARE) (:#)
+
+        convertVoidedVar :: Var (FullyQualAndEvent Identifier) -> CastExpression
+        convertVoidedVar (Var x)     = (TCastExpression LEFTPAREN (TypeName (SimpleList (Left VOID) Nothing) Nothing) RIGHTPAREN (UCastExpression $ (#:) (fullQual x) (:#)))
 
         convertVar :: Var (FullyQualAndEvent Identifier) -> PostfixExpression
         convertVar (Var x)     = (#:) (fullQual x) (:#)

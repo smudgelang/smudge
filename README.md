@@ -33,7 +33,7 @@ looks like:
 
 There are binary releases available for Windows and Linux available on
 the
-[Smudge releases page](https://github.com/Bose/Smudge/releases). The
+[Smudge releases page](https://github.com/smudgelang/smudge/releases). The
 latest release includes a pdf of the tutorial, which is a great place
 to start learning Smudge.
 

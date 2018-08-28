@@ -5,9 +5,9 @@ Priority: optional
 Build-Depends: debhelper (>= 10),
                haskell-stack (>=1.1.2)
 Standards-Version: 4.1.1
-Vcs-Browser: https://github.com/Bose/Smudge
-Vcs-Git: https://github.com/Bose/Smudge.git
-Homepage: https://github.com/Bose/Smudge
+Vcs-Browser: https://github.com/smudgelang/smudge
+Vcs-Git: https://github.com/smudgelang/smudge.git
+Homepage: https://github.com/smudgelang/smudge
 Package: smudge
 Architecture: __ARCH__
 Depends: graphviz

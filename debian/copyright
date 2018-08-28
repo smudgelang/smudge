@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: smudge
-Source: https://github.com/Bose/Smudge
+Source: https://github.com/smudgelang/smudge
 
 Files: *
 Copyright: Copyright 2018 Bose Corporation.

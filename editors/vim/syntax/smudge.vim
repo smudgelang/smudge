@@ -1,6 +1,6 @@
 " Vim syntax file
 " Language: smudge
-" Maintainer: Nate Bragg <Nate_Bragg@bose.com>
+" Maintainer: Nate Bragg <nate@cs.tufts.edu>
 " Latest Revision: June 11th, 2018
 
 if version < 600

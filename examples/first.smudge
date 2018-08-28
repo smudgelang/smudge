@@ -1,6 +1,6 @@
 // Copyright 2017 Bose Corporation.
 // This software is released under the 3-Clause BSD License.
-// The license can be viewed at https://github.com/Bose/Smudge/blob/master/LICENSE
+// The license can be viewed at https://github.com/smudgelang/smudge/blob/master/LICENSE
 
 // This is a comment. It goes to the end of the line.
 SM_NAME // This is the name of a state machine.

@@ -264,6 +264,14 @@ mangleEv EventEnter = qualify "enter"
 mangleEv EventExit = qualify "exit"
 mangleEv EventAny = qualify "any"
 
+boundArgs :: Def a -> Def a
+boundArgs d@(DataDef _) = d
+boundArgs (FunDef name ps bty@(_, ty) ds ss) = FunDef name ps' bty ds ss
+    where ps' = take (countps ty) ps
+          countps (Void :-> ty') = countps ty'
+          countps (_ :-> ty') = 1 + countps ty'
+          countps _ = 0
+
 lower :: Config -> ([(StateMachine TaggedName, Gr EnterExitState Happening)], SymbolTable) -> SmudgeIR QualifiedName
 lower cfg (gs, syms) = concatMap (lowerMachine cfg syms) gs
 
@@ -277,7 +285,7 @@ lowerSolverSyms :: SymbolTable -> Map TaggedName (Binding, Ty QualifiedName)
 lowerSolverSyms = afold (uncurry insert . second (second lowerTy)) empty
 
 lowerSymTab :: [(StateMachine TaggedName, Gr EnterExitState Happening)] -> SymbolTable -> SmudgeIR QualifiedName
-lowerSymTab gs ssyms = [
+lowerSymTab gs ssyms = map boundArgs $ [
         DataDef $ TyDef name $ EvtDec ty | (name, (b, Ty ty)) <- symslist
     ] ++ [
         DataDef $ TyDef eventEnum $ SumDec eventEnum [(qualify (qualify "EVID", e), Just e) | Event e <- events_for g] -- a kludge to get it into the header
@@ -286,12 +294,12 @@ lowerSymTab gs ssyms = [
         FunDef (qualify n) args f [] [] | (n, f@(_, _ :-> _)) <- symslist
     ]
     where
-        args = map (qualify . ('a':) . show) [1..127]
+        args = map (qualify . ('a':) . show) [1..]
         syms = lowerSolverSyms ssyms
         symslist = toList syms
 
 lowerMachine :: Config -> SymbolTable -> (StateMachine TaggedName, Gr EnterExitState Happening) -> SmudgeIR QualifiedName
-lowerMachine cfg ssyms (StateMachine smName, g') = [
+lowerMachine cfg ssyms (StateMachine smName, g') = map boundArgs $ [
         DataDef $ TyDef stateEnum $ SumDec stateEnum [(st_id s, Nothing) | State s <- states],
         DataDef $ VarDef Internal $ ValDec stateVar (Ty stateEnum) (Init $ Value $ Var $ st_id initial)
     ] ++
@@ -322,7 +330,7 @@ lowerMachine cfg ssyms (StateMachine smName, g') = [
                        | (n, EnterExitState {st = State _, ex = ex@(_:_)}) <- labNodes $ delNodes (finalStates g' ++ [n | n <- nodes g', (_, _, Happening EventExit _ _) <- out g' n]) g'] ++
                       [(n, n, Happening EventEnter en [NoTransition])
                        | (n, EnterExitState {en, st = State _}) <- labNodes $ delNodes [n | n <- nodes g', (_, _, Happening EventEnter _ _) <- out g' n] g']) g'
-        eventNames = map qualify $ ["e"] ++ map (('e':) . show) [2..127]
+        eventNames = map qualify $ ["e"] ++ map (('e':) . show) [2..]
         char = TagBuiltin $ qualify "char"
         stateName_f = qualify (smName, "State_name")
         eventName_f = qualify (smName, "Event_name")

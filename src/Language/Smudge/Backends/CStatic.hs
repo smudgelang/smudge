@@ -287,7 +287,7 @@ convertIR dodec dodef (aliases, ir) =
                   array_index_e = (#:) (EPostfixExpression (convertVar a) LEFTSQUARE (fromList [(#:) (convertVar i) (:#)]) RIGHTSQUARE) (:#)
 
         convertVoidedVar :: Var (FullyQualAndEvent Identifier) -> CastExpression
-        convertVoidedVar (Var x)     = (TCastExpression LEFTPAREN (TypeName (SimpleList (Left VOID) Nothing) Nothing) RIGHTPAREN (UCastExpression $ (#:) (fullQual x) (:#)))
+        convertVoidedVar v = TCastExpression LEFTPAREN (TypeName (SimpleList (Left VOID) Nothing) Nothing) RIGHTPAREN ((#:) (convertVar v) (:#))
 
         convertVar :: Var (FullyQualAndEvent Identifier) -> PostfixExpression
         convertVar (Var x)     = (#:) (fullQual x) (:#)

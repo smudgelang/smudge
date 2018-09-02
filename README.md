@@ -1,4 +1,4 @@
-[![Linux Build Status](https://img.shields.io/travis/smudgelang/smudge.svg?label=Linux%20build)](https://travis-ci.org/smudgelang/smudge)
+[![Linux Build Status](https://img.shields.io/travis/com/smudgelang/smudge.svg?label=Linux%20build)](https://travis-ci.com/smudgelang/smudge)
 [![Windows Build Status](https://img.shields.io/appveyor/ci/Nate-Bragg-Bose/Smudge.svg?label=Windows%20build)](https://ci.appveyor.com/project/Nate-Bragg-Bose/Smudge)
 
 # The Smudge Programming Language

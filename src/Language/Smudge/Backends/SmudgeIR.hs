@@ -52,7 +52,7 @@ import qualified Language.Smudge.Semantics.Solver as Solver (Ty(..))
 import Control.Arrow ((***), second)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Graph (labNodes, lab, out, suc, insEdges, nodes, delNodes)
-import Data.List (nub)
+import Data.List ((\\), nub)
 import Data.Map (Map, empty, insert, (!), toList)
 import Data.Set (member)
 
@@ -272,6 +272,17 @@ boundArgs (FunDef name ps bty@(_, ty) ds ss) = FunDef name ps' bty ds ss
           countps (_ :-> ty') = 1 + countps ty'
           countps _ = 0
 
+markUnused :: Eq a => Def a -> Def a
+markUnused d@(DataDef _) = d
+markUnused (FunDef name ps bty ds ss) = FunDef name ps bty ds ss'
+    where ss' = [ExprS (UnusedValue $ Var v) | v <- ps \\ fvs] ++ ss
+          fvs = foldMap freein ds `mappend` foldMap (foldMap pure) ss
+          freein (TyDef _ _) = []
+          freein (VarDef _ (ValDec _ _ i)) =  foldMap (foldMap pure) i
+          freein (VarDef _ (SumVDec _ _ i)) =  foldMap (foldMap pure . snd) i
+          freein (VarDef _ (ListDec _ _ i)) =  foldMap (foldMap (foldMap pure)) i
+          freein (VarDef _ (SizeDec _ i)) = foldMap pure i
+
 lower :: Config -> ([(StateMachine TaggedName, Gr EnterExitState Happening)], SymbolTable) -> SmudgeIR QualifiedName
 lower cfg (gs, syms) = concatMap (lowerMachine cfg syms) gs
 
@@ -285,7 +296,7 @@ lowerSolverSyms :: SymbolTable -> Map TaggedName (Binding, Ty QualifiedName)
 lowerSolverSyms = afold (uncurry insert . second (second lowerTy)) empty
 
 lowerSymTab :: [(StateMachine TaggedName, Gr EnterExitState Happening)] -> SymbolTable -> SmudgeIR QualifiedName
-lowerSymTab gs ssyms = map boundArgs $ [
+lowerSymTab gs ssyms = map (markUnused . boundArgs) $ [
         DataDef $ TyDef name $ EvtDec ty | (name, (b, Ty ty)) <- symslist
     ] ++ [
         DataDef $ TyDef eventEnum $ SumDec eventEnum [(qualify (qualify "EVID", e), Just e) | Event e <- events_for g] -- a kludge to get it into the header
@@ -299,7 +310,7 @@ lowerSymTab gs ssyms = map boundArgs $ [
         symslist = toList syms
 
 lowerMachine :: Config -> SymbolTable -> (StateMachine TaggedName, Gr EnterExitState Happening) -> SmudgeIR QualifiedName
-lowerMachine cfg ssyms (StateMachine smName, g') = map boundArgs $ [
+lowerMachine cfg ssyms (StateMachine smName, g') = map (markUnused . boundArgs) $ [
         DataDef $ TyDef stateEnum $ SumDec stateEnum [(st_id s, Nothing) | State s <- states],
         DataDef $ VarDef Internal $ ValDec stateVar (Ty stateEnum) (Init $ Value $ Var $ st_id initial)
     ] ++
@@ -383,9 +394,9 @@ lowerMachine cfg ssyms (StateMachine smName, g') = map boundArgs $ [
                   name_var = qualify "event_name"
                   event_var = head eventNames
                   ds = if (not $ null handler) || not (debug cfg) then [] else [VarDef Unresolved $ SumVDec wrap_name (Ty eventEnum) $ Init (evt_id evName, Value $ Var event_var)]
-                  es =  (if (null ds) then [ExprS (UnusedValue $ Var event_var)] else []) ++ (case handler of
+                  es = case handler of
                            [(s, e')] -> [ExprS $ FunCall (qualify (sName smName s, mangleEv e')) (if e == e' then [Value $ Var event_var] else [])]
-                           [] -> call_panic_f [Literal panic_s, FunCall stateName_f [Value $ Var stateVar], FunCall eventName_f [Value $ Var wrap_name]])
+                           [] -> call_panic_f [Literal panic_s, FunCall stateName_f [Value $ Var stateVar], FunCall eventName_f [Value $ Var wrap_name]]
                   panic_s = disqualifyTag smName ++ "{%s[%s]}: Unhandled event\n"
 
         initializeFun :: QualifiedName -> Def QualifiedName
@@ -411,7 +422,7 @@ lowerMachine cfg ssyms (StateMachine smName, g') = map boundArgs $ [
         handleEventFun :: Event TaggedName -> [(State TaggedName, (State TaggedName, Event TaggedName))] -> [State TaggedName] -> Def QualifiedName
         handleEventFun e@(Event evName) ss unss = FunDef f_name eventNames (Internal, snd $ syms ! TagFunction (qualify evName)) [] es
             where f_name = qualify (qualify evName, "handle")
-                  es = [ExprS (UnusedValue $ Var event_var), Cases (Value $ Var stateVar) cases defaults]
+                  es = [Cases (Value $ Var stateVar) cases defaults]
                   event_var = head eventNames
                   call_unhandled = ExprS $ FunCall (unhandled_f e) [Value $ Var event_var]
                   call_ev_in s e' = ExprS $ FunCall (qualify (s, mangleEv e')) (if e == e' then [Value $ Var event_var] else [])
@@ -442,7 +453,7 @@ lowerMachine cfg ssyms (StateMachine smName, g') = map boundArgs $ [
                   panic_s = disqualifyTag smName ++ "{%s}: Invalid event ID\n"
 
         stateEventFun :: State TaggedName -> Happening -> State TaggedName -> Bool -> Def QualifiedName
-        stateEventFun st h st' do_exit = FunDef f_name eventNames (Internal, ty) [] $ logAState ++ map ExprS vs ++ map ExprS es
+        stateEventFun st h st' do_exit = FunDef f_name eventNames (Internal, ty) [] $ logAState ++ map ExprS es
             where f_name = qualify (sName smName st, mangleEv $ event h)
                   ty = case event h of
                               (Event t) -> Ty t :-> Void
@@ -466,9 +477,6 @@ lowerMachine cfg ssyms (StateMachine smName, g') = map boundArgs $ [
                   psOf (p    :-> _) = [if isEventTy p (event h) then Value $ Var event_var else Null]
                   apply_se (f, FuncTyped _) = undefined -- See ticket #15, harder than it seems at first.
                   apply_se (f, _) = FunCall (qualify f) (psOf (snd $ syms ! f))
-                  vs = case event h of
-                              (Event t) -> [UnusedValue $ Var event_var]
-                              otherwise -> []
                   es = case h of
                          (Happening _ ses [])                        -> [apply_se se | se <- ses] ++ (if do_exit then [call_exit] else []) ++ [assign_state, call_enter]
                          (Happening _ ses fs) | elem NoTransition fs -> [apply_se se | se <- ses]

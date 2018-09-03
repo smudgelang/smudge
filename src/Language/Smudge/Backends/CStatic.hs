@@ -336,7 +336,7 @@ instance Backend CStaticOption where
                 Option [] ["ext_h"] (ReqArg (TargetPath Header ExtFile) "FILE")
                  "The name of the target ext header file if not derived from source file.",
                 Option [] ["[no-]smear"] (BoolArg Smear)
-                 "[DON'T] Prefix all identifiers with namespace.",
+                 "[DON'T] Generate Smear bindings.",
                 Option [] ["stubs"] (NoArg GenStubs)
                  "generate stub implementation."])
     generate os cfg gswust outputTarget = do

@@ -13,6 +13,8 @@ build-type:          Custom
 extra-source-files:  README.md
 cabal-version:       >=1.10
 
+custom-setup
+  setup-depends: base (>= 4.6), Cabal, filepath, process
 
 library
   hs-source-dirs:    src
@@ -81,3 +83,4 @@ executable smudge
 source-repository head
   type:     git
   location: https://github.com/smudgelang/smudge
+

@@ -29,10 +29,18 @@ looks like:
 
 ## Getting Smudge
 
+### Splat
+
+Instead of installing Smudge by itself, most people will want to install
+[Splat, the Smudge Platform](https://github.com/smudgelang/splat), which
+bundles together everything you need to use Smudge.  To download, go to
+the [Splat releases page](https://github.com/smudgelang/splat/releases)
+for the latest platform release.
+
 ### Binaries
 
-There are binary releases available for Windows and Linux available on
-the
+If you really want to install the Smudge compiler by itself, there are
+binary releases available for Windows and Linux available on the
 [Smudge releases page](https://github.com/smudgelang/smudge/releases). The
 latest release includes a pdf of the tutorial, which is a great place
 to start learning Smudge.

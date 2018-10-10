@@ -1,22 +1,34 @@
 HSFILES=$(wildcard *.hs) $(wildcard app/*.hs) $(wildcard src/*/*.hs) $(wildcard src/*/*/*.hs) $(wildcard src/*/*/*/*.hs)
 
+CPU_PLAT_RAW=$(shell stack ghc -- -e "(\(Just p) -> p) $$ lookup "'"'"Target platform"'"'" $$(stack ghc -- --info)" | tr -d \")
+CPU_RAW=$(shell echo "$(CPU_PLAT_RAW)" | cut -d "-" -f 1)
+CPU_x86_64=amd64
+CPU_i386=i386
+TARGET_CPU=$(CPU_$(CPU_RAW))
+PLAT_RAW=$(shell echo "$(CPU_PLAT_RAW)" | cut -d "-" -f 2,3)
+PLAT_unknown-linux=linux
+PLAT_linux-gnu=linux
+PLAT_unknown-mingw32=windows
+PLAT_w64-mingw32=windows
+TARGET_PLATFORM=$(PLAT_$(PLAT_RAW))
+
 ifeq ($(OS),Windows_NT)
 SMUDGE_EXE=smudge.exe
-PLATFORM=windows
 /=\\
 PKGEXT=zip exe
 RC_FILE=$(SMUDGE_BUILD_DIR)/Properties.o
 CABAL_FLAGS+=--ghc-options $(RC_FILE)
 else
 SMUDGE_EXE=smudge
-PLATFORM=linux
 /=/
 PKGEXT=tgz deb
-DEBDIR=debian/smudge-$(SMUDGE_VERSION)-linux
+DEBDIR=debian/$(PACKAGE)_$(SMUDGE_VERSION)-$(TARGET_PLATFORM)_$(TARGET_CPU)
 endif
+
 define cabal_query
 $(shell grep "^$(1):" smudge.cabal | cut -d ':' -f 1 --complement | sed -e 's/^\s*//' -e 's/\s*$$//')
 endef
+PACKAGE=smudge
 SMUDGE_BUILD_DIR_RAW=$(shell stack path --local-install-root)
 SMUDGE_BUILD_DIR=$(subst \,/,$(SMUDGE_BUILD_DIR_RAW))
 SMUDGE_RELEASE_SUBDIR=smudge
@@ -101,10 +113,10 @@ stage: build docs/tutorial/tutorial.pdf
 	cp LICENSE $(SMUDGE_RELEASE_STAGE_DIR)
 	cp README.md $(SMUDGE_RELEASE_STAGE_DIR)
 
-package: $(foreach EXT,$(PKGEXT),smudge-$(SMUDGE_VERSION)-$(PLATFORM).$(EXT))
+package: $(foreach EXT,$(PKGEXT),$(PACKAGE)_$(SMUDGE_VERSION)-$(TARGET_PLATFORM)_$(TARGET_CPU).$(EXT))
 
-zip: smudge-$(SMUDGE_VERSION)-$(PLATFORM).zip
-smudge-$(SMUDGE_VERSION)-$(PLATFORM).zip: stage
+zip: $(PACKAGE)_$(SMUDGE_VERSION)-$(TARGET_PLATFORM)_$(TARGET_CPU).zip
+$(PACKAGE)_$(SMUDGE_VERSION)-$(TARGET_PLATFORM)_$(TARGET_CPU).zip: stage
 	cd $(SMUDGE_BUILD_DIR) && \
 	if type zip >/dev/null 2>&1; then \
 	    zip -r $@ $(SMUDGE_RELEASE_SUBDIR); \
@@ -120,21 +132,22 @@ $(SMUDGE_BUILD_DIR)/setup.iss: setup.iss.in smudge.cabal
 	@echo $(POUND)define MyAppURL       \"$(call cabal_query,  location)\" >>$@
 	@echo $(POUND)define MyOutputDir    \"$(SMUDGE_BUILD_DIR)\" >>$@
 	@echo $(POUND)define MySetupDir     \"$(SMUDGE_RELEASE_STAGE_DIR)\" >>$@
+	@echo $(POUND)define MyOutputBase   \"$(PACKAGE)_$(SMUDGE_VERSION)-$(TARGET_PLATFORM)_$(TARGET_CPU)\" >>$@
 	cat $< >>$@
 
-exe: smudge-$(SMUDGE_VERSION)-$(PLATFORM).exe
-smudge-$(SMUDGE_VERSION)-windows.exe: $(SMUDGE_BUILD_DIR)/setup.iss stage
+exe: $(PACKAGE)_$(SMUDGE_VERSION)-$(TARGET_PLATFORM)_$(TARGET_CPU).exe
+$(PACKAGE)_$(SMUDGE_VERSION)-windows_$(TARGET_CPU).exe: $(SMUDGE_BUILD_DIR)/setup.iss stage
 	ISCC /Q $(SMUDGE_BUILD_DIR_RAW)\setup.iss
 	mv $(SMUDGE_BUILD_DIR)/$@ .
 
-tgz: smudge-$(SMUDGE_VERSION)-$(PLATFORM).tgz
-smudge-$(SMUDGE_VERSION)-linux.tgz: stage
+tgz: $(PACKAGE)_$(SMUDGE_VERSION)-$(TARGET_PLATFORM)_$(TARGET_CPU).tgz
+$(PACKAGE)_$(SMUDGE_VERSION)-linux_$(TARGET_CPU).tgz: stage
 	cd $(SMUDGE_BUILD_DIR) && \
 	fakeroot tar -czf $@ $(SMUDGE_RELEASE_SUBDIR)
 	mv $(SMUDGE_BUILD_DIR)/$@ .
 
-deb: smudge-$(SMUDGE_VERSION)-$(PLATFORM).deb
-smudge-$(SMUDGE_VERSION)-linux.deb: stage
+deb: $(PACKAGE)_$(SMUDGE_VERSION)-$(TARGET_PLATFORM)_$(TARGET_CPU).deb
+$(PACKAGE)_$(SMUDGE_VERSION)-linux_$(TARGET_CPU).deb: stage
 	mkdir -p $(DEBDIR)/DEBIAN
 	mkdir -p $(DEBDIR)/usr/bin
 	mkdir -p $(DEBDIR)/usr/share/doc/smudge/
@@ -146,7 +159,7 @@ smudge-$(SMUDGE_VERSION)-linux.deb: stage
 	# Note: the copyright file duplicates info from LICENSE.
 	cp debian/copyright $(DEBDIR)/usr/share/doc/smudge/
 	chmod 755 $(DEBDIR)/usr/bin/smudge
-	sed -e "s/__VERSION__/$(SMUDGE_VERSION)/g" -e "s/__ARCH__/`dpkg --print-architecture`/g" debian/control > $(DEBDIR)/DEBIAN/control
+	sed -e "s/__VERSION__/$(SMUDGE_VERSION)-linux/g" -e "s/__ARCH__/$(TARGET_CPU)/g" debian/control > $(DEBDIR)/DEBIAN/control
 	fakeroot dpkg --build $(DEBDIR)
 	mv $(DEBDIR).deb . # Whew, puns
 

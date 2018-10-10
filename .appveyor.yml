@@ -43,9 +43,9 @@ test_script:
 - mingw32-make package examples doc STACK_FLAGS="--no-terminal"
 
 artifacts:
-- path: smudge-*-windows.zip
+- path: smudge_*_*.zip
   name: Smudge Archive
-- path: smudge-*-windows.exe
+- path: smudge_*_*.exe
   name: Smudge Installer
 
 deploy:

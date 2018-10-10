@@ -37,6 +37,14 @@ bundles together everything you need to use Smudge.  To download, go to
 the [Splat releases page](https://github.com/smudgelang/splat/releases)
 for the latest platform release.
 
+### Debian
+
+Users of Debian and derivatives can add the Smudge package repository
+and keep Smudge installations current by following [these
+directions](https://smudgelang.github.io/). There is a package for
+Smudge by itself, called smudge, but also a package for all of Splat,
+called smudge-platform.
+
 ### Binaries
 
 If you really want to install the Smudge compiler by itself, there are

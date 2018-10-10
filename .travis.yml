@@ -51,7 +51,7 @@ deploy:
   api_key:
     secure: c/Xo3n9gmvI7l23+/fNuuuiGATJSTmZkSEKhmNO4jEhBkIqV3eEectSL/3SJSMkGzpe42kisgQXJzXDjuPvPmjz+a4pkKzBfS9qAaKO/299dP4f4Kb7DhaTy3s7OI6a+8xaaWsa0wytkHdLlbCMrqHfPdoa6IG8Cir+WlC2TK+IJIElTrH4y0eAKAlsoxy8qeV6FX8G9JruU1JWXF7UUELXwiYVPXXS0kIX9gZ8hRTxgilDrgFRIah9NvEOg20W2OEH5IXKU4d/xt8/xATr5IQh5kGLUKUUKJWORw71TTDszqheQNiLfeoRcb3Q2VVa84+7AhpQMLsNCQVcnlZLiYeNqR55E7Z0YjBOcFS6msRRjRKd2eU0bxBadLKNH+VHBY8UCGKr5GwEFFI3ECDiDecxQOidj+CJ6Y2DMxS3MjeXQRA9U4eLsStlKmP7yj4UuDfYAuHl39TbHxlRQO7Ra9vD5ev4dIasET/QpoH4rO9R0B9byriUwjGcqdLrJ6VHJNcHlTphMClhsx2ywT55DIKxMGuuvEoJe0yOWYu2xTGghSuSCxyv1kf5m9p4u0F1fuPf3FC2A7dPXH+wHtPbcBMZYM3RVB085Kx69MOxcNqOVDGbYwWZkZmgpRFPAfj+sF9nbYRyq+kddsx/j/Zi+dCK6JCxGzVsAtapKVwPHP20=
   file_glob: true
-  file: smudge-*-linux.*
+  file: smudge_*_*.*
   skip_cleanup: true
   on:
     repo: smudgelang/smudge

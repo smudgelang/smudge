@@ -358,7 +358,7 @@ instance Backend CStaticOption where
               outputBaseName = dropExtension outputTarget
               outputExtName = outputBaseName ++ "_ext"
               renames = [o | o@(TargetPath _ _ _) <- os]
-              smearIncls = if smear then [Sys "smear.h"] else []
+              smearIncls = if smear then [Sys "smear/smear.h"] else []
               headerName = normalise $ head $ [f | TargetPath Header IntFile f <- renames] ++ [(outputBaseName <.> "h")]
               outputName = normalise $ head $ [f | TargetPath Source IntFile f <- renames] ++ [(outputBaseName <.> "c")]
               extHdrName = normalise $ head $ [f | TargetPath Header ExtFile f <- renames] ++ [(outputExtName <.> "h")]

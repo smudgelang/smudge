@@ -1,3 +1,5 @@
+v0.7.1: This minor release fixes a bad include path in the generated output.
+
 v0.7: First release as a part of Splat: the Smudge Platform.
 
       Project:

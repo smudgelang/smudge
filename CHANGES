@@ -1,3 +1,40 @@
+v0.7: First release as a part of Splat: the Smudge Platform.
+
+      Project:
+
+      The Smudge language now has a distribution, Splat, including both
+      the Smudge compiler and the Smear environment and runtime.
+
+      Oh yeah, the Smudge language also now has an official runtime: Smear!
+      The compiler supports generating bindings using the `--c-smear` flag.
+
+      Features:
+
+      The biggest minor feature is that event cycles are detected and
+      rejected.  Yes, that's right, Smudge solves (a tiny subset of) the
+      halting problem.  It is pretty conservative; it rejects machines
+      unless it can tell that all messages sent to an empty queue halts.
+
+      Errata:
+
+      Smudge now generates code that no longer yields an unused parameter
+      warning.  This means that all Smudge output compiles silently with:
+
+      gcc -c -std=c89 -pedantic -Wall -Wextra -Werror -Wno-unused-function
+
+      Additionally, there were several errors that were discovered using
+      code gen; most of these have been fixed.
+
+      Tickets:
+
+      21: Reject event cycles.
+      43: A single state can't handle an event two different ways.
+      58: Detect undeclared events sent to other state machines.
+      61: Any cannot be transient
+      62: Vim mis-highlights parenthesis in name.
+      67: Forbid nonsensical any states
+      73: Boolean command line switches should be invertable.
+
 v0.6: First open source release, now with better debugging and control.
 
       Project:

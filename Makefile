@@ -132,6 +132,7 @@ $(SMUDGE_BUILD_DIR)/setup.iss: setup.iss.in smudge.cabal
 	@echo $(POUND)define MyAppURL       \"$(call cabal_query,  location)\" >>$@
 	@echo $(POUND)define MyOutputDir    \"$(SMUDGE_BUILD_DIR)\" >>$@
 	@echo $(POUND)define MySetupDir     \"$(SMUDGE_RELEASE_STAGE_DIR)\" >>$@
+	@echo $(POUND)define MyOutputBase   \"$(PACKAGE)_$(SMUDGE_VERSION)-$(TARGET_PLATFORM)_$(TARGET_CPU)\" >>$@
 	cat $< >>$@
 
 exe: $(PACKAGE)_$(SMUDGE_VERSION)-$(TARGET_PLATFORM)_$(TARGET_CPU).exe

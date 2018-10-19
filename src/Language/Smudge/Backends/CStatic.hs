@@ -408,8 +408,10 @@ instance Backend CStaticOption where
               hdrLeader includes fp =
                 do
                   gennedIncludes <- genIncludes includes fp
-                  return $ concat [ward, "#ifndef ", reinclusionName fp, "\n", "#define ", reinclusionName fp, "\n",
+                  return $ concat [ward, "#ifndef ", reinclusionName fp, "\n",
+                                    "#define ", reinclusionName fp, "\n",
+                                    "#ifdef __cplusplus\nextern \"C\" {\n#endif\n",
                                    gennedIncludes]
-              hdrTrailer = "#endif\n"
+              hdrTrailer = "#ifdef __cplusplus\n}\n#endif\n#endif\n"
               stubs = GenStubs `elem` os
               smear = Smear True `elem` os

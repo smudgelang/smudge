@@ -142,6 +142,7 @@ $(PACKAGE)_$(SMUDGE_VERSION)-windows_$(TARGET_CPU).exe: $(SMUDGE_BUILD_DIR)/setu
 
 tgz: $(PACKAGE)_$(SMUDGE_VERSION)-$(TARGET_PLATFORM)_$(TARGET_CPU).tgz
 $(PACKAGE)_$(SMUDGE_VERSION)-linux_$(TARGET_CPU).tgz: stage
+	cp docs/smudge.1 $(SMUDGE_RELEASE_STAGE_DIR)
 	cd $(SMUDGE_BUILD_DIR) && \
 	fakeroot tar -czf $@ $(SMUDGE_RELEASE_SUBDIR)
 	mv $(SMUDGE_BUILD_DIR)/$@ .
@@ -151,6 +152,7 @@ $(PACKAGE)_$(SMUDGE_VERSION)-linux_$(TARGET_CPU).deb: stage
 	mkdir -p $(DEBDIR)/DEBIAN
 	mkdir -p $(DEBDIR)/usr/bin
 	mkdir -p $(DEBDIR)/usr/share/doc/smudge/
+	mkdir -p $(DEBDIR)/usr/share/man/man1/
 	cp $(SMUDGE_BUILD_DIR)/smudge/smudge $(DEBDIR)/usr/bin
 	chrpath -d $(DEBDIR)/usr/bin/smudge
 	cp -r $(SMUDGE_BUILD_DIR)/$(SMUDGE_RELEASE_SUBDIR)/* $(DEBDIR)/usr/share/doc/smudge/
@@ -161,6 +163,8 @@ $(PACKAGE)_$(SMUDGE_VERSION)-linux_$(TARGET_CPU).deb: stage
 	gzip --best -fn $(DEBDIR)/usr/share/doc/smudge/changelog.Debian
 	gzip --best -fn $(DEBDIR)/usr/share/doc/smudge/changelog
 	chmod -R a+rX $(DEBDIR)/usr/share/doc/smudge/*
+	cp docs/smudge.1 $(DEBDIR)/usr/share/man/man1/
+	gzip --best -fn $(DEBDIR)/usr/share/man/man1/smudge.1
 	# Note: the copyright file duplicates info from LICENSE.
 	cp debian/copyright $(DEBDIR)/usr/share/doc/smudge/
 	chmod 755 $(DEBDIR)/usr/bin/smudge

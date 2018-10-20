@@ -155,6 +155,11 @@ $(PACKAGE)_$(SMUDGE_VERSION)-linux_$(TARGET_CPU).deb: stage
 	chrpath -d $(DEBDIR)/usr/bin/smudge
 	cp -r $(SMUDGE_BUILD_DIR)/$(SMUDGE_RELEASE_SUBDIR)/* $(DEBDIR)/usr/share/doc/smudge/
 	rm $(DEBDIR)/usr/share/doc/smudge/smudge # No need for extra binary
+	# Lintian wants the changelog to be called changelog.gz
+	mv $(DEBDIR)/usr/share/doc/smudge/CHANGES $(DEBDIR)/usr/share/doc/smudge/changelog
+	cp debian/changelog $(DEBDIR)/usr/share/doc/smudge/changelog.Debian
+	gzip --best -fn $(DEBDIR)/usr/share/doc/smudge/changelog.Debian
+	gzip --best -fn $(DEBDIR)/usr/share/doc/smudge/changelog
 	chmod -R a+rX $(DEBDIR)/usr/share/doc/smudge/*
 	# Note: the copyright file duplicates info from LICENSE.
 	cp debian/copyright $(DEBDIR)/usr/share/doc/smudge/
@@ -179,6 +184,7 @@ clean:
 	stack clean
 	rm -rf TAGS tags
 	rm -f *.tgz *.deb
+	rm -rf $(DEBDIR)
 	$(MAKE) -C examples clean
 	$(MAKE) -C docs$/tutorial clean
 	$(MAKE) -C docs$/definition clean

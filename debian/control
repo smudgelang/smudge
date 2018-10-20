@@ -10,7 +10,7 @@ Vcs-Git: https://github.com/smudgelang/smudge.git
 Homepage: https://github.com/smudgelang/smudge
 Package: smudge
 Architecture: __ARCH__
-Depends: graphviz
+Depends: graphviz, libc6
 Description: State machine generation language
  Smudge is a domain specific language for implementing state
  machines. The compiler generates standard C code as well as graphical

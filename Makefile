@@ -87,6 +87,12 @@ $(RC_FILE):
 	@echo END                                                               >> $(@:%.o=%.rc)
 	windres -i $(@:%.o=%.rc) $@
 
+manpage.in: README.md makeman.py
+	./makeman.py
+
+docs/smudge.1: manpage.in build
+	help2man -o docs/smudge.1 --version-string=$(SMUDGE_VERSION) -N -s 1 -i manpage.in "stack exec smudge --"
+
 docs/tutorial/tutorial.pdf:
 	$(MAKE) -C docs$/tutorial tutorial.pdf
 
@@ -99,6 +105,7 @@ release:
 	@read -r -p "Is this release correctly versioned and tagged? [Yn] " REPLY; \
 	if [ "$$REPLY" = "n" ]; then echo "Well, do that, then!"; exit 1; fi
 	$(MAKE) package
+
 
 stage: build docs/tutorial/tutorial.pdf
 	# Make sure it's a clean new release build.
@@ -141,14 +148,14 @@ $(PACKAGE)_$(SMUDGE_VERSION)-windows_$(TARGET_CPU).exe: $(SMUDGE_BUILD_DIR)/setu
 	mv $(SMUDGE_BUILD_DIR)/$@ .
 
 tgz: $(PACKAGE)_$(SMUDGE_VERSION)-$(TARGET_PLATFORM)_$(TARGET_CPU).tgz
-$(PACKAGE)_$(SMUDGE_VERSION)-linux_$(TARGET_CPU).tgz: stage
+$(PACKAGE)_$(SMUDGE_VERSION)-linux_$(TARGET_CPU).tgz: stage docs/smudge.1
 	cp docs/smudge.1 $(SMUDGE_RELEASE_STAGE_DIR)
 	cd $(SMUDGE_BUILD_DIR) && \
 	fakeroot tar -czf $@ $(SMUDGE_RELEASE_SUBDIR)
 	mv $(SMUDGE_BUILD_DIR)/$@ .
 
 deb: $(PACKAGE)_$(SMUDGE_VERSION)-$(TARGET_PLATFORM)_$(TARGET_CPU).deb
-$(PACKAGE)_$(SMUDGE_VERSION)-linux_$(TARGET_CPU).deb: stage
+$(PACKAGE)_$(SMUDGE_VERSION)-linux_$(TARGET_CPU).deb: stage docs/smudge.1
 	mkdir -p $(DEBDIR)/DEBIAN
 	mkdir -p $(DEBDIR)/usr/bin
 	mkdir -p $(DEBDIR)/usr/share/doc/smudge/
@@ -192,6 +199,7 @@ clean:
 	$(MAKE) -C examples clean
 	$(MAKE) -C docs$/tutorial clean
 	$(MAKE) -C docs$/definition clean
+	rm -f docs/smudge.1 manpage.in
 
 distclean: clean
 	rm -rf .stack-work

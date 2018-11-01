@@ -3,7 +3,8 @@ Version: __VERSION__
 Section: devel
 Priority: optional
 Build-Depends: debhelper (>= 10),
-               haskell-stack (>=1.1.2)
+               haskell-stack (>=1.1.2),
+               help2man
 Standards-Version: 4.1.1
 Vcs-Browser: https://github.com/smudgelang/smudge
 Vcs-Git: https://github.com/smudgelang/smudge.git

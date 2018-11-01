@@ -35,7 +35,7 @@ before_install:
 - sudo apt-get install -y graphviz
 - sudo apt-get install -y chrpath fakeroot
 
-- sudo apt-get install --no-install-recommends texlive-fonts-recommended texlive-latex-extra texlive-fonts-extra texlive-latex-recommended dvipng
+- sudo apt-get install --no-install-recommends texlive-fonts-recommended texlive-latex-extra texlive-fonts-extra texlive-latex-recommended dvipng help2man
 - sudo pip install rst2pdf
 
 install:

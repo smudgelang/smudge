@@ -47,7 +47,7 @@ all: build examples doc TAGS
 tags: TAGS
 	echo ":ctags" | ghci -v0 `find . -iname \*\.hs | grep -v Setup.hs`
 
-build: $(SMUDGE_TARGET)
+build: $(SMUDGE_TARGET) smudge
 
 examples: build
 	$(MAKE) -C examples all
@@ -55,6 +55,11 @@ examples: build
 doc:
 	$(MAKE) -C docs$/tutorial tutorial.pdf
 	$(MAKE) -C docs$/definition all
+
+smudge: $(SMUDGE_TARGET)
+	echo "#!/bin/sh" > smudge
+	echo "stack exec smudge -- \$$*" >> smudge
+	chmod +x smudge
 
 $(SMUDGE_TARGET): smudge.cabal stack.yaml $(HSFILES) $(RC_FILE)
 	stack $(STACK_FLAGS) build $(CABAL_FLAGS)
@@ -199,7 +204,7 @@ clean:
 	$(MAKE) -C examples clean
 	$(MAKE) -C docs$/tutorial clean
 	$(MAKE) -C docs$/definition clean
-	rm -f docs/smudge.1 manpage.in
+	rm -f smudge docs/smudge.1 manpage.in
 
 distclean: clean
 	rm -rf .stack-work

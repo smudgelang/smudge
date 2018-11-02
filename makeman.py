@@ -24,5 +24,3 @@ if __name__=='__main__':
     with open('manpage.in', 'w') as manpage:
         name = '\n[=NAME]\n\nsmudge - smudge programming language\n'
         manpage.write(name)
-        author = '\n[=AUTHOR]\nWritten by Nate Bragg, Nathan Michaels\n'
-        manpage.write(summary)

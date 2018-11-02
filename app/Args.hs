@@ -38,7 +38,7 @@ data CommonOption = LogEvent Bool (Maybe String) |
 
 header :: String
 header = "Usage: " ++ appName ++ " [OPTIONS] file\n" ++
-         synopsis ++ "\n"
+         synopsis ++ "\n" ++ "\nOptions:\n"
 
 footer :: String
 footer = "Written by " ++ author ++ "\n"

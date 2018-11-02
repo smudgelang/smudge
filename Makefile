@@ -47,7 +47,7 @@ all: build examples doc TAGS
 tags: TAGS
 	echo ":ctags" | ghci -v0 `find . -iname \*\.hs | grep -v Setup.hs`
 
-build: $(SMUDGE_TARGET)
+build: $(SMUDGE_TARGET) smudge
 
 examples: build
 	$(MAKE) -C examples all
@@ -55,6 +55,11 @@ examples: build
 doc:
 	$(MAKE) -C docs$/tutorial tutorial.pdf
 	$(MAKE) -C docs$/definition all
+
+smudge: $(SMUDGE_TARGET)
+	echo "#!/bin/sh" > smudge
+	echo "stack exec smudge -- \$$*" >> smudge
+	chmod +x smudge
 
 $(SMUDGE_TARGET): smudge.cabal stack.yaml $(HSFILES) $(RC_FILE)
 	stack $(STACK_FLAGS) build $(CABAL_FLAGS)
@@ -87,6 +92,12 @@ $(RC_FILE):
 	@echo END                                                               >> $(@:%.o=%.rc)
 	windres -i $(@:%.o=%.rc) $@
 
+manpage.in: README.md makeman.py
+	./makeman.py
+
+docs/smudge.1: manpage.in build
+	help2man -o docs/smudge.1 --version-string=$(SMUDGE_VERSION) -N -s 1 -i manpage.in ./smudge
+
 docs/tutorial/tutorial.pdf:
 	$(MAKE) -C docs$/tutorial tutorial.pdf
 
@@ -99,6 +110,7 @@ release:
 	@read -r -p "Is this release correctly versioned and tagged? [Yn] " REPLY; \
 	if [ "$$REPLY" = "n" ]; then echo "Well, do that, then!"; exit 1; fi
 	$(MAKE) package
+
 
 stage: build docs/tutorial/tutorial.pdf
 	# Make sure it's a clean new release build.
@@ -141,21 +153,30 @@ $(PACKAGE)_$(SMUDGE_VERSION)-windows_$(TARGET_CPU).exe: $(SMUDGE_BUILD_DIR)/setu
 	mv $(SMUDGE_BUILD_DIR)/$@ .
 
 tgz: $(PACKAGE)_$(SMUDGE_VERSION)-$(TARGET_PLATFORM)_$(TARGET_CPU).tgz
-$(PACKAGE)_$(SMUDGE_VERSION)-linux_$(TARGET_CPU).tgz: stage
+$(PACKAGE)_$(SMUDGE_VERSION)-linux_$(TARGET_CPU).tgz: stage docs/smudge.1
+	cp docs/smudge.1 $(SMUDGE_RELEASE_STAGE_DIR)
 	cd $(SMUDGE_BUILD_DIR) && \
 	fakeroot tar -czf $@ $(SMUDGE_RELEASE_SUBDIR)
 	mv $(SMUDGE_BUILD_DIR)/$@ .
 
 deb: $(PACKAGE)_$(SMUDGE_VERSION)-$(TARGET_PLATFORM)_$(TARGET_CPU).deb
-$(PACKAGE)_$(SMUDGE_VERSION)-linux_$(TARGET_CPU).deb: stage
+$(PACKAGE)_$(SMUDGE_VERSION)-linux_$(TARGET_CPU).deb: stage docs/smudge.1
 	mkdir -p $(DEBDIR)/DEBIAN
 	mkdir -p $(DEBDIR)/usr/bin
 	mkdir -p $(DEBDIR)/usr/share/doc/smudge/
+	mkdir -p $(DEBDIR)/usr/share/man/man1/
 	cp $(SMUDGE_BUILD_DIR)/smudge/smudge $(DEBDIR)/usr/bin
 	chrpath -d $(DEBDIR)/usr/bin/smudge
 	cp -r $(SMUDGE_BUILD_DIR)/$(SMUDGE_RELEASE_SUBDIR)/* $(DEBDIR)/usr/share/doc/smudge/
 	rm $(DEBDIR)/usr/share/doc/smudge/smudge # No need for extra binary
+	# Lintian wants the changelog to be called changelog.gz
+	mv $(DEBDIR)/usr/share/doc/smudge/CHANGES $(DEBDIR)/usr/share/doc/smudge/changelog
+	cp debian/changelog $(DEBDIR)/usr/share/doc/smudge/changelog.Debian
+	gzip --best -fn $(DEBDIR)/usr/share/doc/smudge/changelog.Debian
+	gzip --best -fn $(DEBDIR)/usr/share/doc/smudge/changelog
 	chmod -R a+rX $(DEBDIR)/usr/share/doc/smudge/*
+	cp docs/smudge.1 $(DEBDIR)/usr/share/man/man1/
+	gzip --best -fn $(DEBDIR)/usr/share/man/man1/smudge.1
 	# Note: the copyright file duplicates info from LICENSE.
 	cp debian/copyright $(DEBDIR)/usr/share/doc/smudge/
 	chmod 755 $(DEBDIR)/usr/bin/smudge
@@ -179,9 +200,11 @@ clean:
 	stack clean
 	rm -rf TAGS tags
 	rm -f *.tgz *.deb
+	rm -rf $(DEBDIR)
 	$(MAKE) -C examples clean
 	$(MAKE) -C docs$/tutorial clean
 	$(MAKE) -C docs$/definition clean
+	rm -f smudge docs/smudge.1 manpage.in
 
 distclean: clean
 	rm -rf .stack-work

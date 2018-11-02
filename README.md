@@ -3,6 +3,8 @@
 
 # The Smudge Programming Language
 
+<!-- BEGIN DESCRIPTION -->
+
 Smudge is a domain specific language for implementing state
 machines. The compiler generates standard C code as well as graphical
 state diagrams. Its output is optimized for use on very limited
@@ -26,6 +28,8 @@ looks like:
             _ -(@sideEffect)-> FIRST_STATE
         ]
     }
+    
+<!-- END DESCRIPTION -->
 
 ## Getting Smudge
 

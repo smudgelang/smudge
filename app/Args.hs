@@ -38,8 +38,10 @@ data CommonOption = LogEvent Bool (Maybe String) |
 
 header :: String
 header = "Usage: " ++ appName ++ " [OPTIONS] file\n" ++
-         synopsis ++ "\n" ++
-         "Written by " ++ author ++ "\n"
+         synopsis ++ "\n" ++ "\nOptions:\n"
+
+footer :: String
+footer = "Written by " ++ author ++ "\n"
 
 sysopts :: [OptDescr SystemOption]
 sysopts = [Option ['v'] ["version"] (NoArg Version) "Version information.",
@@ -75,7 +77,7 @@ fileopts = [Subcommand "" EnvmntOption envopts,
             (Subcommand <$> fst <*> return GraphVizOption <*> snd) options]
 
 printUsage :: IO ()
-printUsage = putStr (usageInfo header all_opts)
+printUsage = putStr (usageInfo header all_opts ++ footer)
 
 printVersion :: IO ()
 printVersion = putStrLn (appName ++ " version: " ++ show version)

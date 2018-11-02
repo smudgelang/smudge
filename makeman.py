@@ -8,7 +8,7 @@ def get_readme_section(filename, start="BEGIN", end="END"):
         for line in lines:
             if section is None and start in line:
                 section = line.split()[line.split().index(start) + 1]
-                summary.append('[={0}]\n'.format(section))
+                summary.append('[<{0}]\n'.format(section))
             elif section:
                 if end in line:
                     section = None

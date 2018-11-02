@@ -91,7 +91,7 @@ manpage.in: README.md makeman.py
 	./makeman.py
 
 docs/smudge.1: manpage.in build
-	help2man -o docs/smudge.1 --version-string=$(SMUDGE_VERSION) -N -s 1 -i manpage.in "stack exec smudge --"
+	help2man -o docs/smudge.1 --version-string=$(SMUDGE_VERSION) -N -s 1 -i manpage.in ./smudge
 
 docs/tutorial/tutorial.pdf:
 	$(MAKE) -C docs$/tutorial tutorial.pdf

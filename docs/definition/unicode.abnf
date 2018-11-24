@@ -1,0 +1,384 @@
+;;;;;;;;;;;;;;;;;;;
+;; Unicode Lexer ;;
+;;;;;;;;;;;;;;;;;;;
+
+;; Visible characters
+; The excluded characters are either below in unicode-nl or unicode-space,
+; control characters, private-use characters, or noncharacters.
+unicode-visible = %x00A1-1679   / %x1681-1FFF   / %x200B-202E   / %x2030-205E
+                / %x2060-2FFF   / %x3001-DFFF   / %xF900-FDCF   / %xFDF0-FFFD
+                / %x10000-1FFFD / %x20000-2FFFD / %x30000-3FFFD / %x40000-4FFFD
+                / %x50000-5FFFD / %x60000-6FFFD / %x70000-7FFFD / %x80000-8FFFD
+                / %x90000-9FFFD / %xA0000-AFFFD / %xB0000-BFFFD / %xC0000-CFFFD
+                / %xD0000-DFFFD / %xE0000-EFFFD
+
+;; Whitespace
+unicode-nl = %x85 / %x2028-2029
+
+unicode-space = %xA0 / %x1680 / %x2000-200A / %x202F / %x205F / %x3000
+
+;; Letters
+unicode-lower = %x00B5 / %x00DF-00F6 / %x00F8-00FF / %x0101 / %x0103 / %x0105
+              / %x0107 / %x0109 / %x010B / %x010D / %x010F / %x0111 / %x0113
+              / %x0115 / %x0117 / %x0119 / %x011B / %x011D / %x011F / %x0121
+              / %x0123 / %x0125 / %x0127 / %x0129 / %x012B / %x012D / %x012F
+              / %x0131 / %x0133 / %x0135 / %x0137-0138 / %x013A / %x013C
+              / %x013E / %x0140 / %x0142 / %x0144 / %x0146 / %x0148-0149
+              / %x014B / %x014D / %x014F / %x0151 / %x0153 / %x0155 / %x0157
+              / %x0159 / %x015B / %x015D / %x015F / %x0161 / %x0163 / %x0165
+              / %x0167 / %x0169 / %x016B / %x016D / %x016F / %x0171 / %x0173
+              / %x0175 / %x0177 / %x017A / %x017C / %x017E-0180 / %x0183
+              / %x0185 / %x0188 / %x018C-018D / %x0192 / %x0195 / %x0199-019B
+              / %x019E / %x01A1 / %x01A3 / %x01A5 / %x01A8 / %x01AA-01AB
+              / %x01AD / %x01B0 / %x01B4 / %x01B6 / %x01B9-01BA / %x01BD-01BF
+              / %x01C6 / %x01C9 / %x01CC / %x01CE / %x01D0 / %x01D2 / %x01D4
+              / %x01D6 / %x01D8 / %x01DA / %x01DC-01DD / %x01DF / %x01E1
+              / %x01E3 / %x01E5 / %x01E7 / %x01E9 / %x01EB / %x01ED
+              / %x01EF-01F0 / %x01F3 / %x01F5 / %x01F9 / %x01FB / %x01FD
+              / %x01FF / %x0201 / %x0203 / %x0205 / %x0207 / %x0209 / %x020B
+              / %x020D / %x020F / %x0211 / %x0213 / %x0215 / %x0217 / %x0219
+              / %x021B / %x021D / %x021F / %x0221 / %x0223 / %x0225 / %x0227
+              / %x0229 / %x022B / %x022D / %x022F / %x0231 / %x0233-0239
+              / %x023C / %x023F-0240 / %x0242 / %x0247 / %x0249 / %x024B
+              / %x024D / %x024F-0293 / %x0295-02AF / %x0371 / %x0373 / %x0377
+              / %x037B-037D / %x0390 / %x03AC-03CE / %x03D0-03D1 / %x03D5-03D7
+              / %x03D9 / %x03DB / %x03DD / %x03DF / %x03E1 / %x03E3 / %x03E5
+              / %x03E7 / %x03E9 / %x03EB / %x03ED / %x03EF-03F3 / %x03F5
+              / %x03F8 / %x03FB-03FC / %x0430-045F / %x0461 / %x0463 / %x0465
+              / %x0467 / %x0469 / %x046B / %x046D / %x046F / %x0471 / %x0473
+              / %x0475 / %x0477 / %x0479 / %x047B / %x047D / %x047F / %x0481
+              / %x048B / %x048D / %x048F / %x0491 / %x0493 / %x0495 / %x0497
+              / %x0499 / %x049B / %x049D / %x049F / %x04A1 / %x04A3 / %x04A5
+              / %x04A7 / %x04A9 / %x04AB / %x04AD / %x04AF / %x04B1 / %x04B3
+              / %x04B5 / %x04B7 / %x04B9 / %x04BB / %x04BD / %x04BF / %x04C2
+              / %x04C4 / %x04C6 / %x04C8 / %x04CA / %x04CC / %x04CE-04CF
+              / %x04D1 / %x04D3 / %x04D5 / %x04D7 / %x04D9 / %x04DB / %x04DD
+              / %x04DF / %x04E1 / %x04E3 / %x04E5 / %x04E7 / %x04E9 / %x04EB
+              / %x04ED / %x04EF / %x04F1 / %x04F3 / %x04F5 / %x04F7 / %x04F9
+              / %x04FB / %x04FD / %x04FF / %x0501 / %x0503 / %x0505 / %x0507
+              / %x0509 / %x050B / %x050D / %x050F / %x0511 / %x0513 / %x0515
+              / %x0517 / %x0519 / %x051B / %x051D / %x051F / %x0521 / %x0523
+              / %x0525 / %x0527 / %x0529 / %x052B / %x052D / %x052F
+              / %x0560-0588 / %x10D0-10FA / %x10FD-10FF / %x13F8-13FD
+              / %x1C80-1C88 / %x1D00-1D2B / %x1D6B-1D77 / %x1D79-1D9A
+              / %x1E01 / %x1E03 / %x1E05 / %x1E07 / %x1E09 / %x1E0B / %x1E0D
+              / %x1E0F / %x1E11 / %x1E13 / %x1E15 / %x1E17 / %x1E19 / %x1E1B
+              / %x1E1D / %x1E1F / %x1E21 / %x1E23 / %x1E25 / %x1E27 / %x1E29
+              / %x1E2B / %x1E2D / %x1E2F / %x1E31 / %x1E33 / %x1E35 / %x1E37
+              / %x1E39 / %x1E3B / %x1E3D / %x1E3F / %x1E41 / %x1E43 / %x1E45
+              / %x1E47 / %x1E49 / %x1E4B / %x1E4D / %x1E4F / %x1E51 / %x1E53
+              / %x1E55 / %x1E57 / %x1E59 / %x1E5B / %x1E5D / %x1E5F / %x1E61
+              / %x1E63 / %x1E65 / %x1E67 / %x1E69 / %x1E6B / %x1E6D / %x1E6F
+              / %x1E71 / %x1E73 / %x1E75 / %x1E77 / %x1E79 / %x1E7B / %x1E7D
+              / %x1E7F / %x1E81 / %x1E83 / %x1E85 / %x1E87 / %x1E89 / %x1E8B
+              / %x1E8D / %x1E8F / %x1E91 / %x1E93 / %x1E95-1E9D / %x1E9F
+              / %x1EA1 / %x1EA3 / %x1EA5 / %x1EA7 / %x1EA9 / %x1EAB / %x1EAD
+              / %x1EAF / %x1EB1 / %x1EB3 / %x1EB5 / %x1EB7 / %x1EB9 / %x1EBB
+              / %x1EBD / %x1EBF / %x1EC1 / %x1EC3 / %x1EC5 / %x1EC7 / %x1EC9
+              / %x1ECB / %x1ECD / %x1ECF / %x1ED1 / %x1ED3 / %x1ED5 / %x1ED7
+              / %x1ED9 / %x1EDB / %x1EDD / %x1EDF / %x1EE1 / %x1EE3 / %x1EE5
+              / %x1EE7 / %x1EE9 / %x1EEB / %x1EED / %x1EEF / %x1EF1 / %x1EF3
+              / %x1EF5 / %x1EF7 / %x1EF9 / %x1EFB / %x1EFD / %x1EFF-1F07
+              / %x1F10-1F15 / %x1F20-1F27 / %x1F30-1F37 / %x1F40-1F45
+              / %x1F50-1F57 / %x1F60-1F67 / %x1F70-1F7D / %x1F80-1F87
+              / %x1F90-1F97 / %x1FA0-1FA7 / %x1FB0-1FB4 / %x1FB6-1FB7
+              / %x1FBE / %x1FC2-1FC4 / %x1FC6-1FC7 / %x1FD0-1FD3 / %x1FD6-1FD7
+              / %x1FE0-1FE7 / %x1FF2-1FF4 / %x1FF6-1FF7 / %x210A / %x210E-210F
+              / %x2113 / %x212F / %x2134 / %x2139 / %x213C-213D / %x2146-2149
+              / %x214E / %x2184 / %x2C30-2C5E / %x2C61 / %x2C65-2C66 / %x2C68
+              / %x2C6A / %x2C6C / %x2C71 / %x2C73-2C74 / %x2C76-2C7B / %x2C81
+              / %x2C83 / %x2C85 / %x2C87 / %x2C89 / %x2C8B / %x2C8D / %x2C8F
+              / %x2C91 / %x2C93 / %x2C95 / %x2C97 / %x2C99 / %x2C9B / %x2C9D
+              / %x2C9F / %x2CA1 / %x2CA3 / %x2CA5 / %x2CA7 / %x2CA9 / %x2CAB
+              / %x2CAD / %x2CAF / %x2CB1 / %x2CB3 / %x2CB5 / %x2CB7 / %x2CB9
+              / %x2CBB / %x2CBD / %x2CBF / %x2CC1 / %x2CC3 / %x2CC5 / %x2CC7
+              / %x2CC9 / %x2CCB / %x2CCD / %x2CCF / %x2CD1 / %x2CD3 / %x2CD5
+              / %x2CD7 / %x2CD9 / %x2CDB / %x2CDD / %x2CDF / %x2CE1
+              / %x2CE3-2CE4 / %x2CEC / %x2CEE / %x2CF3 / %x2D00-2D25 / %x2D27
+              / %x2D2D / %xA641 / %xA643 / %xA645 / %xA647 / %xA649 / %xA64B
+              / %xA64D / %xA64F / %xA651 / %xA653 / %xA655 / %xA657 / %xA659
+              / %xA65B / %xA65D / %xA65F / %xA661 / %xA663 / %xA665 / %xA667
+              / %xA669 / %xA66B / %xA66D / %xA681 / %xA683 / %xA685 / %xA687
+              / %xA689 / %xA68B / %xA68D / %xA68F / %xA691 / %xA693 / %xA695
+              / %xA697 / %xA699 / %xA69B / %xA723 / %xA725 / %xA727 / %xA729
+              / %xA72B / %xA72D / %xA72F-A731 / %xA733 / %xA735 / %xA737
+              / %xA739 / %xA73B / %xA73D / %xA73F / %xA741 / %xA743 / %xA745
+              / %xA747 / %xA749 / %xA74B / %xA74D / %xA74F / %xA751 / %xA753
+              / %xA755 / %xA757 / %xA759 / %xA75B / %xA75D / %xA75F / %xA761
+              / %xA763 / %xA765 / %xA767 / %xA769 / %xA76B / %xA76D / %xA76F
+              / %xA771-A778 / %xA77A / %xA77C / %xA77F / %xA781 / %xA783
+              / %xA785 / %xA787 / %xA78C / %xA78E / %xA791 / %xA793-A795
+              / %xA797 / %xA799 / %xA79B / %xA79D / %xA79F / %xA7A1 / %xA7A3
+              / %xA7A5 / %xA7A7 / %xA7A9 / %xA7AF / %xA7B5 / %xA7B7 / %xA7B9
+              / %xA7FA / %xAB30-AB5A / %xAB60-AB65 / %xAB70-ABBF / %xFB00-FB06
+              / %xFB13-FB17 / %xFF41-FF5A / %x10428-1044F / %x104D8-104FB
+              / %x10CC0-10CF2 / %x118C0-118DF / %x16E60-16E7F / %x1D41A-1D433
+              / %x1D44E-1D454 / %x1D456-1D467 / %x1D482-1D49B / %x1D4B6-1D4B9
+              / %x1D4BB / %x1D4BD-1D4C3 / %x1D4C5-1D4CF / %x1D4EA-1D503
+              / %x1D51E-1D537 / %x1D552-1D56B / %x1D586-1D59F / %x1D5BA-1D5D3
+              / %x1D5EE-1D607 / %x1D622-1D63B / %x1D656-1D66F / %x1D68A-1D6A5
+              / %x1D6C2-1D6DA / %x1D6DC-1D6E1 / %x1D6FC-1D714 / %x1D716-1D71B
+              / %x1D736-1D74E / %x1D750-1D755 / %x1D770-1D788 / %x1D78A-1D78F
+              / %x1D7AA-1D7C2 / %x1D7C4-1D7C9 / %x1D7CB / %x1E922-1E943
+
+unicode-upper = %x00C0-00D6 / %x00D8-00DE / %x0100 / %x0102 / %x0104 / %x0106
+              / %x0108 / %x010A / %x010C / %x010E / %x0110 / %x0112 / %x0114
+              / %x0116 / %x0118 / %x011A / %x011C / %x011E / %x0120 / %x0122
+              / %x0124 / %x0126 / %x0128 / %x012A / %x012C / %x012E / %x0130
+              / %x0132 / %x0134 / %x0136 / %x0139 / %x013B / %x013D / %x013F
+              / %x0141 / %x0143 / %x0145 / %x0147 / %x014A / %x014C / %x014E
+              / %x0150 / %x0152 / %x0154 / %x0156 / %x0158 / %x015A / %x015C
+              / %x015E / %x0160 / %x0162 / %x0164 / %x0166 / %x0168 / %x016A
+              / %x016C / %x016E / %x0170 / %x0172 / %x0174 / %x0176
+              / %x0178-0179 / %x017B / %x017D / %x0181-0182 / %x0184
+              / %x0186-0187 / %x0189-018B / %x018E-0191 / %x0193-0194
+              / %x0196-0198 / %x019C-019D / %x019F-01A0 / %x01A2 / %x01A4
+              / %x01A6-01A7 / %x01A9 / %x01AC / %x01AE-01AF / %x01B1-01B3
+              / %x01B5 / %x01B7-01B8 / %x01BC / %x01C4 / %x01C7 / %x01CA
+              / %x01CD / %x01CF / %x01D1 / %x01D3 / %x01D5 / %x01D7 / %x01D9
+              / %x01DB / %x01DE / %x01E0 / %x01E2 / %x01E4 / %x01E6 / %x01E8
+              / %x01EA / %x01EC / %x01EE / %x01F1 / %x01F4 / %x01F6-01F8
+              / %x01FA / %x01FC / %x01FE / %x0200 / %x0202 / %x0204 / %x0206
+              / %x0208 / %x020A / %x020C / %x020E / %x0210 / %x0212 / %x0214
+              / %x0216 / %x0218 / %x021A / %x021C / %x021E / %x0220 / %x0222
+              / %x0224 / %x0226 / %x0228 / %x022A / %x022C / %x022E / %x0230
+              / %x0232 / %x023A-023B / %x023D-023E / %x0241 / %x0243-0246
+              / %x0248 / %x024A / %x024C / %x024E / %x0370 / %x0372 / %x0376
+              / %x037F / %x0386 / %x0388-038A / %x038C / %x038E-038F
+              / %x0391-03A1 / %x03A3-03AB / %x03CF / %x03D2-03D4 / %x03D8
+              / %x03DA / %x03DC / %x03DE / %x03E0 / %x03E2 / %x03E4 / %x03E6
+              / %x03E8 / %x03EA / %x03EC / %x03EE / %x03F4 / %x03F7
+              / %x03F9-03FA / %x03FD-042F / %x0460 / %x0462 / %x0464 / %x0466
+              / %x0468 / %x046A / %x046C / %x046E / %x0470 / %x0472 / %x0474
+              / %x0476 / %x0478 / %x047A / %x047C / %x047E / %x0480 / %x048A
+              / %x048C / %x048E / %x0490 / %x0492 / %x0494 / %x0496 / %x0498
+              / %x049A / %x049C / %x049E / %x04A0 / %x04A2 / %x04A4 / %x04A6
+              / %x04A8 / %x04AA / %x04AC / %x04AE / %x04B0 / %x04B2 / %x04B4
+              / %x04B6 / %x04B8 / %x04BA / %x04BC / %x04BE / %x04C0-04C1
+              / %x04C3 / %x04C5 / %x04C7 / %x04C9 / %x04CB / %x04CD / %x04D0
+              / %x04D2 / %x04D4 / %x04D6 / %x04D8 / %x04DA / %x04DC / %x04DE
+              / %x04E0 / %x04E2 / %x04E4 / %x04E6 / %x04E8 / %x04EA / %x04EC
+              / %x04EE / %x04F0 / %x04F2 / %x04F4 / %x04F6 / %x04F8 / %x04FA
+              / %x04FC / %x04FE / %x0500 / %x0502 / %x0504 / %x0506 / %x0508
+              / %x050A / %x050C / %x050E / %x0510 / %x0512 / %x0514 / %x0516
+              / %x0518 / %x051A / %x051C / %x051E / %x0520 / %x0522 / %x0524
+              / %x0526 / %x0528 / %x052A / %x052C / %x052E / %x0531-0556
+              / %x10A0-10C5 / %x10C7 / %x10CD / %x13A0-13F5 / %x1C90-1CBA
+              / %x1CBD-1CBF / %x1E00 / %x1E02 / %x1E04 / %x1E06 / %x1E08
+              / %x1E0A / %x1E0C / %x1E0E / %x1E10 / %x1E12 / %x1E14 / %x1E16
+              / %x1E18 / %x1E1A / %x1E1C / %x1E1E / %x1E20 / %x1E22 / %x1E24
+              / %x1E26 / %x1E28 / %x1E2A / %x1E2C / %x1E2E / %x1E30 / %x1E32
+              / %x1E34 / %x1E36 / %x1E38 / %x1E3A / %x1E3C / %x1E3E / %x1E40
+              / %x1E42 / %x1E44 / %x1E46 / %x1E48 / %x1E4A / %x1E4C / %x1E4E
+              / %x1E50 / %x1E52 / %x1E54 / %x1E56 / %x1E58 / %x1E5A / %x1E5C
+              / %x1E5E / %x1E60 / %x1E62 / %x1E64 / %x1E66 / %x1E68 / %x1E6A
+              / %x1E6C / %x1E6E / %x1E70 / %x1E72 / %x1E74 / %x1E76 / %x1E78
+              / %x1E7A / %x1E7C / %x1E7E / %x1E80 / %x1E82 / %x1E84 / %x1E86
+              / %x1E88 / %x1E8A / %x1E8C / %x1E8E / %x1E90 / %x1E92 / %x1E94
+              / %x1E9E / %x1EA0 / %x1EA2 / %x1EA4 / %x1EA6 / %x1EA8 / %x1EAA
+              / %x1EAC / %x1EAE / %x1EB0 / %x1EB2 / %x1EB4 / %x1EB6 / %x1EB8
+              / %x1EBA / %x1EBC / %x1EBE / %x1EC0 / %x1EC2 / %x1EC4 / %x1EC6
+              / %x1EC8 / %x1ECA / %x1ECC / %x1ECE / %x1ED0 / %x1ED2 / %x1ED4
+              / %x1ED6 / %x1ED8 / %x1EDA / %x1EDC / %x1EDE / %x1EE0 / %x1EE2
+              / %x1EE4 / %x1EE6 / %x1EE8 / %x1EEA / %x1EEC / %x1EEE / %x1EF0
+              / %x1EF2 / %x1EF4 / %x1EF6 / %x1EF8 / %x1EFA / %x1EFC / %x1EFE
+              / %x1F08-1F0F / %x1F18-1F1D / %x1F28-1F2F / %x1F38-1F3F
+              / %x1F48-1F4D / %x1F59 / %x1F5B / %x1F5D / %x1F5F / %x1F68-1F6F
+              / %x1FB8-1FBB / %x1FC8-1FCB / %x1FD8-1FDB / %x1FE8-1FEC
+              / %x1FF8-1FFB / %x2102 / %x2107 / %x210B-210D / %x2110-2112
+              / %x2115 / %x2119-211D / %x2124 / %x2126 / %x2128 / %x212A-212D
+              / %x2130-2133 / %x213E-213F / %x2145 / %x2183 / %x2C00-2C2E
+              / %x2C60 / %x2C62-2C64 / %x2C67 / %x2C69 / %x2C6B / %x2C6D-2C70
+              / %x2C72 / %x2C75 / %x2C7E-2C80 / %x2C82 / %x2C84 / %x2C86
+              / %x2C88 / %x2C8A / %x2C8C / %x2C8E / %x2C90 / %x2C92 / %x2C94
+              / %x2C96 / %x2C98 / %x2C9A / %x2C9C / %x2C9E / %x2CA0 / %x2CA2
+              / %x2CA4 / %x2CA6 / %x2CA8 / %x2CAA / %x2CAC / %x2CAE / %x2CB0
+              / %x2CB2 / %x2CB4 / %x2CB6 / %x2CB8 / %x2CBA / %x2CBC / %x2CBE
+              / %x2CC0 / %x2CC2 / %x2CC4 / %x2CC6 / %x2CC8 / %x2CCA / %x2CCC
+              / %x2CCE / %x2CD0 / %x2CD2 / %x2CD4 / %x2CD6 / %x2CD8 / %x2CDA
+              / %x2CDC / %x2CDE / %x2CE0 / %x2CE2 / %x2CEB / %x2CED / %x2CF2
+              / %xA640 / %xA642 / %xA644 / %xA646 / %xA648 / %xA64A / %xA64C
+              / %xA64E / %xA650 / %xA652 / %xA654 / %xA656 / %xA658 / %xA65A
+              / %xA65C / %xA65E / %xA660 / %xA662 / %xA664 / %xA666 / %xA668
+              / %xA66A / %xA66C / %xA680 / %xA682 / %xA684 / %xA686 / %xA688
+              / %xA68A / %xA68C / %xA68E / %xA690 / %xA692 / %xA694 / %xA696
+              / %xA698 / %xA69A / %xA722 / %xA724 / %xA726 / %xA728 / %xA72A
+              / %xA72C / %xA72E / %xA732 / %xA734 / %xA736 / %xA738 / %xA73A
+              / %xA73C / %xA73E / %xA740 / %xA742 / %xA744 / %xA746 / %xA748
+              / %xA74A / %xA74C / %xA74E / %xA750 / %xA752 / %xA754 / %xA756
+              / %xA758 / %xA75A / %xA75C / %xA75E / %xA760 / %xA762 / %xA764
+              / %xA766 / %xA768 / %xA76A / %xA76C / %xA76E / %xA779 / %xA77B
+              / %xA77D-A77E / %xA780 / %xA782 / %xA784 / %xA786 / %xA78B
+              / %xA78D / %xA790 / %xA792 / %xA796 / %xA798 / %xA79A / %xA79C
+              / %xA79E / %xA7A0 / %xA7A2 / %xA7A4 / %xA7A6 / %xA7A8
+              / %xA7AA-A7AE / %xA7B0-A7B4 / %xA7B6 / %xA7B8 / %xFF21-FF3A
+              / %x10400-10427 / %x104B0-104D3 / %x10C80-10CB2 / %x118A0-118BF
+              / %x16E40-16E5F / %x1D400-1D419 / %x1D434-1D44D / %x1D468-1D481
+              / %x1D49C / %x1D49E-1D49F / %x1D4A2 / %x1D4A5-1D4A6
+              / %x1D4A9-1D4AC / %x1D4AE-1D4B5 / %x1D4D0-1D4E9 / %x1D504-1D505
+              / %x1D507-1D50A / %x1D50D-1D514 / %x1D516-1D51C / %x1D538-1D539
+              / %x1D53B-1D53E / %x1D540-1D544 / %x1D546 / %x1D54A-1D550
+              / %x1D56C-1D585 / %x1D5A0-1D5B9 / %x1D5D4-1D5ED / %x1D608-1D621
+              / %x1D63C-1D655 / %x1D670-1D689 / %x1D6A8-1D6C0 / %x1D6E2-1D6FA
+              / %x1D71C-1D734 / %x1D756-1D76E / %x1D790-1D7A8 / %x1D7CA
+              / %x1E900-1E921
+
+unicode-other = %x00AA / %x00BA / %x01BB / %x01C0-01C3 / %x0294 / %x05D0-05EA
+              / %x05EF-05F2 / %x0620-063F / %x0641-064A / %x066E-066F
+              / %x0671-06D3 / %x06D5 / %x06EE-06EF / %x06FA-06FC / %x06FF
+              / %x0710 / %x0712-072F / %x074D-07A5 / %x07B1 / %x07CA-07EA
+              / %x0800-0815 / %x0840-0858 / %x0860-086A / %x08A0-08B4
+              / %x08B6-08BD / %x0904-0939 / %x093D / %x0950 / %x0958-0961
+              / %x0972-0980 / %x0985-098C / %x098F-0990 / %x0993-09A8
+              / %x09AA-09B0 / %x09B2 / %x09B6-09B9 / %x09BD / %x09CE
+              / %x09DC-09DD / %x09DF-09E1 / %x09F0-09F1 / %x09FC / %x0A05-0A0A
+              / %x0A0F-0A10 / %x0A13-0A28 / %x0A2A-0A30 / %x0A32-0A33
+              / %x0A35-0A36 / %x0A38-0A39 / %x0A59-0A5C / %x0A5E / %x0A72-0A74
+              / %x0A85-0A8D / %x0A8F-0A91 / %x0A93-0AA8 / %x0AAA-0AB0
+              / %x0AB2-0AB3 / %x0AB5-0AB9 / %x0ABD / %x0AD0 / %x0AE0-0AE1
+              / %x0AF9 / %x0B05-0B0C / %x0B0F-0B10 / %x0B13-0B28 / %x0B2A-0B30
+              / %x0B32-0B33 / %x0B35-0B39 / %x0B3D / %x0B5C-0B5D / %x0B5F-0B61
+              / %x0B71 / %x0B83 / %x0B85-0B8A / %x0B8E-0B90 / %x0B92-0B95
+              / %x0B99-0B9A / %x0B9C / %x0B9E-0B9F / %x0BA3-0BA4 / %x0BA8-0BAA
+              / %x0BAE-0BB9 / %x0BD0 / %x0C05-0C0C / %x0C0E-0C10 / %x0C12-0C28
+              / %x0C2A-0C39 / %x0C3D / %x0C58-0C5A / %x0C60-0C61 / %x0C80
+              / %x0C85-0C8C / %x0C8E-0C90 / %x0C92-0CA8 / %x0CAA-0CB3
+              / %x0CB5-0CB9 / %x0CBD / %x0CDE / %x0CE0-0CE1 / %x0CF1-0CF2
+              / %x0D05-0D0C / %x0D0E-0D10 / %x0D12-0D3A / %x0D3D / %x0D4E
+              / %x0D54-0D56 / %x0D5F-0D61 / %x0D7A-0D7F / %x0D85-0D96
+              / %x0D9A-0DB1 / %x0DB3-0DBB / %x0DBD / %x0DC0-0DC6 / %x0E01-0E30
+              / %x0E32-0E33 / %x0E40-0E45 / %x0E81-0E82 / %x0E84 / %x0E87-0E88
+              / %x0E8A / %x0E8D / %x0E94-0E97 / %x0E99-0E9F / %x0EA1-0EA3
+              / %x0EA5 / %x0EA7 / %x0EAA-0EAB / %x0EAD-0EB0 / %x0EB2-0EB3
+              / %x0EBD / %x0EC0-0EC4 / %x0EDC-0EDF / %x0F00 / %x0F40-0F47
+              / %x0F49-0F6C / %x0F88-0F8C / %x1000-102A / %x103F / %x1050-1055
+              / %x105A-105D / %x1061 / %x1065-1066 / %x106E-1070 / %x1075-1081
+              / %x108E / %x1100-1248 / %x124A-124D / %x1250-1256 / %x1258
+              / %x125A-125D / %x1260-1288 / %x128A-128D / %x1290-12B0
+              / %x12B2-12B5 / %x12B8-12BE / %x12C0 / %x12C2-12C5 / %x12C8-12D6
+              / %x12D8-1310 / %x1312-1315 / %x1318-135A / %x1380-138F
+              / %x1401-166C / %x166F-167F / %x1681-169A / %x16A0-16EA
+              / %x16F1-16F8 / %x1700-170C / %x170E-1711 / %x1720-1731
+              / %x1740-1751 / %x1760-176C / %x176E-1770 / %x1780-17B3 / %x17DC
+              / %x1820-1842 / %x1844-1878 / %x1880-1884 / %x1887-18A8
+              / %x18AA / %x18B0-18F5 / %x1900-191E / %x1950-196D / %x1970-1974
+              / %x1980-19AB / %x19B0-19C9 / %x1A00-1A16 / %x1A20-1A54
+              / %x1B05-1B33 / %x1B45-1B4B / %x1B83-1BA0 / %x1BAE-1BAF
+              / %x1BBA-1BE5 / %x1C00-1C23 / %x1C4D-1C4F / %x1C5A-1C77
+              / %x1CE9-1CEC / %x1CEE-1CF1 / %x1CF5-1CF6 / %x2135-2138
+              / %x2D30-2D67 / %x2D80-2D96 / %x2DA0-2DA6 / %x2DA8-2DAE
+              / %x2DB0-2DB6 / %x2DB8-2DBE / %x2DC0-2DC6 / %x2DC8-2DCE
+              / %x2DD0-2DD6 / %x2DD8-2DDE / %x3006 / %x303C / %x3041-3096
+              / %x309F / %x30A1-30FA / %x30FF / %x3105-312F / %x3131-318E
+              / %x31A0-31BA / %x31F0-31FF / %x3400 / %x4DB5 / %x4E00 / %x9FEF
+              / %xA000-A014 / %xA016-A48C / %xA4D0-A4F7 / %xA500-A60B
+              / %xA610-A61F / %xA62A-A62B / %xA66E / %xA6A0-A6E5 / %xA78F
+              / %xA7F7 / %xA7FB-A801 / %xA803-A805 / %xA807-A80A
+              / %xA80C-A822 / %xA840-A873 / %xA882-A8B3 / %xA8F2-A8F7 / %xA8FB
+              / %xA8FD-A8FE / %xA90A-A925 / %xA930-A946 / %xA960-A97C
+              / %xA984-A9B2 / %xA9E0-A9E4 / %xA9E7-A9EF / %xA9FA-A9FE
+              / %xAA00-AA28 / %xAA40-AA42 / %xAA44-AA4B / %xAA60-AA6F
+              / %xAA71-AA76 / %xAA7A / %xAA7E-AAAF / %xAAB1 / %xAAB5-AAB6
+              / %xAAB9-AABD / %xAAC0 / %xAAC2 / %xAADB-AADC / %xAAE0-AAEA
+              / %xAAF2 / %xAB01-AB06 / %xAB09-AB0E / %xAB11-AB16 / %xAB20-AB26
+              / %xAB28-AB2E / %xABC0-ABE2 / %xAC00 / %xD7A3 / %xD7B0-D7C6
+              / %xD7CB-D7FB / %xF900-FA6D / %xFA70-FAD9 / %xFB1D / %xFB1F-FB28
+              / %xFB2A-FB36 / %xFB38-FB3C / %xFB3E / %xFB40-FB41 / %xFB43-FB44
+              / %xFB46-FBB1 / %xFBD3-FD3D / %xFD50-FD8F / %xFD92-FDC7
+              / %xFDF0-FDFB / %xFE70-FE74 / %xFE76-FEFC / %xFF66-FF6F
+              / %xFF71-FF9D / %xFFA0-FFBE / %xFFC2-FFC7 / %xFFCA-FFCF
+              / %xFFD2-FFD7 / %xFFDA-FFDC / %x10000-1000B / %x1000D-10026
+              / %x10028-1003A / %x1003C-1003D / %x1003F-1004D / %x10050-1005D
+              / %x10080-100FA / %x10280-1029C / %x102A0-102D0 / %x10300-1031F
+              / %x1032D-10340 / %x10342-10349 / %x10350-10375 / %x10380-1039D
+              / %x103A0-103C3 / %x103C8-103CF / %x10450-1049D / %x10500-10527
+              / %x10530-10563 / %x10600-10736 / %x10740-10755 / %x10760-10767
+              / %x10800-10805 / %x10808 / %x1080A-10835 / %x10837-10838
+              / %x1083C / %x1083F-10855 / %x10860-10876 / %x10880-1089E
+              / %x108E0-108F2 / %x108F4-108F5 / %x10900-10915 / %x10920-10939
+              / %x10980-109B7 / %x109BE-109BF / %x10A00 / %x10A10-10A13
+              / %x10A15-10A17 / %x10A19-10A35 / %x10A60-10A7C / %x10A80-10A9C
+              / %x10AC0-10AC7 / %x10AC9-10AE4 / %x10B00-10B35 / %x10B40-10B55
+              / %x10B60-10B72 / %x10B80-10B91 / %x10C00-10C48 / %x10D00-10D23
+              / %x10F00-10F1C / %x10F27 / %x10F30-10F45 / %x11003-11037
+              / %x11083-110AF / %x110D0-110E8 / %x11103-11126 / %x11144
+              / %x11150-11172 / %x11176 / %x11183-111B2 / %x111C1-111C4
+              / %x111DA / %x111DC / %x11200-11211 / %x11213-1122B
+              / %x11280-11286 / %x11288 / %x1128A-1128D / %x1128F-1129D
+              / %x1129F-112A8 / %x112B0-112DE / %x11305-1130C / %x1130F-11310
+              / %x11313-11328 / %x1132A-11330 / %x11332-11333 / %x11335-11339
+              / %x1133D / %x11350 / %x1135D-11361 / %x11400-11434
+              / %x11447-1144A / %x11480-114AF / %x114C4-114C5 / %x114C7
+              / %x11580-115AE / %x115D8-115DB / %x11600-1162F / %x11644
+              / %x11680-116AA / %x11700-1171A / %x11800-1182B / %x118FF
+              / %x11A00 / %x11A0B-11A32 / %x11A3A / %x11A50 / %x11A5C-11A83
+              / %x11A86-11A89 / %x11A9D / %x11AC0-11AF8 / %x11C00-11C08
+              / %x11C0A-11C2E / %x11C40 / %x11C72-11C8F / %x11D00-11D06
+              / %x11D08-11D09 / %x11D0B-11D30 / %x11D46 / %x11D60-11D65
+              / %x11D67-11D68 / %x11D6A-11D89 / %x11D98 / %x11EE0-11EF2
+              / %x12000-12399 / %x12480-12543 / %x13000-1342E / %x14400-14646
+              / %x16800-16A38 / %x16A40-16A5E / %x16AD0-16AED / %x16B00-16B2F
+              / %x16B63-16B77 / %x16B7D-16B8F / %x16F00-16F44 / %x16F50
+              / %x17000 / %x187F1 / %x18800-18AF2 / %x1B000-1B11E
+              / %x1B170-1B2FB / %x1BC00-1BC6A / %x1BC70-1BC7C / %x1BC80-1BC88
+              / %x1BC90-1BC99 / %x1E800-1E8C4 / %x1EE00-1EE03 / %x1EE05-1EE1F
+              / %x1EE21-1EE22 / %x1EE24 / %x1EE27 / %x1EE29-1EE32
+              / %x1EE34-1EE37 / %x1EE39 / %x1EE3B / %x1EE42 / %x1EE47 / %x1EE49
+              / %x1EE4B / %x1EE4D-1EE4F / %x1EE51-1EE52 / %x1EE54 / %x1EE57
+              / %x1EE59 / %x1EE5B / %x1EE5D / %x1EE5F / %x1EE61-1EE62 / %x1EE64
+              / %x1EE67-1EE6A / %x1EE6C-1EE72 / %x1EE74-1EE77 / %x1EE79-1EE7C
+              / %x1EE7E / %x1EE80-1EE89 / %x1EE8B-1EE9B / %x1EEA1-1EEA3
+              / %x1EEA5-1EEA9 / %x1EEAB-1EEBB / %x20000 / %x2A6D6 / %x2A700
+              / %x2B734 / %x2B740 / %x2B81D / %x2B820 / %x2CEA1 / %x2CEB0
+              / %x2EBE0 / %x2F800-2FA1D
+
+unicode-title = %x01C5 / %x01C8 / %x01CB / %x01F2 / %x1F88-1F8F / %x1F98-1F9F
+              / %x1FA8-1FAF / %x1FBC / %x1FCC / %x1FFC
+
+unicode-mod = %x02B0-02C1 / %x02C6-02D1 / %x02E0-02E4 / %x02EC / %x02EE / %x0374
+            / %x037A / %x0559 / %x0640 / %x06E5-06E6 / %x07F4-07F5 / %x07FA
+            / %x081A / %x0824 / %x0828 / %x0971 / %x0E46 / %x0EC6 / %x10FC
+            / %x17D7 / %x1843 / %x1AA7 / %x1C78-1C7D / %x1D2C-1D6A / %x1D78
+            / %x1D9B-1DBF / %x2071 / %x207F / %x2090-209C / %x2C7C-2C7D / %x2D6F
+            / %x2E2F / %x3005 / %x3031-3035 / %x303B / %x309D-309E / %x30FC-30FE
+            / %xA015 / %xA4F8-A4FD / %xA60C / %xA67F / %xA69C-A69D / %xA717-A71F
+            / %xA770 / %xA788 / %xA7F8-A7F9 / %xA9CF / %xA9E6 / %xAA70 / %xAADD
+            / %xAAF3-AAF4 / %xAB5C-AB5F / %xFF70 / %xFF9E-FF9F / %x16B40-16B43
+            / %x16F93-16F9F / %x16FE0-16FE1
+
+unicode-alpha = unicode-lower / unicode-upper / unicode-other
+              / unicode-title / unicode-mod
+
+;; Numbers
+unicode-digit = %x0660-0669 / %x06F0-06F9 / %x07C0-07C9 / %x0966-096F
+              / %x09E6-09EF / %x0A66-0A6F / %x0AE6-0AEF / %x0B66-0B6F
+              / %x0BE6-0BEF / %x0C66-0C6F / %x0CE6-0CEF / %x0D66-0D6F
+              / %x0DE6-0DEF / %x0E50-0E59 / %x0ED0-0ED9 / %x0F20-0F29
+              / %x1040-1049 / %x1090-1099 / %x17E0-17E9 / %x1810-1819
+              / %x1946-194F / %x19D0-19D9 / %x1A80-1A89 / %x1A90-1A99
+              / %x1B50-1B59 / %x1BB0-1BB9 / %x1C40-1C49 / %x1C50-1C59
+              / %xA620-A629 / %xA8D0-A8D9 / %xA900-A909 / %xA9D0-A9D9
+              / %xA9F0-A9F9 / %xAA50-AA59 / %xABF0-ABF9 / %xFF10-FF19
+              / %x104A0-104A9 / %x10D30-10D39 / %x11066-1106F / %x110F0-110F9
+              / %x11136-1113F / %x111D0-111D9 / %x112F0-112F9 / %x11450-11459
+              / %x114D0-114D9 / %x11650-11659 / %x116C0-116C9 / %x11730-11739
+              / %x118E0-118E9 / %x11C50-11C59 / %x11D50-11D59 / %x11DA0-11DA9
+              / %x16A60-16A69 / %x16B50-16B59 / %x1D7CE-1D7FF / %x1E950-1E959
+
+unicode-num = %x00B2 / %x00B3 / %x00B9 / %x00BC-00BE / %x09F4-09F9
+            / %x0B72-0B77 / %x0BF0-0BF2 / %x0C78-0C7E / %x0D58-0D5E
+            / %x0D70-0D78 / %x0F2A-0F33 / %x1369-137C / %x17F0-17F9
+            / %x19DA / %x2070 / %x2074-2089 / %x2150-215F / %x2189
+            / %x2460-249B / %x24EA-24FF / %x2776-2793 / %x2CFD
+            / %x3192-3195 / %x3220-3229 / %x3248-324F / %x3251-325F
+            / %x3280-3289 / %x32B1-32BF / %xA830-A835
+            / %x10107-10133 / %x10175-10178 / %x1018A-1018B / %x102E1-102FB
+            / %x10320-10323 / %x10858-1085F / %x10879-1087F / %x108A7-108AF
+            / %x108FB-108FF / %x10916-1091B / %x109BC-109BD / %x109C0-109CF
+            / %x109D2-109FF / %x10A40-10A48 / %x10A7D-10A7E / %x10A9D-10A9F
+            / %x10AEB-10AEF / %x10B58-10B5F / %x10B78-10B7F / %x10BA9-10BAF
+            / %x10CFA-10CFF / %x10E60-10E7E / %x10F1D-10F26 / %x10F51-10F54
+            / %x11052-11065 / %x111E1-111F4 / %x1173A-1173B / %x118EA-118F2
+            / %x11C5A-11C6C / %x16B5B-16B61 / %x16E80-16E96 / %x1D2E0-1D2F3
+            / %x1D360-1D378 / %x1E8C7-1E8CF / %x1EC71-1ECAB / %x1ECAD-1ECAF
+            / %x1ECB1-1ECB4 / %x1F100-1F10C

@@ -24,20 +24,32 @@
 \maketitle
 
 \section*{Grammar}
-Smudge's syntax is comprised of top-level modules composed of one or more state
-machines, in turn composed of one or more comma-separated transient- or
-non-transient states.  Non-transient states are made up of zero or more enter
-and exit side effects and one or more comma-separated event handlers.  Event
-handlers are either ``arrow'' (transitioning) or ``dash'' (non-transitioning)
-declarations, whose side effects can either be foreign functions or Smudge
-events.  All identifiers can contain any character (when quoted) except foreign
-functions, which are conservatively limited to C-style identifiers.
+Smudge's syntax is comprised of top-level modules composed of state machine
+definitions, in turn composed of one or more comma-separated transient- or
+non-transient states, possibly intermixed with locally-scoped state machine
+definitions.  Non-transient states are made up of zero or more enter and exit
+side effects and one or more comma-separated event handlers, possibly
+intermixed with locally-scoped state machine definitions.  Event handlers are
+either ``arrow'' (transitioning), ``dash'' (non-transitioning), or ``become''
+(submachine-transitioning) declarations, whose side effects can either be
+foreign functions or Smudge events.  All identifiers can contain any character
+(when quoted) except foreign functions, which are conservatively limited to
+C-style identifiers.
 
 The rules are as follows:
 
 \setlength{\grammarindent}{6em}
 \begin{grammar}
 \input{syntax.latex}
+\end{grammar}
+
+These productions are built out of the tokens extracted by the lexer.  These
+include defined ASCII and Unicode character classes not reproduced here for the
+sake of brevity:
+
+\setlength{\grammarindent}{6em}
+\begin{grammar}
+\input{lexer.latex}
 \end{grammar}
 
 \section*{Type inference}

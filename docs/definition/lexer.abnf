@@ -58,9 +58,12 @@ state-begin = "[" empty
 state-end   = "]" empty
 dash-empty = spacesep "--" empty
 arrow-empty = spacesep "-->" empty
+become-empty = spacesep "~~>" empty
 dash-begin = spacesep "-("
 dash-end = ")-" empty
 arrow-end = ")->" empty
+become-begin = spacesep "~("
+become-end = ")~>" empty
 enter-exit-begin = "(" empty
 enter-exit-end   = ")" empty
 

@@ -13,7 +13,7 @@ state-machine-body = state-or-machine-def *(comma state-or-machine-def) [comma]
 state-or-machine-def = state-def / state-machine-def
 
 ;; State
-state-def = [start-sigil] state-name (arrow / enter-exit state enter-exit)
+state-def = [start-sigil] state-name (arrow / become / enter-exit state enter-exit)
 state-name = identifier
 enter-exit = [enter-exit-begin [side-effect-list] enter-exit-end]
 state = state-begin state-body state-end
@@ -21,12 +21,14 @@ state-body = event-or-machine-def *(comma event-or-machine-def) [comma]
 event-or-machine-def = event-handler / state-machine-def
 
 ;; Handler
-event-handler = event-name (arrow / dash)
+event-handler = event-name (arrow / dash / become)
 event-name = identifier
 
 ;; Transitions
 dash  =   dash-empty / dash-begin [side-effect-list] dash-end
 arrow = (arrow-empty / dash-begin [side-effect-list] arrow-end) state-name
+become = (become-empty / become-begin [side-effect-list] become-end)
+         [(state-machine / state-machine-name) (dash / arrow)]
 
 ;; Side effects
 side-effect-list = side-effect *(comma side-effect) [comma]

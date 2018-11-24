@@ -3,20 +3,22 @@
 ;;;;;;;;;;;;
 
 ;; Module
-smudgle = 1*state-machine-def
+smudgle = *state-machine-def
 
 ;; Machine
 state-machine-def = state-machine-name state-machine
 state-machine-name = identifier
 state-machine = state-machine-begin state-machine-body state-machine-end
-state-machine-body = state-def *(comma state-def) [comma]
+state-machine-body = state-or-machine-def *(comma state-or-machine-def) [comma]
+state-or-machine-def = state-def / state-machine-def
 
 ;; State
 state-def = [start-sigil] state-name (arrow / enter-exit state enter-exit)
 state-name = identifier
 enter-exit = [enter-exit-begin [side-effect-list] enter-exit-end]
 state = state-begin state-body state-end
-state-body = event-handler *(comma-sep event-handler) [comma]
+state-body = event-or-machine-def *(comma event-or-machine-def) [comma]
+event-or-machine-def = event-handler / state-machine-def
 
 ;; Handler
 event-handler = event-name (arrow / dash)

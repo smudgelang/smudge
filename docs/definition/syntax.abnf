@@ -1,53 +1,33 @@
-smudge-file = *(emptytoeol pragma) smudgle
-pragma = "#" command [1*WSP argument] *WSP eol
-command = 1*(alphanum / sep)
-argument = 1*non-whitespace *[1*WSP 1*non-whitespace]
-smudgle = empty 1*state-machine
-state-machine = state-machine-name empty state-machine-spec empty
-state-machine-spec = "{" empty state-list empty "}"
-state-list = state *(empty "," empty state) [empty ","]
-state = state-title spacesep to-state
-      / state-title empty enter-exit-function empty event-handler-spec empty enter-exit-function
-event-handler-spec = "[" empty event-handler-list empty "]"
-event-handler-list = event-handler *(empty "," empty event-handler) [empty ","]
-enter-exit-function = [side-effect-container]
-side-effect-container = "(" empty [side-effect-list] empty ")"
-event-handler = (event-name / any) spacesep (to-state / dash) empty
-to-state = arrow empty state-name
-dash = "-" [side-effect-container] "-"
-arrow = "-" [side-effect-container] "->"
-side-effect-list = side-effect *(empty "," empty side-effect) [empty ","]
-side-effect = function-call / qualified-event
-qualified-event = [state-machine-name "."] event-name
-function-call = foreign-identifier
-state-title = state-name / any / "*" empty state-name
-state-machine-name = identifier
-state-name = identifier
-event-name = identifier
-any = "_"
-comment = "//" *non-newline eol
-identifier = 1*(alphanum / "-") / 2*(alphanum / sep) / quoted
-foreign-identifier = "@" c-identifier
-c-identifier = nondigit *(nondigit / DIGIT)
-sep = "-" / "_"
-symbol = "!" / "#" / "$" / "%" / "&" / "'" / "(" / ")" / "*" / "+" / "," / "." / "/"
-       / "{" / "|" / "}" / "~" / "[" / "\" / "]" / "^" / "`" / "<" / ">" / ";" / "="
-eol = LF
-spaces = *(WSP / eol)
-empty = spaces [comment empty]
-emptytoeol = [*WSP (comment / eol) emptytoeol]
-spacesep = (WSP / eol / comment) empty
-nondigit = ALPHA / "_"
-alphanum = ALPHA / DIGIT
-non-whitespace = alphanum / sep / symbol
-non-newline = alphanum / WSP / sep / symbol
-quoted = DQUOTE 1*(alphanum / WSP / sep / symbol) DQUOTE
+;;;;;;;;;;;;
+;; Parser ;;
+;;;;;;;;;;;;
 
-;ALPHA = %x41-5A / %x61-7A
-;DIGIT = %x30-39
-;DQUOTE = %x22
-;SP = %x20
-;HTAB = %x09
-;WSP = SP / HTAB
-;CR = %x0D
-;LF = %x0A
+;; Module
+smudgle = 1*state-machine-def
+
+;; Machine
+state-machine-def = state-machine-name state-machine
+state-machine-name = identifier
+state-machine = state-machine-begin state-machine-body state-machine-end
+state-machine-body = state-def *(comma state-def) [comma]
+
+;; State
+state-def = [start-sigil] state-name (arrow / enter-exit state enter-exit)
+state-name = identifier
+enter-exit = [enter-exit-begin [side-effect-list] enter-exit-end]
+state = state-begin state-body state-end
+state-body = event-handler *(comma-sep event-handler) [comma]
+
+;; Handler
+event-handler = event-name (arrow / dash)
+event-name = identifier
+
+;; Transitions
+dash  =   dash-empty / dash-begin [side-effect-list] dash-end
+arrow = (arrow-empty / dash-begin [side-effect-list] arrow-end) state-name
+
+;; Side effects
+side-effect-list = side-effect *(comma side-effect) [comma]
+side-effect = function-call / qualified-event
+function-call = foreign-identifier
+qualified-event = [state-machine-name dot] event-name

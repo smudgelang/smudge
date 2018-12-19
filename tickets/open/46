@@ -14,7 +14,7 @@ M {
   C [
     a --> A,
     b --> B,
-    d ~(M')~> D
+    d ~(@become)~> M' --> D
   ],
   D [ ... ],
 
@@ -29,24 +29,24 @@ M {
 }
 
 The key syntax additions are: 1) to permit state machine declarators as peers
-to state declarators, 2) the ~(...)~> arrow operator (alt. syntax ~...~>),
-which invokes a submachine, and 3) the ~~> arrow operator, which marks an
-accepting state and a return to the proximate state of the supermachine.
+to state declarators, 2) the ~(...)~> "become" operator (alternate syntax ~~>),
+which invokes a submachine when supplied inline or by name, and 3) which when
+none is supplied is called "unbecome", and marks an accepting state in a
+submachine, and an exit to the proximate state of the supermachine.
 
 The semantics allow for submachine access only from supermachines; no peer
 access nor supermachine access is permitted.  A submachine is equivalent to a
 transformer on its supermachine's type, so any cross-machine access would be
-equivalent to a type error.  The submachine can only accept the events of its
-supermachine, and can declare no additional events.  This makes the submachine
-an isolated subgraph connected to the overall state graph, while restricting
-the behavior inside.  As such, the submachine does not require additional RAM
-to store its current state, as it can be stored as the supermachine's current
-state.
+equivalent to a type error.  The submachine must be a subtype, such that it
+must accept the events of its supermachine, but can declare additional events
+whose scope is restricted to tho supermachine.  This makes the submachine
+an isolated subgraph connected to the overall state graph.
 
-The ~(...)~> arrow operator should be able to take an optional event
-paremeter in the form of ~(M'.b)~> to send the given event immediately
-upon entering the submachine. This allows something analogous to
-parameterization of submachines.
+The become operator should be able to take optional side effects in the usual
+form, e.g. ~(M'.b)~>, to facilitate initialization of submachines.
+
+The become operation can have a trailing dash or arrow, indicating side effects
+to perform after an unbecome, and a destination state.
 
 There is a tradeoff with multi-use submachines.  Because of the deterministic
 nature, while multiple source events can enter the same submachine, their

@@ -1,0 +1,9 @@
+// Copyright 2019 Nate Bragg and Nathan Michaels.
+// This software is released under the 3-Clause BSD License.
+// The license can be viewed at https://github.com/smudgelang/splat/blob/master/LICENSE
+
+NoTargetAnyStates
+{
+  * A [x --> _],
+    B --> _
+}

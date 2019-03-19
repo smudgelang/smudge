@@ -1,4 +1,4 @@
--- Copyright 2018 Bose Corporation.
+-- Copyright 2019 Bose Corporation.
 -- This software is released under the 3-Clause BSD License.
 -- The license can be viewed at https://github.com/smudgelang/smudge/blob/master/LICENSE
 
@@ -22,6 +22,7 @@ import Language.Smudge.Semantics.Model (
   EnterExitState,
   Happening,
   passInitialState,
+  passConvertAnys,
   passFullyQualify,
   passRename,
   passTagCategories,
@@ -47,8 +48,10 @@ import Language.Smudge.Semantics.Solver (
   elaborateMono,
   elaboratePoly,
   )
+import qualified Language.Smudge.Parser.Smudge as Parser (smudge_file)
+import qualified Language.Smudge.Lexer.Smudge as Lexer (smudge_file)
+import Language.Smudge.Lexer.Token (stripWhitespace)
 import Language.Smudge.Parsers.Id (Identifier)
-import Language.Smudge.Parsers.Smudge (smudge_file)
 import Language.Smudge.Semantics.Alias (Alias, merge)
 import Language.Smudge.Semantics.Basis (basisAlias, bindBasis)
 import Language.Smudge.Passes.Passes (Severity(..), Fault(..), fatal)
@@ -94,7 +97,8 @@ processFile fileName os = do
         if fileName == "-"
             then getContents
             else readFile fileName
-    case parse (smudge_file <* eof) fileName compilationUnit of
+    case parse (Parser.smudge_file <* eof) fileName =<< stripWhitespace <$>
+         parse (Lexer.smudge_file <* eof) fileName compilationUnit of
         Left err -> print err >> report_failure 1
         Right (ps, sms) -> do
             os' <- getFileOpt ps
@@ -119,7 +123,7 @@ checkAndConvert sms os = do
         nsprefix = if EnvmntOption (NsPrefix True) `elem` os && not (null namespace)
                    then qualify . (,) namespace else id
         m sms = do
-            let sms' = passInitialState sms
+            let sms' = passConvertAnys $ passInitialState sms
             let sms'' = passRename aliases nsprefix $ passFullyQualify sms'
             let sms''' = passTagCategories sms''
             let fs = concat $ map name_passes sms'''

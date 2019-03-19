@@ -25,8 +25,8 @@ event-handler = event-name (arrow / dash / become)
 event-name = identifier
 
 ;; Transitions
-dash  =   dash-empty / dash-begin [side-effect-list] dash-end
-arrow = (arrow-empty / dash-begin [side-effect-list] arrow-end) state-name
+dash   =   dash-empty / dash-begin [side-effect-list] dash-end
+arrow  = (arrow-empty / dash-begin [side-effect-list] arrow-end) state-name
 become = (become-empty / become-begin [side-effect-list] become-end)
          [(state-machine / state-machine-name) (dash / arrow)]
 

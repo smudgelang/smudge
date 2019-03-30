@@ -27,7 +27,7 @@ before_test:
 - set PATH=%CD%\.local\tex\bin\win32;%PATH%
 - tlmgr install amscls amsmath latex-bin listofitems mdwtools readarray semantic tools verbatimbox
 
-- pip install rst2pdf
+- pip install rst2pdf==0.93
 
 - curl -sS -oinnosetup.exe -L --insecure http://www.jrsoftware.org/download.php/is.exe
 - .\innosetup.exe /VERYSILENT /DIR=".local\innosetup"

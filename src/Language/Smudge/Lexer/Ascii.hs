@@ -18,8 +18,8 @@ import Text.Parsec (ParsecT, Stream)
 import Text.Parsec.Char (char, oneOf)
 
 -- Visible characters
--- The excluded characters are either below in ascii-nl or ascii-space, or are
--- control charactres.
+-- The excluded characters are either below in ascii_nl or ascii_space, or are
+-- control characters.
 ascii_visible :: Stream s m Char => ParsecT s u m Char
 ascii_visible = oneOf ['\x21' .. '\x7E']
 

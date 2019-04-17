@@ -282,7 +282,7 @@ convertIR dodec dodef (aliases, ir) =
 
         convertExpr :: Expr (FullyQualAndEvent Identifier) -> AssignmentExpression
         convertExpr (FunCall x es)      = (#:) (apply ((#:) (fullQual x) (:#)) (map convertExpr es)) (:#)
-        convertExpr (Literal v)         = (#:) (show v) (:#)
+        convertExpr (Literal v)         = (#:) (SPrimaryExpression $ StringLiteral v) (:#)
         convertExpr (Null)              = (#:) "0" (:#)
         convertExpr (Value v)           = (#:) (convertVar v) (:#)
         convertExpr (UnusedValue v)     = (#:) (convertVoidedVar v) (:#)

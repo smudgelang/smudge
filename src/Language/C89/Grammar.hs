@@ -27,7 +27,7 @@ module Language.C89.Grammar (
     Constant,
     EnumerationConstant(..),
 
-    StringLiteral,
+    StringLiteral(..),
 
     LEFTSQUARE(..),
     RIGHTSQUARE(..),
@@ -210,7 +210,7 @@ type EnumerationConstant = Identifier
 
 -- A.1.1.5 String literals
 
-type StringLiteral = String
+newtype StringLiteral = StringLiteral String
 
 -- A.1.2 Phrase structure grammar
 

@@ -28,7 +28,7 @@ ascii_visible_nonquote = oneOf $ '\x21' : ['\x23' .. '\x7E']
 
 -- Whitespace
 ascii_nl :: Stream s m Char => ParsecT s u m Char
-ascii_nl = char '\x0D' *> char '\x0A' <|> char '\x0A'
+ascii_nl = char '\x0D' *> char '\x0A' <|> oneOf ['\x0A' .. '\x0D']
 
 ascii_space :: Stream s m Char => ParsecT s u m Char
 ascii_space = oneOf "\x09\x20"

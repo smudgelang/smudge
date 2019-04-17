@@ -8,6 +8,8 @@ module Language.C89.Unparser (
     renderPretty
 ) where
 
+import Data.Char (ord)
+import Text.Printf (printf)
 import Prelude hiding ((<>))
 
 import Language.C89.Grammar (
@@ -28,7 +30,7 @@ import Language.C89.Grammar (
     Constant,
     EnumerationConstant(..),
 
-    StringLiteral,
+    StringLiteral(..),
 
     LEFTSQUARE(..),
     RIGHTSQUARE(..),
@@ -204,9 +206,30 @@ instance Prettyable String where
 --type EnumerationConstant = Identifier
 --
 ---- A.1.1.5 String literals
---
---instance Prettyable StringLiteral where
---    pretty = text
+
+instance Prettyable StringLiteral where
+    -- This conversion is required to properly emit unicode literals instead
+    -- of, e.g., '\1234' as `show` does; see GHC.Show.showLitChar
+    pretty (StringLiteral s) = text $ ('"':) $ (++ "\"") $ concatMap convert s
+        where convert '"'  = "\\\""
+              convert '\\' = "\\\\"
+              convert '\a' = "\\a"
+              convert '\b' = "\\b"
+              convert '\f' = "\\f"
+              convert '\n' = "\\n"
+              convert '\r' = "\\r"
+              convert '\t' = "\\t"
+              convert '\v' = "\\v"
+              convert c | c >= ' ' && c < '\DEL' = [c]
+              convert c    = concatMap (printf "\\x%02x") $ encode $ ord c
+              encode n | n < 0x80     = [n]
+              encode n | n < 0x800    = zipWith (+) (bytes n) [0xC0, 0x80]
+              encode n | n < 0x10000  = zipWith (+) (bytes n) [0xE0, 0x80, 0x80]
+              encode n | n < 0x110000 = zipWith (+) (bytes n) [0xF0, 0x80, 0x80, 0x80]
+              encode n = error $ "unencodable utf-8 value: " ++ show n
+              bytes n = case quotRem n 0x40 of
+                (0, d) -> [d]
+                (n, d) -> bytes n ++ [d]
 
 -- A.1.2 Phrase structure grammar
 

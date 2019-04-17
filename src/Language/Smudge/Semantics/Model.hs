@@ -1,4 +1,4 @@
--- Copyright 2018 Bose Corporation.
+-- Copyright 2019 Bose Corporation.
 -- This software is released under the 3-Clause BSD License.
 -- The license can be viewed at https://github.com/smudgelang/smudge/blob/master/LICENSE
 
@@ -7,6 +7,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Language.Smudge.Semantics.Model (
     EnterExitState(..),
@@ -24,6 +25,7 @@ module Language.Smudge.Semantics.Model (
     Tagged(..),
     qName,
     passInitialState,
+    passConvertAnys,
     passFullyQualify,
     passRename,
     passTagCategories,
@@ -44,6 +46,7 @@ import Language.Smudge.Parsers.Id (
   Name,
   Declared(..),
   Identifier,
+  rawtest,
   mangle,
   )
 import Language.Smudge.Semantics.Alias (Alias, rename)
@@ -173,6 +176,13 @@ passInitialState :: [(StateMachine Identifier, [WholeState Identifier])] -> [(St
 passInitialState sms = map (\(sm, wss) -> (sm, foldr init [] wss)) sms
     where init ws@(s, fs, en, es, ex) wss | elem Initial fs = (StateEntry, [], [], [(EventEnter, [], s)], []) : (s, filter (/= Initial) fs, en, es, ex) : wss
           init ws wss = ws : wss
+
+passConvertAnys :: [(StateMachine Identifier, [WholeState Identifier])] -> [(StateMachine Identifier, [WholeState Identifier])]
+passConvertAnys = map $ fmap $ map conv_ws
+    where conv_ws (st, fs, en, es, ex) = (conv_st st, fs, en, map conv_eh es, ex)
+          conv_eh (ev, ses, s) = (conv_ev ev, ses, s)
+          conv_st st = if (\case State s -> rawtest (== "_") s; _ -> False) st then StateAny else st
+          conv_ev ev = if (\case Event e -> rawtest (== "_") e; _ -> False) ev then EventAny else ev
 
 pickSm :: StateMachine a -> StateMachine a -> StateMachine a
 pickSm _ s@(StateMachine _) = s

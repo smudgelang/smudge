@@ -26,8 +26,8 @@ instance Monoid DeclaredStateNames where
     mappend = (<>)
 
 instance Passable DeclaredStateNames where
-    type Representation DeclaredStateNames = [WholeState TaggedName]
-    accumulate (s, _, _, hs, _) = mappend $ DeclaredStateNames (singleton s) (fromList [s' | (_, _, s'@(State _)) <- hs])
+    type Representation DeclaredStateNames = [WholeState TaggedName]                                 -- any states are handled by NoTargetAnyStates
+    accumulate (s, _, _, hs, _) = mappend $ DeclaredStateNames (singleton s) (fromList [s' | (_, _, s'@(State st)) <- hs, "_" /= disqualifyTag st])
     test (StateMachine sm_name, _) (DeclaredStateNames sf st) =
         case toList (st \\ sf) of
         [] -> []

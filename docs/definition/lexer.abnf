@@ -4,6 +4,7 @@
 
 ;; Visible characters
 visible = ascii-visible / unicode-visible
+visible-nonquote = ascii-visible-nonquote unicode-visible
 
 ;; Whitespace
 newline = ascii-nl / unicode-nl
@@ -20,7 +21,6 @@ number = digit / unicode-num
 ;; Comments
 comment = "//" *(space / visible) newline
 empty = *whitespace [comment empty]
-spacesep = (whitespace / comment) empty
 emptytoeol = [*space (comment / newline) emptytoeol]
 
 ;; C identifiers
@@ -30,37 +30,48 @@ c-identifier = ascii-nondigit *(ascii-nondigit / ascii-digit)
 ;; Smudge identifiers
 idchar = alpha / number / "-" / "_"
 unquoted = 1*idchar
-quoted = DQUOTE 1*(whitespace / visible) DQUOTE
-identifier = (unquoted / quoted) empty
-foreign-identifier = "@" c-identifier empty
+quoted = DQUOTE 1*(whitespace / visible-nonquote) DQUOTE
+identifier = (unquoted / quoted) ; empty
+foreign-identifier = "@" c-identifier ; empty
 
 ;; Smudge pragmas
-pragma = emptytoeol "#" command [1*space argument] *space newline
-command = unquoted
+pragma = "#" command [1*space argument] *space newline
+command = 1*idchar
 argument = 1*visible *[1*space 1*visible]
 
 ;; Smudge symbols
-start-sigil = "*" empty
-comma = "," empty
-dot = "." empty
-state-machine-begin = "{" empty
-state-machine-end   = "}" empty
-state-begin = "[" empty
-state-end   = "]" empty
-dash-empty = spacesep "--" empty
-arrow-empty = spacesep "-->" empty
-become-empty = spacesep "~~>" empty
-dash-begin = spacesep "-("
-dash-end = ")-" empty
-arrow-end = ")->" empty
-become-begin = spacesep "~("
-become-end = ")~>" empty
-enter-exit-begin = "(" empty
-enter-exit-end   = ")" empty
+; The uses of 'empty'/'space' below (and above in identifier) are not needed in
+; the lexer implementation, but they must be added back in for the productions
+; to be used as generators.
+start-sigil = "*" ; empty
+comma = "," ; empty
+dot = "." ; empty
+state-machine-begin = "{" ; empty
+state-machine-end   = "}" ; empty
+state-begin = "[" ; empty
+state-end   = "]" ; empty
+arrow-empty = ; space
+              "-->" ; empty
+dash-empty = ; space
+             "--" ; empty
+become-empty = ; space
+               "~~>" ; empty
+dash-begin = ; space
+             "-(" ; empty
+arrow-end = ")->" ; empty
+dash-end = ")-" ; empty
+become-begin = ; space
+               "~(" ; empty
+become-end = ")~>" ; empty
+enter-exit-begin = ; space
+                   "(" ; empty
+enter-exit-end   = ")" ; empty
 
 ;; Smudge lexing
-token = identifier / foreign-identifier / start-sigil / comma / dot
+token = start-sigil / comma / dot
       / state-machine-begin / state-machine-end / state-begin / state-end
-      / dash-empty / arrow-empty / dash-begin / dash-end / arrow-end
+      / arrow-empty / dash-empty / become-empty
+      / dash-begin / arrow-end / dash-end / become-begin / become-end
       / enter-exit-begin / enter-exit-end
-smudge-file = *pragma empty *token
+      / identifier / foreign-identifier
+smudge-file = *(emptytoeol pragma) empty *(token empty)

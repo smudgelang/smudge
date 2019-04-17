@@ -1,4 +1,4 @@
--- Copyright 2018 Bose Corporation.
+-- Copyright 2019 Bose Corporation.
 -- This software is released under the 3-Clause BSD License.
 -- The license can be viewed at https://github.com/smudgelang/smudge/blob/master/LICENSE
 
@@ -19,6 +19,8 @@ import Language.Smudge.Passes.Passes (pass, Fault)
 import Language.Smudge.Passes.NoAnyEnterExit (NoAnyEnterExit)
 import Language.Smudge.Passes.NoDecidableNontermination (NoDecidableNontermination)
 import Language.Smudge.Passes.NoUndecidableTermination (NoUndecidableTermination)
+import Language.Smudge.Passes.NoSentAnyEvents (NoSentAnyEvents)
+import Language.Smudge.Passes.NoTargetAnyStates (NoTargetAnyStates)
 import Language.Smudge.Passes.NoTransientAnyState (NoTransientAnyState)
 import Language.Smudge.Passes.NoTransientStateCycles (NoTransientStateCycles)
 import Language.Smudge.Passes.UniqueStateNames (UniqueStateNames)
@@ -38,7 +40,9 @@ make_passes g = concat [pass g (undefined :: OneInitialState gr),
                         pass g (undefined :: NoTransientStateCycles gr)]
 
 name_passes :: (StateMachine TaggedName, [WholeState TaggedName]) -> [Fault]
-name_passes sm = concat [pass sm (undefined :: DeclaredStateNames),
+name_passes sm = concat [pass sm (undefined :: NoTargetAnyStates),
+                         pass sm (undefined :: NoSentAnyEvents),
+                         pass sm (undefined :: DeclaredStateNames),
                          pass sm (undefined :: UniqueStateNames)]
 
 link_passes :: (StateMachine TaggedName, [(StateMachine TaggedName, [WholeState TaggedName])]) -> [Fault]

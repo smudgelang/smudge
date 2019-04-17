@@ -24,14 +24,21 @@ library
                      Language.Smudge.Backends.GraphViz
                      Language.Smudge.Backends.SmudgeIR
                      Language.Smudge.Grammar
+                     Language.Smudge.Lexer.Ascii
+                     Language.Smudge.Lexer.Char
+                     Language.Smudge.Lexer.Id
+                     Language.Smudge.Lexer.Smudge
+                     Language.Smudge.Lexer.Token
+                     Language.Smudge.Parser.Smudge
                      Language.Smudge.Parsers.Id
-                     Language.Smudge.Parsers.Smudge
                      Language.Smudge.Passes
                      Language.Smudge.Passes.DeclaredEventNames
                      Language.Smudge.Passes.DeclaredStateNames
                      Language.Smudge.Passes.NoAnyEnterExit
                      Language.Smudge.Passes.NoDecidableNontermination
                      Language.Smudge.Passes.NoUndecidableTermination
+                     Language.Smudge.Passes.NoSentAnyEvents
+                     Language.Smudge.Passes.NoTargetAnyStates
                      Language.Smudge.Passes.NoTransientAnyState
                      Language.Smudge.Passes.NoTransientStateCycles
                      Language.Smudge.Passes.OneEventHandlerPerState

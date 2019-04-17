@@ -6,9 +6,10 @@
 ; The excluded characters are either below in ascii-nl or ascii-space, or are
 ; control charactres.
 ascii-visible = %x21-7E
+ascii-visible-nonquote = %x21 / %x23-7E
 
 ;; Whitespace
-ascii-nl = %x0A-0D
+ascii-nl = %x0D %x0A / %x0A-0D
 ascii-space = %x09 / %x20
 
 ;; Letters

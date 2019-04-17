@@ -1,4 +1,4 @@
--- Copyright 2017 Bose Corporation.
+-- Copyright 2019 Bose Corporation.
 -- This software is released under the 3-Clause BSD License.
 -- The license can be viewed at https://github.com/smudgelang/smudge/blob/master/LICENSE
 
@@ -8,37 +8,24 @@ module Language.Smudge.Parsers.Id (
     showLineCol,
     Declared(..),
     Identifier,
-    foreign_identifier,
-    identifier,
     rawtest,
     mangle,
+    identify,
 ) where
 
-import Text.Parsec.String (
-  Parser,
-  )
+import Language.Smudge.Lexer.Token (TokenCat(ID, FID), Token(cat, pos, text))
+import Language.Smudge.Lexer.Id (unquoted, identifier, foreign_identifier)
 
 import Text.Parsec (
-  getPosition,
   parse,
   getInput,
   eof,
-  many,
-  many1,
-  oneOf,
-  try,
   (<|>),
-  char,
-  letter,
-  digit,
-  space,
   spaces,
-  alphaNum,
   )
 
 import Text.Parsec.Pos (
   SourcePos,
-  initialPos,
   setSourceName,
   )
 
@@ -82,7 +69,7 @@ instance Read Identifier where
                     (\r -> rights [parse ident "" r])
         where ident = do  id <- spaces *> (foreign_identifier <|> identifier)
                           rest <- getInput
-                          return (id, rest)
+                          return (identify id, rest)
 
 rawtest :: (Name -> Bool) -> Identifier -> Bool
 rawtest f (Identifier _ (RawId name)) = f name
@@ -92,30 +79,8 @@ mangle :: (Name -> Name) -> Identifier -> Name
 mangle f (Identifier _ (RawId name)) = f name
 mangle _ (Identifier _ (CookedId name)) = name
 
-foreign_identifier :: Parser Identifier
-foreign_identifier = char '@' *> c_identifier
-
-c_identifier :: Parser Identifier
-c_identifier = Identifier <$> getPosition <*> (CookedId <$> ((:) <$> nondigit <*> many (nondigit <|> digit)))
-
-identifier :: Parser Identifier
-identifier = Identifier <$> getPosition <*> (RawId <$> (unquoted <|> quoted))
-
-unquoted :: Parser Name
-unquoted = try ((:) <$> id_char <*> (many1 id_char))
-           <|> many1 (alphaNum <|> (char '-'))
-
-quoted :: Parser Name
-quoted = ((char '"') *> many1 (id_char <|> space <|> symbol) <* (char '"'))
-
-id_char :: Parser Char
-id_char = (alphaNum <|> sep)
-
-sep :: Parser Char
-sep = oneOf "-_"
-
-nondigit :: Parser Char
-nondigit = letter <|> char '_'
-
-symbol :: Parser Char
-symbol = oneOf "!#$%&'()*+,./{|}~[\\]^`<>;="
+identify :: Token -> Identifier
+identify t = Identifier (pos t) (idCtor $ text t)
+    where idCtor = case cat t of
+            ID -> RawId; FID -> CookedId
+            otherwise -> error "Expected identifier.  This is a bug in smudge."

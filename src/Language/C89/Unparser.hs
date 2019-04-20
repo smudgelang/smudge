@@ -221,15 +221,16 @@ instance Prettyable StringLiteral where
               convert '\t' = "\\t"
               convert '\v' = "\\v"
               convert c | c >= ' ' && c < '\DEL' = [c]
-              convert c    = concatMap (printf "\\x%02x") $ encode $ ord c
-              encode n | n < 0x80     = [n]
-              encode n | n < 0x800    = zipWith (+) (bytes n) [0xC0, 0x80]
-              encode n | n < 0x10000  = zipWith (+) (bytes n) [0xE0, 0x80, 0x80]
-              encode n | n < 0x110000 = zipWith (+) (bytes n) [0xF0, 0x80, 0x80, 0x80]
-              encode n = error $ "unencodable utf-8 value: " ++ show n
-              bytes n = case quotRem n 0x40 of
+              convert c    = concatMap (printf "\\x%02x") $ utf8encode $ ord c
+              utf8encode n | n < 0x80     = [n]
+              utf8encode n | n < 0x800    = utf8bytes n [0xC0, 0x80]
+              utf8encode n | n < 0x10000  = utf8bytes n [0xE0, 0x80, 0x80]
+              utf8encode n | n < 0x110000 = utf8bytes n [0xF0, 0x80, 0x80, 0x80]
+              utf8encode n = error $ "unencodable utf-8 value: " ++ show n
+              utf8bytes n prefixes = reverse $ zipWith (+) (reverse (split6bits n) ++ repeat 0x00) (reverse prefixes)
+              split6bits n = case quotRem n 0x40 of
                 (0, d) -> [d]
-                (n, d) -> bytes n ++ [d]
+                (n, d) -> split6bits n ++ [d]
 
 -- A.1.2 Phrase structure grammar
 

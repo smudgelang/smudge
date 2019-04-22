@@ -25,6 +25,7 @@ library
                      Language.Smudge.Backends.SmudgeIR
                      Language.Smudge.Grammar
                      Language.Smudge.Lexer.Ascii
+                     Language.Smudge.Lexer.Unicode
                      Language.Smudge.Lexer.Char
                      Language.Smudge.Lexer.Id
                      Language.Smudge.Lexer.Smudge

@@ -1,0 +1,103 @@
+Title: Guards! Guards!
+
+A common pattern in Smudge is to have an event with some payload, and
+want to transition to a different state based on that
+payload. Currently, the idiom is to write an @function and a
+collection of events, like so:
+
+check_voltage (@read_voltage)
+[
+    voltage -(@dispatch_voltage)-,
+    voltage_high --> overvolt,
+    voltage_nominal --> continue,
+    voltage_low --> undervolt
+]
+
+with @dispatch looking something like this:
+
+void dispatch(const machine__voltage_t *e)
+{
+    if (e->volts >= OVERVOLT_THRESHOLD)
+    {
+        machine__voltage_high(NULL);
+    }
+    else if (e->volts <= UNDERVOLT_THRESHOLD)
+    {
+        machine__voltage_low(NULL);
+    }
+    else
+    {
+        machine__voltage_nominal(NULL);
+    }
+}
+
+However, this makes it harder to tell what's going on from the Smudge
+code. Thus this proposal for guard expressions:
+
+First, some ebnf changes:
+guard-expr = "?" c-identifier
+
+dash = [guard-expr] (dash-empty / dash-begin [side-effect-list] dash-end)
+arrow  = [guard-expr] (arrow-empty / dash-begin [side-effect-list] arrow-end) state-name
+become = [guard-expr] (become-empty / become-begin [side-effect-list] become-end)
+         [(state-machine / state-machine-name) (dash / arrow)]
+
+An example in Smudge:
+
+check_voltage (@read_voltage)
+[
+    voltage ?v_high --> overvolt,
+    voltage ?v_low --> undervolt,
+    voltage --> continue,
+]
+
+This would result in the generation of function prototypes for v_high
+and v_low in the _ext.h file that look something like this:
+
+int v_high(const machine__voltage_t *e);
+int v_low(const machine__voltage_t *e);
+
+Unfortunately, we're going for C89 which doesn't have stdbool. This
+might be worth a Smudge switch along the lines of --with-bool-h but
+that's beyond the scope of this ticket.
+
+The relevant event handler would include generated code like this:
+
+if (v_high(e))
+{
+    machine__check_voltage__exit();
+    machine__state = STID_machine__overvolt;
+    machine__overvolt__enter();
+}
+else if (v_low(e))
+{
+    machine__check_voltage__exit();
+    machine__state = STID_machine__undervolt;
+    machine__undervolt__enter();
+}
+else
+{
+    machine__check_voltage__exit();
+    machine__state = STID_machine__continue;
+    machine__continue__enter();
+}
+
+This introduces a new semantic concept to Smudge: order matters. This
+would be the first time that the order in which events are listed in
+Smudge code actually matters.
+
+It also introduces some ambiguity in case coverage. Since Smudge can't
+know at compile time that all the possible cases are covered, it's
+recommended that if there's no default case ("voltage --> continue"
+above) we call SMUDGE_PANIC if none of the guards match.
+
+If we find a way to do call semantics and math and start instantiating
+machines, we can add an optional predicate machine to the above guard
+syntax:
+
+guard-expr = "?" c-identifier / state-machine-name
+
+Thus we can have ?functions whose prototypes will be generated knowing
+that they need to return a value, and predicate state machines. These
+machines can be type checked by Smudge to conform to whatever
+predicate protocol we deem appropriate at the time.
